@@ -6,8 +6,7 @@ class CartItem {
   int quantity;
   double salePrice;
 
-  CartItem({required this.product, this.quantity = 1, double? salePrice})
-      : salePrice = salePrice ?? product.effectivePrice;
+  CartItem({required this.product, this.quantity = 1, this.salePrice = 0});
 
   double get lineTotal => quantity * salePrice;
 }
@@ -82,7 +81,7 @@ class SalesNotifier extends Notifier<SalesState> {
     }
     if (newQty > item.product.currentStock) return;
     final updated = [...state.cart];
-    updated[idx] = CartItem(product: item.product, quantity: newQty);
+    updated[idx] = CartItem(product: item.product, quantity: newQty, salePrice: item.salePrice);
     state = state.copyWith(cart: updated);
   }
 

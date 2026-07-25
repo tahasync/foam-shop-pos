@@ -14,6 +14,7 @@ import '../providers/shop_provider.dart';
 import '../utils/debounce.dart';
 import '../widgets/save_success_sheet.dart';
 import '../utils/safe_error_handler.dart';
+import 'package:flutter/services.dart';
 
 class CartWidget extends ConsumerStatefulWidget {
   final CartItem item;
@@ -38,25 +39,61 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
     super.dispose();
   }
 
+  String _buildDims(Product p) {
+    final parts = <String>[];
+    if (p.sizeLength > 0) parts.add('${p.sizeLength.toStringAsFixed(0)}in');
+    if (p.sizeWidth > 0) parts.add('${p.sizeWidth.toStringAsFixed(0)}in');
+    if (p.thickness > 0) parts.add('${p.thickness.toStringAsFixed(0)}in');
+    return parts.join(' \u00d7 ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
+    final p = widget.item.product;
     final total = widget.item.lineTotal;
     final csym = ref.watch(currencySymbolProvider);
+    final costPrice = p.costPrice;
+    final salePrice = double.tryParse(_priceCtrl.text) ?? 0;
+    final hasValidPrice = salePrice > 0;
+    final isBelowCost = hasValidPrice && salePrice < costPrice;
+    final qty = widget.item.quantity;
+    final grey300 = Colors.grey.shade300;
+    final grey600 = Colors.grey.shade600;
+
+    Color borderColor = grey300;
+    String? flagText;
+    Color? flagColor;
+
+    if (isBelowCost) {
+      borderColor = ac.expenseFg;
+      flagText = 'Below cost price ($csym ${costPrice.toInt()}) \u2014 this line is a loss';
+      flagColor = ac.expenseFg;
+    } else if (hasValidPrice) {
+      borderColor = AppTheme.teal;
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant),
+        border: Border.all(color: borderColor, width: isBelowCost || hasValidPrice ? 1.5 : 1),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
-            child: Text(widget.item.product.name,
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: cs.onSurface)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(p.name,
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: cs.onSurface),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 2),
+              Text(_buildDims(p),
+                  style: TextStyle(fontSize: 13, color: grey600),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+            ]),
           ),
           InkWell(
             borderRadius: BorderRadius.circular(8),
@@ -65,65 +102,113 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
                 child: Text('\u2715', style: TextStyle(fontSize: 12, color: ac.inkFaint))),
           ),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Row(children: [
-          SizedBox(
-            width: 90,
-            child: TextField(
-              controller: _priceCtrl,
-              keyboardType: TextInputType.number,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                  fontFeatures: [FontFeature('tnum')], color: cs.onSurface),
-              decoration: InputDecoration(
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                border: InputBorder.none,
+          Expanded(
+            flex: 2,
+            child: Container(
+              decoration: BoxDecoration(
+                color: hasValidPrice && !isBelowCost ? ac.saleTint : cs.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: !hasValidPrice
+                      ? cs.outlineVariant
+                      : isBelowCost
+                          ? ac.expenseFg
+                          : ac.saleFg.withValues(alpha: 0.3),
+                  width: hasValidPrice ? 1.5 : 1,
+                ),
               ),
-              onChanged: (val) {
-                final newPrice = double.tryParse(val) ?? 0;
-                ref.read(salesProvider.notifier).updateItemPrice(widget.item.product.id, newPrice);
-              },
+              child: TextField(
+                controller: _priceCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                maxLength: 9,
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                    fontFeatures: [FontFeature('tnum')], color: isBelowCost ? ac.expenseFg : ac.saleFg),
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: 'Input Sale Price',
+                  hintStyle: TextStyle(color: ac.inkFaint, fontSize: 13),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                ),
+                onChanged: (val) {
+                  final newPrice = double.tryParse(val) ?? 0;
+                  setState(() {});
+                  ref.read(salesProvider.notifier).updateItemPrice(widget.item.product.id, newPrice);
+                },
+              ),
             ),
           ),
           const SizedBox(width: 6),
-          Text('/unit', style: TextStyle(fontSize: 10.5, color: cs.onSurfaceVariant)),
-          const Spacer(),
+          Text('/unit', style: TextStyle(fontSize: 12, color: hasValidPrice ? ac.saleFg : cs.onSurfaceVariant)),
+          const SizedBox(width: 8),
           Container(
+            height: 36,
             decoration: BoxDecoration(
-              color: cs.surface,
+              color: const Color(0xFFF2F2F2),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: cs.outlineVariant),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               InkWell(
                 borderRadius: BorderRadius.circular(999),
                 onTap: () => ref.read(salesProvider.notifier).changeQty(widget.item.product.id, -1),
-                child: Container(width: 28, height: 28, alignment: Alignment.center,
+                child: Container(width: 32, height: 32, alignment: Alignment.center,
                     child: Text('\u2212', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant))),
               ),
-              SizedBox(
-                width: 24,
-                child: Text('${widget.item.quantity}', textAlign: TextAlign.center,
+              Container(
+                width: 28, alignment: Alignment.center,
+                child: Text('$qty', textAlign: TextAlign.center,
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: cs.onSurface)),
               ),
               InkWell(
                 borderRadius: BorderRadius.circular(999),
-                onTap: widget.item.quantity < widget.item.product.currentStock
+                onTap: qty < p.currentStock
                     ? () => ref.read(salesProvider.notifier).changeQty(widget.item.product.id, 1)
                     : null,
-                child: Container(width: 28, height: 28, alignment: Alignment.center,
+                child: Container(width: 32, height: 32, alignment: Alignment.center,
                     child: Text('+', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant))),
               ),
             ]),
           ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 64,
-            child: Text('$csym ${total.toStringAsFixed(0)}', textAlign: TextAlign.right,
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14,
-                    fontFeatures: [FontFeature('tnum')], color: cs.onSurface)),
-          ),
+          const SizedBox(width: 10),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('TOTAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: ac.inkFaint, letterSpacing: 0.04)),
+            const SizedBox(height: 1),
+            Text('$csym ${total.toStringAsFixed(0)}',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15,
+                    fontFeatures: [FontFeature('tnum')], color: hasValidPrice ? ac.saleFg : cs.onSurface)),
+          ]),
         ]),
+        if (hasValidPrice && qty > 1)
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(color: ac.saleTint, borderRadius: BorderRadius.circular(8)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.calculate_outlined, size: 12, color: ac.saleFg),
+              const SizedBox(width: 5),
+              Text('$csym ${salePrice.toInt()} \u00d7 $qty = $csym ${total.toInt()}',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ac.saleFg)),
+            ]),
+          ),
+        if (flagText != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(children: [
+              Icon(Icons.warning_amber_rounded, size: 12, color: flagColor),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(flagText,
+                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: flagColor)),
+              ),
+            ]),
+          ),
       ]),
     );
   }
@@ -270,13 +355,49 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     if (_saving) return;
     _saving = true;
     try {
+    final t0 = DateTime.now();
     final state = ref.read(salesProvider);
     if (state.cart.isEmpty) return;
+    if (!isQuote && state.cart.any((c) => c.salePrice <= 0)) {
+      _saving = false;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Enter a sale price for all items before saving.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
 
     final svc = ref.read(firestoreServiceProvider);
-    final products = await ref.read(productsStreamProvider.future);
+    final cartProductIds = state.cart.map((c) => c.product.id).toSet();
+    final products = await svc.getProductsByIds(cartProductIds);
+    debugPrint('[Save] getProductsByIds: ${DateTime.now().difference(t0).inMilliseconds}ms');
     if (!mounted) return;
     final productMap = {for (final p in products) p.id: p};
+
+    final belowCostItems = state.cart.where((c) {
+      final prod = productMap[c.product.id];
+      return prod != null && c.salePrice > 0 && c.salePrice < prod.costPrice;
+    }).toList();
+    if (belowCostItems.isNotEmpty && !isQuote) {
+      _saving = false;
+      if (!mounted) return;
+      final csym = ref.read(currencySymbolProvider);
+      final proceed = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => _BelowCostSheet(
+          items: belowCostItems,
+          productMap: productMap,
+          csym: csym,
+        ),
+      );
+      if (proceed != true) return;
+      _saving = true;
+    }
 
     final subtotal = state.subtotal;
     final paid = double.tryParse(_paidCtrl.text) ?? 0;
@@ -285,7 +406,12 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     String customerId = state.customerId;
     String customerName = state.customerName;
     if (balance > 0 && customerId.isEmpty) {
-      final walkIn = await svc.ensureWalkInCustomer();
+      final walkInId = svc.generateId();
+      final now = DateTime.now();
+      final timeLabel = '${now.day}/${now.month}/${now.year} ${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')}${now.hour < 12 ? 'AM' : 'PM'}';
+      final walkInName = 'Walk-in \u00b7 $timeLabel';
+      final walkIn = Customer(id: walkInId, name: walkInName, phone: '');
+      await svc.addCustomer(walkIn);
       customerId = walkIn.id;
       customerName = walkIn.name;
     }
@@ -312,15 +438,23 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
       isQuote: isQuote,
     );
 
+    final t1 = DateTime.now();
     if (!isQuote) {
       final deductions = <String, double>{};
       for (final c in state.cart) {
         deductions[c.product.id] = c.quantity.toDouble();
       }
-      await svc.saveSaleTransaction(sale, deductions);
+      final verifiedStocks = <String, double>{};
+      for (final c in state.cart) {
+        final prod = productMap[c.product.id];
+        if (prod != null) verifiedStocks[c.product.id] = prod.currentStock;
+      }
+      await svc.saveSaleTransaction(sale, deductions, verifiedStocks: verifiedStocks);
     } else {
       await svc.addSale(sale);
     }
+    debugPrint('[Save] Firestore write: ${DateTime.now().difference(t1).inMilliseconds}ms');
+    debugPrint('[Save] Total save: ${DateTime.now().difference(t0).inMilliseconds}ms');
     if (!mounted) return;
 
     ref.invalidate(accountingSummaryProvider);
@@ -485,6 +619,19 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
             ]),
           ),
           const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: ac.purchaseTint, borderRadius: BorderRadius.circular(12)),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.info_outline_rounded, size: 14, color: ac.purchaseFg),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Step 1: Enter the sale price first. Step 2: Then increase quantity if selling more than one \u2014 the total updates automatically.',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ac.purchaseFg, height: 1.4)),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 10),
           Row(children: [
             Text('Cart', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
                 color: cs.onSurfaceVariant, letterSpacing: 0.06)),
@@ -582,7 +729,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           ]),
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: salesState.cart.isEmpty ? null : () => _save(isQuote: false),
+            onPressed: (salesState.cart.isEmpty || salesState.cart.any((c) => c.salePrice <= 0)) ? null : () => _save(isQuote: false),
             icon: const Icon(Icons.save_rounded),
             label: const Text('Save Sale', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             style: FilledButton.styleFrom(
@@ -707,6 +854,97 @@ error: (e, _) => Center(
             child: const Text('Walk-in'),
           ),
       ],
+    );
+  }
+}
+
+class _BelowCostSheet extends StatelessWidget {
+  final List<CartItem> items;
+  final Map<String, Product> productMap;
+  final String csym;
+  const _BelowCostSheet({required this.items, required this.productMap, required this.csym});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final ac = AppColors.of(context);
+    final fmt = NumberFormat('#,##0');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      padding: EdgeInsets.only(
+        left: 20, right: 20, top: 22,
+        bottom: MediaQuery.of(context).padding.bottom + 20,
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(color: ac.expenseTint, borderRadius: BorderRadius.circular(12)),
+          child: Icon(Icons.warning_amber_rounded, size: 20, color: ac.expenseFg),
+        ),
+        const SizedBox(height: 12),
+        Text('Selling below cost price',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 6),
+        ...items.map((item) {
+          final prod = productMap[item.product.id];
+          final cost = prod?.costPrice ?? 0;
+          return Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(item.product.name,
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: cs.onSurface)),
+              const SizedBox(height: 6),
+              Row(children: [
+                Expanded(child: Text('Sale price', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant))),
+                Text('$csym ${fmt.format(item.salePrice.toInt())}',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ac.expenseFg)),
+              ]),
+              const SizedBox(height: 4),
+              Row(children: [
+                Expanded(child: Text('Cost price', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant))),
+                Text('$csym ${fmt.format(cost.toInt())}',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: cs.onSurface)),
+              ]),
+            ]),
+          );
+        }),
+        const SizedBox(height: 8),
+        Text('This sale will show a loss on these items.',
+            style: TextStyle(fontSize: 12, color: ac.inkFaint)),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.teal,
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Save Anyway', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context, false),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                side: BorderSide(color: cs.outlineVariant),
+              ),
+              child: Text('Fix Price', style: TextStyle(fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
+            ),
+          ),
+        ]),
+      ]),
     );
   }
 }

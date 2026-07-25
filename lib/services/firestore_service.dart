@@ -42,6 +42,16 @@ class FirestoreService {
   Future<void> archiveProduct(String id) => _products.doc(id).update({'is_archived': true});
   Stream<QuerySnapshot> get productsStream => _products.where('is_archived', isEqualTo: false).snapshots();
 
+  Future<List<Product>> getProductsByIds(Set<String> ids) async {
+    if (ids.isEmpty) return [];
+    final snap = await _products
+        .where(FieldPath.documentId, whereIn: ids.take(10).toList())
+        .get();
+    return snap.docs
+        .map((d) => Product.fromMap(d.data() as Map<String, dynamic>))
+        .toList();
+  }
+
   // Customers
   Future<void> addCustomer(Customer c) => _customers.doc(c.id).set(c.toMap());
   Future<void> updateCustomer(Customer c) => _customers.doc(c.id).update(c.toMap());
@@ -155,22 +165,31 @@ class FirestoreService {
     return snap.docs.isNotEmpty;
   }
 
-  // Atomic sale transaction — also updates customer baqaya
-  Future<void> saveSaleTransaction(Sale sale, Map<String, double> deductions) async {
-    final exists = await saleExistsByUuid(sale.transactionUuid ?? sale.id);
-    if (exists) return;
+  // Atomic sale transaction — also updates customer baqaya.
+  // verifiedStocks is a pre-check from locally-fetched product data;
+  // the authoritative stock check and decrement happen inside the
+  // transaction against live server data.
+  Future<void> saveSaleTransaction(Sale sale, Map<String, double> deductions,
+      {Map<String, double>? verifiedStocks}) async {
+    for (final entry in deductions.entries) {
+      final stock = verifiedStocks?[entry.key];
+      if (stock != null && stock < entry.value) {
+        throw Exception('Insufficient stock for product ${entry.key}');
+      }
+    }
     await _db.runTransaction((transaction) async {
       final saleRef = _sales.doc(sale.id);
+      final existing = await transaction.get(saleRef);
+      if (existing.exists) return;
       for (final entry in deductions.entries) {
         final productRef = _products.doc(entry.key);
         final snap = await transaction.get(productRef);
         if (!snap.exists) throw Exception('Product ${entry.key} not found');
-        final data = snap.data() as Map<String, dynamic>;
-        final currentStock = (data['current_stock'] as num?)?.toDouble() ?? 0;
-        if (currentStock < entry.value) {
+        final currentStock = (snap.data() as Map<String, dynamic>)['current_stock'] as num? ?? 0;
+        if ((currentStock).toDouble() < entry.value) {
           throw Exception('Insufficient stock for product ${entry.key}');
         }
-        transaction.update(productRef, {'current_stock': currentStock - entry.value});
+        transaction.update(productRef, {'current_stock': (currentStock).toDouble() - entry.value});
       }
       transaction.set(saleRef, sale.toMap());
       if (sale.customerId.isNotEmpty && sale.balance > 0) {
