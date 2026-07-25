@@ -13,6 +13,7 @@ class SaveSuccessSheet extends StatelessWidget {
   final String printLabel;
   final String newLabel;
   final Color? accentColor;
+  final String csym;
 
   const SaveSuccessSheet({
     super.key,
@@ -26,6 +27,7 @@ class SaveSuccessSheet extends StatelessWidget {
     this.printLabel = 'Print Receipt',
     this.newLabel = '+ New',
     this.accentColor,
+    this.csym = 'Rs',
   });
 
   static Future<void> show({
@@ -39,6 +41,7 @@ class SaveSuccessSheet extends StatelessWidget {
     VoidCallback? onNew,
     String printLabel = 'Print Receipt',
     String newLabel = '+ New',
+    String csym = 'Rs',
   }) {
     return showModalBottomSheet(
       context: context,
@@ -54,6 +57,7 @@ class SaveSuccessSheet extends StatelessWidget {
         onNew: onNew,
         printLabel: printLabel,
         newLabel: newLabel,
+        csym: csym,
       ),
     );
   }
@@ -112,14 +116,14 @@ class SaveSuccessSheet extends StatelessWidget {
             Container(height: 1, color: cs.outlineVariant, margin: const EdgeInsets.symmetric(vertical: 8)),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text('Total', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: cs.onSurface)),
-              Text('Rs ${fmt.format(total.toInt())}',
+              Text('$csym ${fmt.format(total.toInt())}',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800,
                       fontFeatures: const [FontFeature.tabularFigures()], color: accent)),
             ]),
             const SizedBox(height: 5),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text('Paid', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-              Text('Rs ${fmt.format(paid.toInt())}',
+              Text('$csym ${fmt.format(paid.toInt())}',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
                       fontFeatures: const [FontFeature.tabularFigures()], color: cs.onSurface)),
             ]),
@@ -128,7 +132,7 @@ class SaveSuccessSheet extends StatelessWidget {
               Text(paid >= total ? 'Change' : 'Balance Due',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
                       color: paid >= total ? ac.profitFg : ac.expenseFg)),
-              Text('Rs ${fmt.format((paid - total).abs().toInt())}',
+              Text('$csym ${fmt.format((paid - total).abs().toInt())}',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
                       fontFeatures: const [FontFeature.tabularFigures()],
                       color: paid >= total ? ac.profitFg : ac.expenseFg)),

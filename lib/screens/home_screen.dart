@@ -11,6 +11,9 @@ import 'customer_khata_screen.dart';
 import 'dashboard_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
+  static const double kNavPillHeight = 64;
+  static const double kNavPillBottomMargin = 12;
+  static const double kNavPillFabGap = 16;
   const HomeScreen({super.key});
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -60,12 +63,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final cs = Theme.of(context).colorScheme;
 
+    final botPad = MediaQuery.of(context).padding.bottom;
+    final fabClearance = HomeScreen.kNavPillHeight + HomeScreen.kNavPillBottomMargin + HomeScreen.kNavPillFabGap + botPad;
     final screens = <Widget>[
       DashboardScreen(onLowStockTap: _goToInventory),
       const SalesEntryScreen(),
       InventoryScreen(
         initialLowStockFilter: _invLowStockFilter,
         highlightProductId: _invHighlightId,
+        fabBottomClearance: fabClearance,
       ),
       const CustomerKhataScreen(),
     ];
@@ -78,9 +84,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+            padding: EdgeInsets.only(left: 16, right: 16, bottom: HomeScreen.kNavPillBottomMargin),
             child: Container(
-              height: 64,
+              height: HomeScreen.kNavPillHeight,
               decoration: BoxDecoration(
                 color: cs.surface,
                 borderRadius: BorderRadius.circular(26),

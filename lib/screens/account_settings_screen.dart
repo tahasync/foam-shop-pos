@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/opening_balance.dart';
+import '../models/shop_profile.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/shop_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/safe_error_handler.dart';
+import '../utils/currency.dart';
+import 'delete_account_sheet.dart';
 
 class AccountSettingsScreen extends ConsumerWidget {
   const AccountSettingsScreen({super.key});
@@ -17,8 +22,10 @@ class AccountSettingsScreen extends ConsumerWidget {
     final user = authState.asData?.value;
     final obAsync = ref.watch(openingBalanceStreamProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final shopAsync = ref.watch(shopProfileProvider);
 
     final openingBal = obAsync.asData?.value;
+    final profile = shopAsync.asData?.value;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Account / Settings')),
@@ -46,12 +53,30 @@ class AccountSettingsScreen extends ConsumerWidget {
               ListTile(
                 leading: Container(width: 36, height: 36,
                   decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.store_rounded, color: cs.onPrimaryContainer)),
+                title: const Text('Shop Profile'),
+                subtitle: Text(
+                  profile != null ? '${profile.shopName} \u00b7 ${profile.location}' : 'Not set up',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _editShopProfile(context, ref, profile),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Column(children: [
+              ListTile(
+                leading: Container(width: 36, height: 36,
+                  decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(10)),
                   child: Icon(Icons.account_balance_rounded, color: cs.onPrimaryContainer)),
                 title: const Text('Shuru ka Capital'),
-                subtitle: Text('Rs. ${(openingBal?.capitalAmount ?? 0).toStringAsFixed(0)}',
+                subtitle: Text('${currencySymbolFromCode(profile?.currency ?? 'PKR')}. ${(openingBal?.capitalAmount ?? 0).toStringAsFixed(0)}',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
                 trailing: const Icon(Icons.edit_rounded),
-                onTap: () => _editCapital(context, ref, openingBal),
+                onTap: () => _editCapital(context, ref, openingBal, profile),
               ),
               const Divider(),
               Padding(
@@ -110,16 +135,166 @@ class AccountSettingsScreen extends ConsumerWidget {
               },
             ),
           ),
+          const SizedBox(height: 20),
+          _buildDangerZone(context, ref),
         ],
       ),
     );
   }
 
-  void _editCapital(BuildContext context, WidgetRef ref, OpeningBalance? current) {
+  Widget _buildDangerZone(BuildContext context, WidgetRef ref) {
+    final ac = AppColors.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: ac.expenseFg.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+            child: Row(children: [
+              Icon(Icons.warning_amber_rounded, size: 14, color: ac.expenseFg),
+              const SizedBox(width: 6),
+              Text('Danger Zone',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ac.expenseFg, letterSpacing: 0.05)),
+            ]),
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => _confirmDeleteAccount(context, ref),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(children: [
+                Icon(Icons.delete_forever_rounded, size: 18, color: ac.expenseFg),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text('Delete Account',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ac.expenseFg)),
+                ),
+                Icon(Icons.chevron_right_rounded, size: 18, color: ac.expenseFg),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
+    final deleted = await showDeleteAccountSheet(context, ref);
+    if (deleted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Account deleted successfully.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  void _editShopProfile(BuildContext context, WidgetRef ref, ShopProfile? current) {
+    final nameCtrl = TextEditingController(text: current?.shopName ?? '');
+    final locCtrl = TextEditingController(text: current?.location ?? '');
+    final phoneCtrl = TextEditingController(text: current?.phone ?? '');
+    final currencies = ['PKR', 'USD', 'EUR', 'GBP', 'INR', 'AED', 'SAR'];
+    String selectedCurrency = current?.currency ?? 'PKR';
+    bool saving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSD) => AlertDialog(
+          title: const Text('Shop Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Shop Name *', filled: true),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: locCtrl,
+                decoration: const InputDecoration(labelText: 'Shop Location / City *', filled: true),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneCtrl,
+                decoration: const InputDecoration(labelText: 'Phone (optional)', filled: true),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedCurrency,
+                decoration: const InputDecoration(labelText: 'Currency', filled: true),
+                items: currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                onChanged: (v) {
+                  if (v != null) setSD(() => selectedCurrency = v);
+                },
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (nameCtrl.text.trim().isEmpty || locCtrl.text.trim().isEmpty) return;
+                      setSD(() => saving = true);
+                      try {
+                        final service = ref.read(firestoreServiceProvider);
+                        final profile = ShopProfile(
+                          shopName: nameCtrl.text.trim(),
+                          location: locCtrl.text.trim(),
+                          phone: phoneCtrl.text.trim(),
+                          currency: selectedCurrency,
+                          createdAt: current?.createdAt ?? DateTime.now(),
+                        );
+                        await service.setShopProfile(profile);
+                        ref.invalidate(shopProfileProvider);
+                        ref.invalidate(shopProfileFutureProvider);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      } catch (e, st) {
+                        logSecureError(e, st, tag: 'shop_profile');
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                            content: Text('Could not save: $e'),
+                            backgroundColor: Theme.of(ctx).colorScheme.error,
+                          ));
+                        }
+                        setSD(() => saving = false);
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) {
+      nameCtrl.dispose();
+      locCtrl.dispose();
+      phoneCtrl.dispose();
+    });
+  }
+
+  void _editCapital(BuildContext context, WidgetRef ref, OpeningBalance? current, ShopProfile? profile) {
     final ctrl = TextEditingController(text: (current?.capitalAmount ?? 0).toStringAsFixed(0));
     showDialog(context: context, builder: (ctx) => AlertDialog(
       title: const Text('Shuru ka Capital'),
-      content: SingleChildScrollView(child: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Opening Capital (PKR)', filled: true), keyboardType: TextInputType.number)),
+      content: SingleChildScrollView(child: TextField(
+        controller: ctrl,
+        decoration: InputDecoration(
+          labelText: 'Opening Capital (${profile?.currency ?? 'PKR'})',
+          filled: true,
+        ),
+        keyboardType: TextInputType.number,
+      )),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
         FilledButton(onPressed: () async {

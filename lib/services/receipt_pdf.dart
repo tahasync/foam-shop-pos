@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import '../utils/currency.dart';
 
 Future<Uint8List> generateReceiptPdfBytes({
   required String storeName,
@@ -12,9 +13,12 @@ Future<Uint8List> generateReceiptPdfBytes({
   required double totalAmount,
   required double paidAmount,
   required double remainingBalance,
+  String location = '',
+  String currencyCode = 'PKR',
 }) async {
   final pdf = pw.Document();
   final fmt = NumberFormat('#,##0');
+  final csym = currencySymbolFromCode(currencyCode);
 
   final tealDark = PdfColor.fromHex('#0B4E49');
   final tintSalesBg = PdfColor.fromHex('#EAF3F1');
@@ -23,6 +27,8 @@ Future<Uint8List> generateReceiptPdfBytes({
   final tintProfitFg = PdfColor.fromHex('#2E6B4E');
   final tintExpenseBg = PdfColor.fromHex('#FBEBE8');
   final tintExpenseFg = PdfColor.fromHex('#B54A38');
+
+  String _fmt(double v) => '$csym ${fmt.format(v.toInt())}';
 
   pdf.addPage(
     pw.Page(
@@ -61,8 +67,8 @@ Future<Uint8List> generateReceiptPdfBytes({
               data: items.map((i) => [
                 i['name'].toString(),
                 '${i['qty']}',
-                'Rs ${fmt.format((i['price'] as num).toInt())}',
-                'Rs ${fmt.format((i['total'] as num).toInt())}',
+                _fmt((i['price'] as num).toDouble()),
+                _fmt((i['total'] as num).toDouble()),
               ]).toList(),
             ),
             pw.SizedBox(height: 16),
@@ -72,19 +78,19 @@ Future<Uint8List> generateReceiptPdfBytes({
               child: pw.Column(children: [
                 pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
                   pw.Text('Total', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Rs ${fmt.format(totalAmount.toInt())}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.Text(_fmt(totalAmount), style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                 ]),
                 pw.SizedBox(height: 4),
                 pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
                   pw.Text('Paid'),
-                  pw.Text('Rs ${fmt.format(paidAmount.toInt())}'),
+                  pw.Text(_fmt(paidAmount)),
                 ]),
                 pw.Divider(color: tintSalesFg, thickness: 0.5),
                 pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
                   pw.Text(paidAmount >= totalAmount ? 'Change' : 'Balance Due',
                       style: pw.TextStyle(fontWeight: pw.FontWeight.bold,
                           color: paidAmount >= totalAmount ? tintProfitFg : tintExpenseFg)),
-                  pw.Text('Rs ${fmt.format((paidAmount - totalAmount).abs().toInt())}',
+                  pw.Text(_fmt((paidAmount - totalAmount).abs()),
                       style: pw.TextStyle(fontWeight: pw.FontWeight.bold,
                           color: paidAmount >= totalAmount ? tintProfitFg : tintExpenseFg)),
                 ]),
@@ -110,7 +116,7 @@ Future<Uint8List> generateReceiptPdfBytes({
             pw.SizedBox(height: 24),
             pw.Center(child: pw.Text('Thank you for your business!', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: tintSalesFg))),
             pw.SizedBox(height: 4),
-            pw.Center(child: pw.Text('Asif Foam Center \u00b7 Lahore, Pakistan', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600))),
+            pw.Center(child: pw.Text('$storeName${location.isNotEmpty ? ' \u00b7 $location' : ''}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600))),
           ],
         );
       },

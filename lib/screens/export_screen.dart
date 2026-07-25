@@ -13,6 +13,8 @@ import '../providers/payment_provider.dart';
 import '../providers/supplier_payment_provider.dart';
 import '../providers/export_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/shop_provider.dart';
+import '../utils/currency.dart';
 import 'package:share_plus/share_plus.dart';
 import '../theme/app_theme.dart';
 
@@ -51,7 +53,7 @@ String _periodLabel(ExportPeriod p) {
   }
 }
 
-String _fmt(double v) => 'Rs ${NumberFormat('#,##0').format(v)}';
+String _fmt(double v, {String csym = 'Rs'}) => '$csym ${NumberFormat('#,##0').format(v)}';
 
 class ExportScreen extends ConsumerStatefulWidget {
   const ExportScreen({super.key});
@@ -103,6 +105,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       final payments = ref.read(paymentsStreamProvider).asData?.value ?? [];
       final supplierPayments = ref.read(supplierPaymentsStreamProvider).asData?.value ?? [];
       final openingBal = ref.read(openingBalanceStreamProvider).asData?.value;
+      final profile = ref.read(shopProfileProvider).asData?.value;
+      final shopName = profile?.shopName ?? 'Digital Register';
+      final currencyCode = profile?.currency ?? 'PKR';
 
       final service = ref.read(exportServiceProvider);
       final summary = AccountingService().recomputeForPeriod(
@@ -124,10 +129,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           summary: summary,
           startDate: range.start,
           endDate: range.end,
+          shopName: shopName,
+          currencyCode: currencyCode,
         );
         if (!mounted) return;
         setState(() => _loading = false);
-        await SharePlus.instance.share(ShareParams(files: [XFile(xlsxFile.path)], text: 'Sales Report - Asif Foam Center'));
+        await SharePlus.instance.share(ShareParams(files: [XFile(xlsxFile.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')], text: 'Sales Report - $shopName'));
       } else if (type == 'pdf') {
         final pdfFile = await service.generatePdfReport(
           sales: sales,
@@ -135,11 +142,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           summary: summary,
           startDate: range.start,
           endDate: range.end,
-          shopName: 'Asif Foam Center',
+          shopName: shopName,
+          currencyCode: currencyCode,
         );
         if (!mounted) return;
         setState(() => _loading = false);
-        await SharePlus.instance.share(ShareParams(files: [XFile(pdfFile.path)], text: 'Sales Report - Asif Foam Center'));
+        await SharePlus.instance.share(ShareParams(files: [XFile(pdfFile.path, mimeType: 'application/pdf')], text: 'Sales Report - $shopName'));
       } else {
         final csvFile = await service.generateCsvReport(
           sales: sales,
@@ -147,13 +155,15 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           summary: summary,
           startDate: range.start,
           endDate: range.end,
+          shopName: shopName,
         );
         if (!mounted) return;
         setState(() => _loading = false);
-        await SharePlus.instance.share(ShareParams(files: [XFile(csvFile.path)], text: 'Sales Report - Asif Foam Center'));
+        await SharePlus.instance.share(ShareParams(files: [XFile(csvFile.path, mimeType: 'application/octet-stream')], text: 'Sales Report - $shopName'));
       }
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
+      print('[Export Error] $e\n$st');
       setState(() { _loading = false; _error = '$e'; });
     }
   }
@@ -188,6 +198,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   Widget _buildBody(BuildContext context, ColorScheme cs, AppColors ac,
       List<Sale> sales, List<Product> products, List<Expense> expenses) {
     final range = _range;
+    final profile = ref.read(shopProfileProvider).asData?.value;
+    final csym = profile != null ? currencySymbolFromCode(profile.currency) : 'Rs';
+    String _fmtLocal(double v) => _fmt(v, csym: csym);
     final summary = AccountingService().recomputeForPeriod(
       sales: sales,
       purchases: [],
@@ -304,13 +317,13 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   ),
                   const SizedBox(height: 10),
                   Row(children: [
-                    _statItem('Revenue', _fmt(summary.revenue)),
+                    _statItem('Revenue', _fmtLocal(summary.revenue)),
                     const SizedBox(width: 16),
-                    _statItem('Net Profit', _fmt(summary.netProfit)),
+                    _statItem('Net Profit', _fmtLocal(summary.netProfit)),
                   ]),
                   const SizedBox(height: 6),
                   Row(children: [
-                    _statItem('COGS', _fmt(summary.cogs)),
+                    _statItem('COGS', _fmtLocal(summary.cogs)),
                     const SizedBox(width: 16),
                     _statItem('Margin', '$marginPct%'),
                   ]),

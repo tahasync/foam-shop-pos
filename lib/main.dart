@@ -11,9 +11,11 @@ import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/shop_provider.dart';
 import 'services/auth_service.dart';
 import 'screens/sign_in_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/shop_onboarding_screen.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -41,9 +43,21 @@ void main() {
     };
 
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      if (Firebase.apps.isNotEmpty) {
+        debugPrint('[Firebase] Already initialized by native auto-init — skipping.');
+      } else {
+        try {
+          await Firebase.initializeApp(
+            options: DefaultFirebaseOptions.currentPlatform,
+          );
+        } on FirebaseException catch (e) {
+          if (e.code == 'duplicate-app') {
+            debugPrint('[Firebase] Duplicate init suppressed (native auto-init won).');
+          } else {
+            rethrow;
+          }
+        }
+      }
       FirebaseFirestore.instance.settings = const Settings(
         persistenceEnabled: true,
       );
@@ -59,6 +73,8 @@ void main() {
 
     runApp(const ProviderScope(child: FoamShopApp()));
   }, (Object error, StackTrace stack) {
+    debugPrint('[FATAL] Unhandled error: $error');
+    debugPrint('[FATAL] Stack trace: $stack');
     runApp(ProviderScope(child: _FatalError(message: 'Unexpected error occurred')));
   });
 }
@@ -106,7 +122,7 @@ class _FatalError extends StatelessWidget {
               children: [
                 Icon(Icons.error_outline_rounded, size: 64, color: theme.colorScheme.error),
                 const SizedBox(height: 16),
-                Text('Asif Foam Center', style: theme.textTheme.headlineSmall),
+                Text('Digital Register', style: theme.textTheme.headlineSmall),
                 const SizedBox(height: 8),
                 Text(message, style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
               ],
@@ -144,7 +160,21 @@ class AuthGate extends ConsumerWidget {
 
     return authState.when(
       data: (user) {
-        if (user != null) return const HomeScreen();
+        if (user != null) {
+          return Consumer(builder: (context, ref, _) {
+            final shopAsync = ref.watch(shopProfileFutureProvider);
+            return shopAsync.when(
+              data: (profile) {
+                if (profile != null) return const HomeScreen();
+                return const ShopOnboardingScreen();
+              },
+              loading: () => const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              ),
+              error: (_, __) => const HomeScreen(),
+            );
+          });
+        }
         return const SignInScreen();
       },
       loading: () => Scaffold(
@@ -160,7 +190,7 @@ class AuthGate extends ConsumerWidget {
         ),
       ),
       error: (e, _) => Scaffold(
-        appBar: AppBar(title: const Text('Asif Foam Center')),
+        appBar: AppBar(title: const Text('Digital Register')),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -7,6 +7,7 @@ import '../providers/sale_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/customer_provider.dart';
 import '../services/receipt_pdf.dart';
+import '../providers/shop_provider.dart';
 import '../utils/safe_error_handler.dart';
 
 class BillingScreen extends ConsumerWidget {
@@ -43,7 +44,7 @@ class BillingScreen extends ConsumerWidget {
                       decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(10)),
                       child: Icon(Icons.receipt_rounded, color: cs.onPrimaryContainer),
                     ),
-                    title: Text('Rs. ${NumberFormat('#,##0').format(s.amount.toInt())}',
+                    title: Text('${ref.read(currencySymbolProvider)}. ${NumberFormat('#,##0').format(s.amount.toInt())}',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
                     subtitle: Text('${s.date.day}/${s.date.month}/${s.date.year} | Paid: ${NumberFormat('#,##0').format(s.paid.toInt())} | Bal: ${NumberFormat('#,##0').format(s.balance.toInt())}',
                         style: Theme.of(context).textTheme.bodySmall),
@@ -73,9 +74,15 @@ class BillingScreen extends ConsumerWidget {
     final products = ref.read(productsStreamProvider).asData?.value ?? [];
     final customers = ref.read(customersStreamProvider).asData?.value ?? [];
     final customer = customers.where((c) => c.id == sale.customerId).firstOrNull;
+    final profile = ref.read(shopProfileProvider).asData?.value;
+    final storeName = profile?.shopName ?? 'Digital Register';
+    final location = profile?.location ?? '';
+    final currencyCode = profile?.currency ?? 'PKR';
     try {
       final pdfBytes = await generateReceiptPdfBytes(
-        storeName: 'Asif Foam Center',
+        storeName: storeName,
+        location: location,
+        currencyCode: currencyCode,
         receiptId: 'INV-${sale.id.substring(0, 4).toUpperCase()}',
         date: '${sale.date.day}/${sale.date.month}/${sale.date.year}',
         customerName: customer?.name ?? sale.customerName ?? sale.customerId,

@@ -6,6 +6,7 @@ import '../providers/supplier_provider.dart';
 import '../providers/purchase_provider.dart';
 import '../providers/supplier_payment_provider.dart';
 import '../providers/firebase_providers.dart';
+import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/safe_error_handler.dart';
 
@@ -16,6 +17,7 @@ class SupplierKhataScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
+    final csym = ref.watch(currencySymbolProvider);
     final suppAsync = ref.watch(suppliersStreamProvider);
     final purchAsync = ref.watch(purchasesStreamProvider);
     final spPayAsync = ref.watch(supplierPaymentsStreamProvider);
@@ -74,7 +76,7 @@ class SupplierKhataScreen extends ConsumerWidget {
                           Text(item.supplier.phone, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
                       ])),
                       Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                        Text('Rs. ${item.balance.toStringAsFixed(0)}',
+                        Text('$csym. ${item.balance.toStringAsFixed(0)}',
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, fontFeatures: [FontFeature('tnum')],
                                 color: item.balance > 0 ? ac.purchaseFg : ac.profitFg)),
                         Text(item.balance <= 0 ? 'Clear' : 'Baqaya',
@@ -125,6 +127,7 @@ class _SupDetail extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
+    final csym = ref.watch(currencySymbolProvider);
     final purchAsync = ref.watch(purchasesStreamProvider);
     final spPayAsync = ref.watch(supplierPaymentsStreamProvider);
 
@@ -141,8 +144,8 @@ class _SupDetail extends ConsumerWidget {
             final balance = totalP - paidAtPurchase - totalPaid;
 
             final txns = <_SupTxn>[
-              ...sp.map((p) => _SupTxn(date: p.date, desc: 'Purchase — Rs.${p.costAmount.toStringAsFixed(0)}', isPurchase: true, amount: p.costAmount)),
-              ...pa.map((p) => _SupTxn(date: p.date, desc: 'Payment — Rs.${p.amountPaid.toStringAsFixed(0)}', isPurchase: false, amount: p.amountPaid)),
+                ...sp.map((p) => _SupTxn(date: p.date, desc: 'Purchase — $csym.${p.costAmount.toStringAsFixed(0)}', isPurchase: true, amount: p.costAmount)),
+                ...pa.map((p) => _SupTxn(date: p.date, desc: 'Payment — $csym.${p.amountPaid.toStringAsFixed(0)}', isPurchase: false, amount: p.amountPaid)),
             ];
             txns.sort((a, b) => b.date.compareTo(a.date));
 
@@ -156,7 +159,7 @@ class _SupDetail extends ConsumerWidget {
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.05,
                           color: balance > 0 ? ac.purchaseFg : ac.profitFg)),
                   const SizedBox(height: 4),
-                  Text('Rs. ${balance.toStringAsFixed(0)}',
+                  Text('$csym. ${balance.toStringAsFixed(0)}',
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w800, fontFeatures: [FontFeature('tnum')],
                           color: balance > 0 ? ac.purchaseFg : ac.profitFg)),
@@ -214,7 +217,7 @@ class _SupDetail extends ConsumerWidget {
                               ]),
                             ),
                             Text(
-                              '${t.isPurchase ? '+' : '-'} Rs. ${t.amount.toStringAsFixed(0)}',
+                               '${t.isPurchase ? '+' : '-'} $csym. ${t.amount.toStringAsFixed(0)}',
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 13,
@@ -249,7 +252,7 @@ class _SupDetail extends ConsumerWidget {
     final ctrl = TextEditingController();
     showDialog(context: context, builder: (ctx) => AlertDialog(
       title: const Text('Pay Supplier'),
-      content: SingleChildScrollView(child: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Amount (PKR)', filled: true), keyboardType: TextInputType.number)),
+      content: SingleChildScrollView(child: TextField(controller: ctrl, decoration: InputDecoration(labelText: 'Amount (${ref.read(currencySymbolProvider)})', filled: true), keyboardType: TextInputType.number)),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
         FilledButton(onPressed: () {

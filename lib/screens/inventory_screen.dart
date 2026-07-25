@@ -3,20 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/product.dart';
 import '../models/supplier.dart';
+import '../models/cost_price_history.dart';
 import '../providers/product_provider.dart';
 import '../providers/supplier_provider.dart';
 import '../providers/firebase_providers.dart';
 import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
+import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/debounce.dart';
 import '../widgets/scale_button.dart';
+import '../widgets/app_search_bar.dart';
 import '../utils/safe_error_handler.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   final bool initialLowStockFilter;
   final String? highlightProductId;
-  const InventoryScreen({super.key, this.initialLowStockFilter = false, this.highlightProductId});
+  final double fabBottomClearance;
+  const InventoryScreen({super.key, this.initialLowStockFilter = false, this.highlightProductId, this.fabBottomClearance = 96});
   @override
   ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
 }
@@ -26,6 +30,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   bool _didHighlight = false;
   final _searchDebounce = Debouncer();
   String _typeFilter = 'All';
+  String _csym = 'Rs';
 
   @override
   void initState() {
@@ -55,20 +60,21 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
     final productsAsync = ref.watch(productsStreamProvider);
+    _csym = ref.watch(currencySymbolProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Inventory')),
       floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: 96 + MediaQuery.of(context).padding.bottom),
+        padding: EdgeInsets.only(bottom: widget.fabBottomClearance),
         child: FloatingActionButton(
-        key: const ValueKey('add_product_fab'),
-        backgroundColor: AppTheme.amber,
-        foregroundColor: const Color(0xFF2A1A00),
-        elevation: 8,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onPressed: _addProduct,
-        child: const Icon(Icons.add_rounded, size: 22),
-      ),
+          key: const ValueKey('add_product_fab'),
+          backgroundColor: AppTheme.amber,
+          foregroundColor: const Color(0xFF2A1A00),
+          elevation: 8,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          onPressed: _addProduct,
+          child: const Icon(Icons.add_rounded, size: 22),
+        ),
       ),
       body: productsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -90,22 +96,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           final totalValue = products.fold(0.0, (s, p) => s + (p.currentStock * p.costPrice));
 
           return Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: TextField(
-                controller: _searchCtrl,
-                decoration: InputDecoration(
-                  hintText: 'Search products\u2026',
-                  hintStyle: TextStyle(color: ac.inkFaint, fontSize: 12.5),
-                  filled: true,
-                  fillColor: cs.surfaceContainerLowest,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  prefixIcon: Icon(Icons.search_rounded, size: 18, color: ac.inkFaint),
-                ),
-                onChanged: (_) => _searchDebounce.call(() => setState(() {})),
-              ),
+            AppSearchBar(
+              controller: _searchCtrl,
+              hintText: 'Search products\u2026',
+              onChanged: (_) => _searchDebounce.call(() => setState(() {})),
             ),
             const SizedBox(height: 6),
             Container(
@@ -120,7 +114,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 const SizedBox(width: 8),
                 Text('Total Inventory Value: ',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ac.profitFg)),
-                Text('Rs ${NumberFormat('#,##0').format(totalValue.toInt())}',
+                Text('$_csym ${NumberFormat('#,##0').format(totalValue.toInt())}',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
                         fontFeatures: const [FontFeature.tabularFigures()], color: ac.profitFg)),
               ]),
@@ -175,6 +169,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         itemBuilder: (_, i) => _ProdCard(
                           product: filtered[i],
                           onTap: () => _showOptions(filtered[i]),
+                          csym: _csym,
+                          onEditCostPrice: () => _editCostPrice(filtered[i]),
                         ).animate().fadeIn(duration: 250.ms, delay: (i * 50).ms).slideY(begin: 0.15, duration: 250.ms, delay: (i * 50).ms),
                       ),
                     ),
@@ -188,6 +184,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   void _showOptions(Product product) {
     showModalBottomSheet(context: context, builder: (ctx) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
       ListTile(leading: const Icon(Icons.edit_rounded), title: const Text('Edit'), onTap: () { Navigator.pop(ctx); _edit(product); }),
+      ListTile(leading: const Icon(Icons.history_rounded), title: const Text('Cost Price History'), onTap: () { Navigator.pop(ctx); _showCostHistory(product); }),
       ListTile(leading: const Icon(Icons.add_shopping_cart_rounded), title: const Text('Restock'), onTap: () { Navigator.pop(ctx); _restock(product); }),
       ListTile(leading: const Icon(Icons.archive_rounded), title: const Text('Archive'), onTap: () async {
         Navigator.pop(ctx);
@@ -197,8 +194,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     ])));
   }
 
+  void _editCostPrice(Product product) {
+    _EditCostPriceSheet.show(context, product, _csym, () {
+      ref.invalidate(productsStreamProvider);
+    });
+  }
+
+  void _showCostHistory(Product product) {
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => _CostHistoryScreen(product: product, csym: _csym),
+    ));
+  }
+
   void _addProduct() {
-    _AddProductDialog.show(context, (Product product) {
+    _AddProductDialog.show(context, _csym, (Product product) {
       final svc = ref.read(firestoreServiceProvider);
       svc.addProduct(product.copyWith(id: svc.generateId())).catchError((e, st) {
               logSecureError(e, st, tag: 'product_add');
@@ -207,7 +216,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   void _edit(Product product) {
-    _EditProductDialog.show(context, product, (Product updated) {
+    _EditProductDialog.show(context, product, _csym, (Product updated) {
       ref.read(firestoreServiceProvider).updateProduct(updated).catchError((e, st) {
             logSecureError(e, st, tag: 'product_update');
           });
@@ -220,14 +229,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 }
 
 class _AddProductDialog extends StatefulWidget {
+  final String csym;
   final void Function(Product) onSave;
-  const _AddProductDialog({required this.onSave});
+  const _AddProductDialog({required this.csym, required this.onSave});
 
-  static void show(BuildContext context, void Function(Product) onSave) {
+  static void show(BuildContext context, String csym, void Function(Product) onSave) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => _AddProductDialog(
+        csym: csym,
         onSave: (Product p) {
           Navigator.of(context).pop();
           onSave(p);
@@ -285,47 +296,85 @@ class _AddProductDialogState extends State<_AddProductDialog> {
     final costPrice = double.tryParse(_cc.text) ?? 0;
     final stock = double.tryParse(_sc.text) ?? 0;
     final totalCost = costPrice * stock;
+    final labelStyle = TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: cs2.onSurfaceVariant);
+
+    Widget _label(String text) => Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Text(text, style: labelStyle, maxLines: 2, softWrap: true, overflow: TextOverflow.visible),
+    );
+
+    Widget _field(TextEditingController ctrl, {TextInputType? kt, void Function(String)? onChange}) => TextField(
+      controller: ctrl,
+      keyboardType: kt,
+      onChanged: onChange,
+      style: const TextStyle(fontSize: 13),
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        fillColor: cs2.surfaceContainerLowest,
+      ),
+    );
+
     return AlertDialog(
       key: const ValueKey('add_product_dialog_modal'),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Add Product', style: TextStyle(fontWeight: FontWeight.bold)),
+      contentPadding: const EdgeInsets.fromLTRB(10, 16, 10, 0),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: _nc, decoration: const InputDecoration(labelText: 'Name', filled: true)),
-          const SizedBox(height: 14),
-          Row(children: [
-            Expanded(child: TextField(controller: _lc, decoration: const InputDecoration(labelText: 'Size Length (in)', filled: true), keyboardType: TextInputType.number)),
-            const SizedBox(width: 12),
-            Expanded(child: TextField(controller: _wc, decoration: const InputDecoration(labelText: 'Size Width (in)', filled: true), keyboardType: TextInputType.number)),
+          _label('Name'),
+          _field(_nc),
+          const SizedBox(height: 10),
+          _label('Size Length (in)'),
+          _field(_lc, kt: TextInputType.number),
+          const SizedBox(height: 10),
+          _label('Size Width (in)'),
+          _field(_wc, kt: TextInputType.number),
+          const SizedBox(height: 10),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _label('Thickness (in)'),
+              _field(_tc, kt: TextInputType.number),
+            ])),
+            const SizedBox(width: 8),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _label('Buy Price (${widget.csym})'),
+              _field(_cc, kt: TextInputType.number, onChange: (_) => setState(() {})),
+            ])),
           ]),
-          const SizedBox(height: 14),
-          Row(children: [
-            Expanded(child: TextField(controller: _tc, decoration: const InputDecoration(labelText: 'Thickness (in)', filled: true), keyboardType: TextInputType.number)),
-            const SizedBox(width: 12),
-            Expanded(child: TextField(controller: _cc, decoration: const InputDecoration(labelText: 'Buy Price / Cost (PKR)', filled: true), keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
+          const SizedBox(height: 10),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _label('Current Stock'),
+              _field(_sc, kt: TextInputType.number, onChange: (_) => setState(() {})),
+            ])),
+            const SizedBox(width: 8),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _label('Low Stock Alert'),
+              _field(_thc, kt: TextInputType.number),
+            ])),
           ]),
-          const SizedBox(height: 14),
-          Row(children: [
-            Expanded(child: TextField(controller: _sc, decoration: const InputDecoration(labelText: 'Current Stock', filled: true), keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
-            const SizedBox(width: 12),
-            Expanded(child: TextField(controller: _thc, decoration: const InputDecoration(labelText: 'Low Stock Threshold', filled: true), keyboardType: TextInputType.number)),
-          ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Container(
-            width: double.infinity, padding: const EdgeInsets.all(12),
+            width: double.infinity, padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(color: cs2.primaryContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(8)),
-            child: Text('Total Cost for this lot: Rs ${totalCost.toStringAsFixed(0)}',
-                style: TextStyle(color: cs2.primary, fontWeight: FontWeight.bold, fontFeatures: [FontFeature('tnum')])),
+            child: Text('Total Cost for this lot: ${widget.csym} ${totalCost.toStringAsFixed(0)}',
+                style: TextStyle(color: cs2.primary, fontWeight: FontWeight.bold, fontFeatures: [FontFeature('tnum')], fontSize: 13)),
           ),
         ]),
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
       actionsAlignment: MainAxisAlignment.spaceBetween,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontSize: 12))),
         FilledButton.icon(
           onPressed: _submit,
-          icon: const Icon(Icons.check),
-          label: const Text('Add Product'),
+          icon: const Icon(Icons.check, size: 16),
+          label: const Text('Add Product', style: TextStyle(fontSize: 12)),
         ),
       ],
     );
@@ -334,15 +383,17 @@ class _AddProductDialogState extends State<_AddProductDialog> {
 
 class _EditProductDialog extends StatefulWidget {
   final Product product;
+  final String csym;
   final void Function(Product) onSave;
-  const _EditProductDialog({required this.product, required this.onSave});
+  const _EditProductDialog({required this.product, required this.csym, required this.onSave});
 
-  static void show(BuildContext context, Product product, void Function(Product) onSave) {
+  static void show(BuildContext context, Product product, String csym, void Function(Product) onSave) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => _EditProductDialog(
         product: product,
+        csym: csym,
         onSave: (Product p) {
           Navigator.of(context).pop();
           onSave(p);
@@ -408,49 +459,301 @@ class _EditProductDialogState extends State<_EditProductDialog> {
     final costPrice = double.tryParse(_cc.text) ?? 0;
     final stock = double.tryParse(_sc.text) ?? 0;
     final totalCost = costPrice * stock;
+    final labelStyle = TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: cs2.onSurfaceVariant);
+
+    Widget _label(String text) => Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Text(text, style: labelStyle, maxLines: 2, softWrap: true, overflow: TextOverflow.visible),
+    );
+
+    Widget _field(TextEditingController ctrl, {TextInputType? kt, void Function(String)? onChange}) => TextField(
+      controller: ctrl,
+      keyboardType: kt,
+      onChanged: onChange,
+      style: const TextStyle(fontSize: 13),
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        fillColor: cs2.surfaceContainerLowest,
+      ),
+    );
+
     return AlertDialog(
       key: const ValueKey('edit_product_dialog_modal'),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Edit Product', style: TextStyle(fontWeight: FontWeight.bold)),
+      contentPadding: const EdgeInsets.fromLTRB(10, 16, 10, 0),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: _nc, decoration: const InputDecoration(labelText: 'Name', filled: true)),
-          const SizedBox(height: 14),
-          Row(children: [
-            Expanded(child: TextField(controller: _lc, decoration: const InputDecoration(labelText: 'Size Length (in)', filled: true), keyboardType: TextInputType.number)),
-            const SizedBox(width: 12),
-            Expanded(child: TextField(controller: _wc, decoration: const InputDecoration(labelText: 'Size Width (in)', filled: true), keyboardType: TextInputType.number)),
+          _label('Name'),
+          _field(_nc),
+          const SizedBox(height: 10),
+          _label('Size Length (in)'),
+          _field(_lc, kt: TextInputType.number),
+          const SizedBox(height: 10),
+          _label('Size Width (in)'),
+          _field(_wc, kt: TextInputType.number),
+          const SizedBox(height: 10),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _label('Thickness (in)'),
+              _field(_tc, kt: TextInputType.number),
+            ])),
+            const SizedBox(width: 8),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _label('Buy Price (${widget.csym})'),
+              _field(_cc, kt: TextInputType.number, onChange: (_) => setState(() {})),
+            ])),
           ]),
-          const SizedBox(height: 14),
-          Row(children: [
-            Expanded(child: TextField(controller: _tc, decoration: const InputDecoration(labelText: 'Thickness (in)', filled: true), keyboardType: TextInputType.number)),
-            const SizedBox(width: 12),
-            Expanded(child: TextField(controller: _cc, decoration: const InputDecoration(labelText: 'Buy Price / Cost (PKR)', filled: true), keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
+          const SizedBox(height: 10),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _label('Current Stock'),
+              _field(_sc, kt: TextInputType.number, onChange: (_) => setState(() {})),
+            ])),
+            const SizedBox(width: 8),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _label('Low Stock Alert'),
+              _field(_thc, kt: TextInputType.number),
+            ])),
           ]),
-          const SizedBox(height: 14),
-          Row(children: [
-            Expanded(child: TextField(controller: _sc, decoration: const InputDecoration(labelText: 'Current Stock', filled: true), keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
-            const SizedBox(width: 12),
-            Expanded(child: TextField(controller: _thc, decoration: const InputDecoration(labelText: 'Low Stock Threshold', filled: true), keyboardType: TextInputType.number)),
-          ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Container(
-            width: double.infinity, padding: const EdgeInsets.all(12),
+            width: double.infinity, padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(color: cs2.primaryContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(8)),
-            child: Text('Total Cost for this lot: Rs ${totalCost.toStringAsFixed(0)}',
-                style: TextStyle(color: cs2.primary, fontWeight: FontWeight.bold, fontFeatures: [FontFeature('tnum')])),
+            child: Text('Total Cost for this lot: ${widget.csym} ${totalCost.toStringAsFixed(0)}',
+                style: TextStyle(color: cs2.primary, fontWeight: FontWeight.bold, fontFeatures: [FontFeature('tnum')], fontSize: 13)),
           ),
         ]),
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
       actionsAlignment: MainAxisAlignment.spaceBetween,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontSize: 12))),
         FilledButton.icon(
           onPressed: _submit,
-          icon: const Icon(Icons.check),
-          label: const Text('Save Product'),
+          icon: const Icon(Icons.check, size: 16),
+          label: const Text('Save Product', style: TextStyle(fontSize: 12)),
         ),
       ],
+    );
+  }
+}
+
+class _EditCostPriceSheet extends StatefulWidget {
+  final Product product;
+  final String csym;
+  final VoidCallback onSaved;
+  const _EditCostPriceSheet({required this.product, required this.csym, required this.onSaved});
+
+  static void show(BuildContext context, Product product, String csym, VoidCallback onSaved) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditCostPriceSheet(
+        product: product,
+        csym: csym,
+        onSaved: onSaved,
+      ),
+    );
+  }
+
+  @override
+  State<_EditCostPriceSheet> createState() => _EditCostPriceSheetState();
+}
+
+class _EditCostPriceSheetState extends State<_EditCostPriceSheet> {
+  late final TextEditingController _priceCtrl;
+  final _noteCtrl = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _priceCtrl = TextEditingController(text: widget.product.costPrice.toStringAsFixed(0));
+  }
+
+  @override
+  void dispose() {
+    _priceCtrl.dispose();
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  double get _newPrice => double.tryParse(_priceCtrl.text) ?? 0;
+  bool get _canSave =>
+      _newPrice >= 0 && _newPrice != widget.product.costPrice && !_saving;
+
+  Future<void> _save() async {
+    if (!_canSave) return;
+    setState(() => _saving = true);
+    try {
+      final svc = FirestoreService();
+      await svc.updateCostPrice(widget.product.id, _newPrice, note: _noteCtrl.text.trim());
+      widget.onSaved();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Cost price updated'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+        ),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final ac = AppColors.of(context);
+    final fmt = NumberFormat('#,##0');
+    final oldVal = widget.product.costPrice.toInt();
+    final newVal = _newPrice.toInt();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(22),
+          topRight: Radius.circular(22),
+        ),
+      ),
+      padding: EdgeInsets.only(
+        left: 20, right: 20, top: 22,
+        bottom: MediaQuery.of(context).padding.bottom + 20,
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Edit Cost Price',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 2),
+        Text('${widget.product.name} \u00b7 ${widget.product.sizeLength.toStringAsFixed(0)}in \u00d7 ${widget.product.sizeWidth.toStringAsFixed(0)}in \u00b7 ${widget.product.thickness.toStringAsFixed(0)}in',
+            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.outlineVariant),
+              ),
+              child: Column(children: [
+                Text('CURRENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: ac.inkFaint, letterSpacing: 0.04)),
+                const SizedBox(height: 4),
+                Text('${widget.csym} ${fmt.format(oldVal)}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800, color: cs.onSurface)),
+              ]),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Icon(Icons.arrow_forward_rounded, size: 18, color: ac.inkFaint),
+          ),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: ac.saleTint,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(children: [
+                Text('NEW', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: ac.saleFg, letterSpacing: 0.04)),
+                const SizedBox(height: 4),
+                Text('${widget.csym} ${fmt.format(newVal)}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800, color: ac.saleFg)),
+              ]),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 16),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('New Cost Price (${widget.csym})',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _priceCtrl,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              filled: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppTheme.teal),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppTheme.teal),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppTheme.teal, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              fillColor: cs.surfaceContainerLowest,
+            ),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: cs.onSurface),
+            onChanged: (_) => setState(() {}),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Reason (optional)',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _noteCtrl,
+            decoration: InputDecoration(
+              hintText: 'e.g. Supplier price increase',
+              filled: true,
+              fillColor: cs.surfaceContainerLowest,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            style: TextStyle(fontSize: 13, color: cs.onSurface),
+          ),
+        ]),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _saving ? null : () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                side: BorderSide(color: cs.outlineVariant),
+              ),
+              child: Text('Cancel', style: TextStyle(fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: FilledButton(
+              onPressed: _canSave ? _save : null,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _saving
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ]),
+      ]),
     );
   }
 }
@@ -546,14 +849,14 @@ class RestockDialog extends StatefulWidget {
               const SizedBox(height: 12),
               TextField(
                 controller: unitCostCtrl,
-                decoration: const InputDecoration(labelText: 'Unit Cost / Buying Price (PKR)', filled: true),
+                decoration: InputDecoration(labelText: 'Unit Cost / Buying Price', filled: true),
                 keyboardType: TextInputType.number,
                 onChanged: (_) { setInnerState(() { recalc(); }); },
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: paidCtrl,
-                decoration: const InputDecoration(labelText: 'Total Amount Paid (PKR)', filled: true),
+                decoration: const InputDecoration(labelText: 'Total Amount Paid', filled: true),
                 keyboardType: TextInputType.number,
                 onChanged: (_) {
                   setInnerState(() { userEditedPaid = true; });
@@ -569,7 +872,7 @@ class RestockDialog extends StatefulWidget {
                 ),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('Calculated Total:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('Rs ${((double.tryParse(qtyCtrl.text) ?? 0) * (double.tryParse(unitCostCtrl.text) ?? 0)).toStringAsFixed(0)}',
+                  Text('${((double.tryParse(qtyCtrl.text) ?? 0) * (double.tryParse(unitCostCtrl.text) ?? 0)).toStringAsFixed(0)} Rs',
                       style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary, fontSize: 16,
                           fontFeatures: [FontFeature('tnum')])),
                 ]),
@@ -615,7 +918,9 @@ class _RestockDialogState extends State<RestockDialog> {
 class _ProdCard extends StatelessWidget {
   final Product product;
   final VoidCallback onTap;
-  const _ProdCard({required this.product, required this.onTap});
+  final String csym;
+  final VoidCallback? onEditCostPrice;
+  const _ProdCard({required this.product, required this.onTap, this.csym = 'Rs', this.onEditCostPrice});
 
   @override
   Widget build(BuildContext context) {
@@ -663,7 +968,7 @@ class _ProdCard extends StatelessWidget {
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                         color: product.isLowStock ? ac.expenseFg : ac.profitFg)),
               ),
-              Text('Rs $unitPrice/pc',
+              Text('$csym $unitPrice/pc',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5,
                       fontFeatures: const [FontFeature.tabularFigures()], color: cs.onSurface)),
             ]),
@@ -673,10 +978,32 @@ class _ProdCard extends StatelessWidget {
               decoration: BoxDecoration(border: Border(top: BorderSide(color: cs.outlineVariant, width: 0.5))),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('Total value', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: ac.inkFaint)),
-                Text('Rs $totalFmt',
+                Text('$csym $totalFmt',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppTheme.tealDark,
                         fontFeatures: const [FontFeature.tabularFigures()])),
               ]),
+            ),
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: onEditCostPrice,
+              child: Container(
+                padding: const EdgeInsets.only(top: 6),
+                decoration: BoxDecoration(border: Border(top: BorderSide(color: cs.outlineVariant, width: 0.5))),
+                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    Text('Cost Price', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: ac.inkFaint)),
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('$csym ${fmt.format(product.costPrice.toInt())}',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: cs.onSurface,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 26, height: 26,
+                      decoration: BoxDecoration(color: ac.purchaseTint, borderRadius: BorderRadius.circular(7)),
+                      child: Icon(Icons.edit_rounded, size: 13, color: ac.purchaseFg),
+                    ),
+                  ]),
+                ]),
+              ),
             ),
           ])),
         ]),
@@ -684,3 +1011,94 @@ class _ProdCard extends StatelessWidget {
     );
   }
 }
+
+class _CostHistoryScreen extends ConsumerWidget {
+  final Product product;
+  final String csym;
+  const _CostHistoryScreen({required this.product, required this.csym});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final ac = AppColors.of(context);
+    final fmt = NumberFormat('#,##0');
+    final historyAsync = ref.watch(_costHistoryProvider(product.id));
+
+    return Scaffold(
+      appBar: AppBar(title: Text('${product.name} \u2014 Cost History')),
+      body: historyAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+        data: (history) {
+          if (history.isEmpty) {
+            return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(Icons.history_rounded, size: 64, color: cs.onSurfaceVariant),
+              const SizedBox(height: 12),
+              Text('No cost changes recorded', style: Theme.of(context).textTheme.bodyLarge),
+              const SizedBox(height: 4),
+              Text('Edit the cost price to create a history entry',
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+            ]));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: history.length,
+            itemBuilder: (_, i) {
+              final h = history[i];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cs.outlineVariant),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(fontSize: 13, color: cs.onSurface),
+                          children: [
+                            TextSpan(
+                              text: '$csym ${fmt.format(h.oldCostPrice.toInt())}',
+                              style: TextStyle(
+                                decoration: TextDecoration.lineThrough,
+                                color: ac.inkFaint,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const TextSpan(text: '  \u2192  '),
+                            TextSpan(
+                              text: '$csym ${fmt.format(h.newCostPrice.toInt())}',
+                              style: TextStyle(
+                                color: ac.saleFg,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Text('${h.date.day}/${h.date.month}/${h.date.year}',
+                        style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
+                  ]),
+                  if (h.note.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text('"${h.note}"',
+                        style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant, fontStyle: FontStyle.italic)),
+                  ],
+                ]),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+final _costHistoryProvider = StreamProvider.family<List<CostPriceHistory>, String>((ref, productId) {
+  final service = ref.watch(firestoreServiceProvider);
+  return service.costPriceHistoryStream(productId);
+});

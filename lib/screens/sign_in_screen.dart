@@ -25,7 +25,7 @@ class SignInScreen extends ConsumerWidget {
                 child: SvgPicture.asset('assets/logo.svg', width: 96, height: 96, fit: BoxFit.cover),
               ).animate().fadeIn(duration: 400.ms).scaleY(begin: 0.8),
               const SizedBox(height: 24),
-              Text('Asif Foam Center',
+              Text('Digital Register',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.w700))
                   .animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),

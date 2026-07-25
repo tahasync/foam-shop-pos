@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../models/sale.dart' show Sale;
-import '../models/product.dart' show Product;
-import '../models/expense.dart' show Expense;
-import '../models/payment.dart' show Payment;
-import '../models/supplier_payment.dart' show SupplierPayment;
-import '../models/opening_balance.dart' show OpeningBalance;
 import '../services/accounting_service.dart' show AccountingSummary;
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/sale_provider.dart';
+import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/torn_receipt_card.dart';
 import '../widgets/stitched_divider.dart';
@@ -26,8 +21,6 @@ class DashboardScreen extends ConsumerWidget {
   final VoidCallback? onLowStockTap;
   const DashboardScreen({super.key, this.onLowStockTap});
 
-  static final _dateFormat = DateFormat('EEEE, d MMMM yyyy');
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final as = ref.watch(accountingSummaryProvider);
@@ -35,6 +28,8 @@ class DashboardScreen extends ConsumerWidget {
     final salesCount = salesAsync.asData?.value.length ?? 0;
     final slipNumber = (salesCount + 1).toString().padLeft(4, '0');
     final bottom = MediaQuery.of(context).padding.bottom;
+    final csym = ref.watch(currencySymbolProvider);
+    String _fmt(double v) => '$csym ${NumberFormat('#,##0').format(v.toInt())}';
 
     return Scaffold(
       body: as.when(
@@ -50,19 +45,19 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               TornReceiptCard(
                 label: 'Cash in Hand',
-                amount: 'Rs ${NumberFormat('#,##0').format(d.cashInHand.toInt())}',
+                amount: _fmt(d.cashInHand),
                 gradientStart: AppTheme.teal,
                 gradientEnd: AppTheme.tealDark,
                 stats: [
-                  SlipStat(label: 'Revenue', value: 'Rs ${NumberFormat('#,##0').format(d.revenue.toInt())}'),
-                  SlipStat(label: 'Net Profit', value: 'Rs ${NumberFormat('#,##0').format(d.netProfit.toInt())}'),
-                  SlipStat(label: 'Baqaya', value: 'Rs ${NumberFormat('#,##0').format(d.totalCustomerBaqaya.toInt())}'),
+                  SlipStat(label: 'Revenue', value: _fmt(d.revenue)),
+                  SlipStat(label: 'Net Profit', value: _fmt(d.netProfit)),
+                  SlipStat(label: 'Baqaya', value: _fmt(d.totalCustomerBaqaya)),
                 ],
-                stubLeft: 'Register slip · today',
+                stubLeft: 'Register slip \u00b7 today',
                 stubRight: '#$slipNumber',
               ),
               const StitchedDivider(margin: EdgeInsets.symmetric(vertical: 14)),
-              _StatGrid(summary: d),
+              _StatGrid(summary: d, csym: csym),
               const StitchedDivider(margin: EdgeInsets.symmetric(vertical: 14)),
               if (d.lowStockCount > 0)
                 _LowStockAlert(count: d.lowStockCount, onTap: onLowStockTap),
@@ -93,10 +88,12 @@ class _GreetHeader extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
     final authService = ref.watch(authServiceProvider);
     final user = authState.asData?.value;
+    final shopAsync = ref.watch(shopProfileProvider);
+    final shopName = shopAsync.asData?.value?.shopName ?? 'Digital Register';
     return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Asif Foam Center', style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          Text(shopName, style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: -0.01, color: cs.onSurface)),
           const SizedBox(height: 2),
           Row(children: [
@@ -151,45 +148,47 @@ class _GreetHeader extends ConsumerWidget {
 
 class _StatGrid extends StatelessWidget {
   final AccountingSummary summary;
-  const _StatGrid({required this.summary});
+  final String csym;
+  const _StatGrid({required this.summary, required this.csym});
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final s = summary;
+    String _fmt(double v) => '$csym ${NumberFormat('#,##0').format(v.toInt())}';
     return Column(children: [
       Row(children: [
         Expanded(child: _StatCard(
-          title: 'Revenue', value: 'Rs ${NumberFormat('#,##0').format(s.revenue.toInt())}',
-          sub: 'Gross: Rs ${NumberFormat('#,##0').format(s.grossProfit.toInt())}',
+          title: 'Revenue', value: _fmt(s.revenue),
+          sub: 'Gross: ${_fmt(s.grossProfit)}',
           icon: Icons.trending_up_rounded, tint: ac.saleTint, iconColor: ac.saleFg)),
         const SizedBox(width: 10),
         Expanded(child: _StatCard(
-          title: 'COGS', value: 'Rs ${NumberFormat('#,##0').format(s.cogs.toInt())}',
+          title: 'COGS', value: _fmt(s.cogs),
           sub: 'Cost of goods sold',
           icon: Icons.receipt_rounded, tint: ac.purchaseTint, iconColor: ac.purchaseFg)),
       ]),
       const SizedBox(height: 10),
       Row(children: [
         Expanded(child: _StatCard(
-          title: 'Gross Profit', value: 'Rs ${NumberFormat('#,##0').format(s.grossProfit.toInt())}',
-          sub: 'Revenue − COGS',
+          title: 'Gross Profit', value: _fmt(s.grossProfit),
+          sub: 'Revenue \u2212 COGS',
           icon: Icons.account_balance_rounded, tint: ac.profitTint, iconColor: ac.profitFg)),
         const SizedBox(width: 10),
         Expanded(child: _StatCard(
-          title: 'Expenses', value: 'Rs ${NumberFormat('#,##0').format(s.totalExpenses.toInt())}',
+          title: 'Expenses', value: _fmt(s.totalExpenses),
           sub: 'Total kharcha',
           icon: Icons.trending_down_rounded, tint: ac.expenseTint, iconColor: ac.expenseFg)),
       ]),
       const SizedBox(height: 10),
       Row(children: [
         Expanded(child: _StatCard(
-          title: 'Net Profit', value: 'Rs ${NumberFormat('#,##0').format(s.netProfit.toInt())}',
+          title: 'Net Profit', value: _fmt(s.netProfit),
           sub: 'Margin: ${s.revenue > 0 ? ((s.netProfit / s.revenue) * 100).toStringAsFixed(0) : 0}%',
           icon: Icons.trending_up_rounded, tint: ac.profitTint, iconColor: ac.profitFg)),
         const SizedBox(width: 10),
         Expanded(child: _StatCard(
-          title: 'Inventory Value', value: 'Rs ${NumberFormat('#,##0').format(s.inventoryValue.toInt())}',
+          title: 'Inventory Value', value: _fmt(s.inventoryValue),
           sub: '${s.totalProducts} products',
           icon: Icons.inventory_2_rounded, tint: ac.inventoryTint, iconColor: ac.inventoryFg)),
       ]),

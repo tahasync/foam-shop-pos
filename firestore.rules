@@ -149,6 +149,26 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Settings — Shop Profile
+      match /settings/{setting} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId)
+          && isNonEmpty(request.resource.data.shop_name)
+          && isNonEmpty(request.resource.data.location);
+        allow delete: if false;
+      }
+
+      // Cost Price History
+      match /cost_price_history/{historyId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isPositiveNumber(request.resource.data.old_cost_price)
+          && isPositiveNumber(request.resource.data.new_cost_price)
+          && isDateString(request.resource.data.date);
+        allow update: if false;
+        allow delete: if false;
+      }
+
       // Deny reads/writes to unknown subcollections
       match /{unknown=**} {
         allow read, write: if false;

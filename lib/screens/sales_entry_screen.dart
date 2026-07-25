@@ -10,6 +10,7 @@ import '../providers/firebase_providers.dart';
 import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
 import 'package:intl/intl.dart';
+import '../providers/shop_provider.dart';
 import '../utils/debounce.dart';
 import '../widgets/save_success_sheet.dart';
 import '../utils/safe_error_handler.dart';
@@ -42,6 +43,7 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
     final total = widget.item.lineTotal;
+    final csym = ref.watch(currencySymbolProvider);
     return Container(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 8),
@@ -84,7 +86,7 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
             ),
           ),
           const SizedBox(width: 6),
-          Text('Rs/unit', style: TextStyle(fontSize: 10.5, color: cs.onSurfaceVariant)),
+          Text('/unit', style: TextStyle(fontSize: 10.5, color: cs.onSurfaceVariant)),
           const Spacer(),
           Container(
             decoration: BoxDecoration(
@@ -117,7 +119,7 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
           const SizedBox(width: 8),
           SizedBox(
             width: 64,
-            child: Text('Rs ${total.toStringAsFixed(0)}', textAlign: TextAlign.right,
+            child: Text('$csym ${total.toStringAsFixed(0)}', textAlign: TextAlign.right,
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14,
                     fontFeatures: [FontFeature('tnum')], color: cs.onSurface)),
           ),
@@ -210,7 +212,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     return products.where((p) => p.name.toLowerCase().contains(q)).toList();
   }
 
-  Widget _buildSearchResult(Product p, BuildContext context, ColorScheme cs, AppColors ac) {
+  Widget _buildSearchResult(Product p, BuildContext context, ColorScheme cs, AppColors ac, String csym) {
     final q = _searchCtrl.text.toLowerCase();
     final idx = p.name.toLowerCase().indexOf(q);
     final outOfStock = p.currentStock <= 0;
@@ -247,7 +249,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                 style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
           ])),
           const SizedBox(width: 8),
-          Text('Rs ${NumberFormat('#,##0').format(p.effectivePrice.toInt())}',
+          Text('$csym ${NumberFormat('#,##0').format(p.effectivePrice.toInt())}',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: ac.saleFg,
                   fontFeatures: const [FontFeature.tabularFigures()])),
           const SizedBox(width: 8),
@@ -329,19 +331,21 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     _paidCtrl.text = '0';
 
     if (mounted) {
+      final csym2 = ref.read(currencySymbolProvider);
       SaveSuccessSheet.show(
         context: context,
         title: '${isQuote ? 'Quote' : 'Sale'} Saved',
-        subtitle: '$custName · $totalItems items',
+        subtitle: '$custName \u00b7 $totalItems items',
         items: itemsCopy.map((c) => SheetLineItem(
           label: '${c.product.name} \u00d7 ${c.quantity}',
-          value: 'Rs ${NumberFormat('#,##0').format(c.lineTotal.toInt())}',
+          value: '$csym2 ${NumberFormat('#,##0').format(c.lineTotal.toInt())}',
         )).toList(),
         paid: paid,
         total: subtotal,
         onPrint: null,
         onNew: () {},
         newLabel: '+ New Sale',
+        csym: csym2,
       );
     }
     } finally {
@@ -357,6 +361,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     final productsAsync = ref.watch(productsStreamProvider);
     final paid = double.tryParse(_paidCtrl.text) ?? 0;
     final balance = (salesState.subtotal - paid).clamp(0, double.infinity);
+    final csym = ref.watch(currencySymbolProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('New Sale')),
@@ -445,7 +450,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                   ),
                   child: Column(children: [
                     for (final p in _filteredProducts(products))
-                      _buildSearchResult(p, context, cs, ac),
+                      _buildSearchResult(p, context, cs, ac, csym),
                   ]),
                 ),
               if (_searchCtrl.text.isEmpty && salesState.recentProductIds.isNotEmpty)
@@ -517,14 +522,14 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
             child: Column(children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('Subtotal', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
-                Text('Rs ${salesState.subtotal.toStringAsFixed(0)}',
+                Text('$csym ${salesState.subtotal.toStringAsFixed(0)}',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
                         fontFeatures: [FontFeature('tnum')], color: cs.onSurface)),
               ]),
               const Divider(height: 20),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('Total Amount', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: cs.onSurface)),
-                Text('Rs ${salesState.subtotal.toStringAsFixed(0)}',
+                Text('$csym ${salesState.subtotal.toStringAsFixed(0)}',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800,
                         fontFeatures: [FontFeature('tnum')], color: ac.saleFg)),
               ]),
@@ -534,7 +539,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Paid (PKR)', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
+                Text('Paid ($csym)', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
                 const SizedBox(height: 4),
                 TextField(
                   controller: _paidCtrl,
@@ -567,7 +572,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(children: [
-                    Text('Rs ${balance.toStringAsFixed(0)}',
+                    Text('$csym ${balance.toStringAsFixed(0)}',
                         style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14,
                             fontFeatures: [FontFeature('tnum')], color: ac.saleFg)),
                   ]),

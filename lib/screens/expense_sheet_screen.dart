@@ -5,6 +5,7 @@ import '../providers/expense_provider.dart';
 import '../providers/firebase_providers.dart';
 import 'package:intl/intl.dart';
 import '../widgets/save_success_sheet.dart';
+import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/safe_error_handler.dart';
 
@@ -25,6 +26,7 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
     final expAsync = ref.watch(expensesStreamProvider);
+    final csym = ref.watch(currencySymbolProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -63,7 +65,7 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('${filtered.length} entries', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-                Text('Total: Rs. ${total.toStringAsFixed(0)}',
+                Text('Total: $csym. ${total.toStringAsFixed(0)}',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
               ]),
             ),
@@ -78,7 +80,7 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
                       decoration: BoxDecoration(color: ac.expenseTint, borderRadius: BorderRadius.circular(10)),
                       child: Text(e.category[0], textAlign: TextAlign.center,
                           style: TextStyle(fontWeight: FontWeight.w700, color: ac.expenseFg))),
-                    title: Text('${e.category} — Rs. ${e.amount.toStringAsFixed(0)}',
+                    title: Text('${e.category} — $csym. ${e.amount.toStringAsFixed(0)}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500, color: cs.onSurface)),
                     subtitle: Text(e.description.isNotEmpty
                         ? '${e.description} | ${e.date.day}/${e.date.month}/${e.date.year}'
@@ -135,6 +137,7 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
   }
 
   void _addExpense() {
+    final csym = ref.read(currencySymbolProvider);
     final ac = TextEditingController(); final dc = TextEditingController();
     String cat = _categories[0]; DateTime date = DateTime.now();
     showDialog(context: context, builder: (ctx) => StatefulBuilder(
@@ -147,7 +150,7 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
           const SizedBox(height: 8),
           TextField(controller: dc, decoration: const InputDecoration(labelText: 'Description', filled: true)),
           const SizedBox(height: 8),
-          TextField(controller: ac, decoration: const InputDecoration(labelText: 'Amount (PKR)', filled: true), keyboardType: TextInputType.number),
+          TextField(controller: ac, decoration: InputDecoration(labelText: 'Amount ($csym)', filled: true), keyboardType: TextInputType.number),
           const SizedBox(height: 8),
           OutlinedButton.icon(onPressed: () async {
             final d = await showDatePicker(context: ctx, initialDate: date, firstDate: DateTime(2020), lastDate: DateTime.now());
@@ -167,13 +170,14 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
               SaveSuccessSheet.show(
                 context: context,
                 title: 'Expense Saved',
-                subtitle: '$cat2 \u00b7 Rs ${NumberFormat('#,##0').format(a.toInt())}',
-                items: [SheetLineItem(label: dc.text.trim().isEmpty ? cat2 : dc.text.trim(), value: 'Rs ${NumberFormat('#,##0').format(a.toInt())}')],
+                subtitle: '$cat2 \u00b7 $csym ${NumberFormat('#,##0').format(a.toInt())}',
+                items: [SheetLineItem(label: dc.text.trim().isEmpty ? cat2 : dc.text.trim(), value: '$csym ${NumberFormat('#,##0').format(a.toInt())}')],
                 paid: a,
                 total: a,
                 printLabel: '',
                 newLabel: '+ Add Expense',
                 onNew: () {},
+                csym: csym,
               );
             }
           }, child: const Text('Save')),

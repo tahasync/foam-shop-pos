@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import '../widgets/torn_receipt_card.dart';
 import '../widgets/save_success_sheet.dart';
+import '../providers/shop_provider.dart';
 import '../utils/safe_error_handler.dart';
 
 class CustomerKhataScreen extends ConsumerWidget {
@@ -23,6 +24,7 @@ class CustomerKhataScreen extends ConsumerWidget {
     final customersAsync = ref.watch(customersStreamProvider);
     final salesAsync = ref.watch(salesStreamProvider);
     final paymentsAsync = ref.watch(paymentsStreamProvider);
+    final csym = ref.watch(currencySymbolProvider);
 
     final combined = customersAsync.when(
       data: (csList) => salesAsync.when(
@@ -89,7 +91,7 @@ class CustomerKhataScreen extends ConsumerWidget {
                             ],
                           )),
                           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                            Text('Rs. ${item.balance.toStringAsFixed(0)}',
+                            Text('$csym. ${item.balance.toStringAsFixed(0)}',
                                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.w700, fontFeatures: [FontFeature('tnum')],
                                     color: item.balance > 0 ? ac.expenseFg : ac.profitFg)),
@@ -120,6 +122,7 @@ class _CustDetail extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
+    final csym = ref.watch(currencySymbolProvider);
     final salesAsync = ref.watch(salesStreamProvider);
     final paymentsAsync = ref.watch(paymentsStreamProvider);
 
@@ -171,7 +174,7 @@ class _CustDetail extends ConsumerWidget {
                 const SizedBox(height: 14),
                 TornReceiptCard(
                   label: 'Outstanding Baqaya',
-                  amount: 'Rs ${balance.toStringAsFixed(0)}',
+                  amount: '$csym ${balance.toStringAsFixed(0)}',
                   gradientStart: AppTheme.terracotta,
                   gradientEnd: const Color(0xFF8C3324),
                   stubLeft: 'Customer slip',
@@ -223,7 +226,7 @@ class _CustDetail extends ConsumerWidget {
                         Text('${t.date.day}/${t.date.month}/${t.date.year}', style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
                     ])),
                     Text(
-                      '${t.isSale ? '+' : '-'} Rs. ${t.amount.toStringAsFixed(0)}',
+                      '${t.isSale ? '+' : '-'} $csym. ${t.amount.toStringAsFixed(0)}',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
@@ -257,6 +260,7 @@ class _CustDetail extends ConsumerWidget {
 }
 
 void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, {double currentBalance = 0}) {
+  final csym = ref.read(currencySymbolProvider);
   final ctrl = TextEditingController(text: currentBalance > 0 ? currentBalance.toStringAsFixed(0) : '');
   final formKey = GlobalKey<FormState>();
     showDialog(context: context, builder: (ctx) => AlertDialog(
@@ -267,17 +271,17 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, {do
         if (currentBalance > 0)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Text('Outstanding: Rs. ${currentBalance.toStringAsFixed(0)}',
+            child: Text('Outstanding: $csym. ${currentBalance.toStringAsFixed(0)}',
                 style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
           ),
         TextFormField(
           controller: ctrl,
-          decoration: const InputDecoration(labelText: 'Amount (PKR)', filled: true),
+          decoration: InputDecoration(labelText: 'Amount ($csym)', filled: true),
           keyboardType: TextInputType.number,
           validator: (v) {
             final amt = double.tryParse(v ?? '') ?? 0;
             if (amt <= 0) return 'Enter a positive amount';
-            if (amt > currentBalance) return 'Cannot exceed Rs. ${currentBalance.toStringAsFixed(0)}';
+            if (amt > currentBalance) return 'Cannot exceed $csym. ${currentBalance.toStringAsFixed(0)}';
             return null;
           },
         ),
@@ -294,15 +298,17 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, {do
         s.savePaymentTransaction(payment).then((_) {
           ref.invalidate(accountingSummaryProvider);
           if (context.mounted) {
+            final csym2 = ref.read(currencySymbolProvider);
             SaveSuccessSheet.show(
               context: context,
               title: 'Payment Collected',
-              subtitle: '${customer.name} \u00b7 Rs ${NumberFormat('#,##0').format(amt.toInt())}',
-              items: [SheetLineItem(label: customer.name, value: 'Rs ${NumberFormat('#,##0').format(amt.toInt())}')],
+              subtitle: '${customer.name} \u00b7 $csym2 ${NumberFormat('#,##0').format(amt.toInt())}',
+              items: [SheetLineItem(label: customer.name, value: '$csym2 ${NumberFormat('#,##0').format(amt.toInt())}')],
               paid: amt,
               total: amt,
               newLabel: '+ Collect Again',
               onNew: () {},
+              csym: csym2,
             );
           }
         }).catchError((e, st) {

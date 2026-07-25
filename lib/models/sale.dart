@@ -49,7 +49,7 @@ class SaleLineItem {
       name: map['name'] as String?,
       customLength: (map['custom_length'] as num?)?.toDouble(),
       customWidth: (map['custom_width'] as num?)?.toDouble(),
-      qtyOrArea: (qtyOrArea as num).toDouble(),
+      qtyOrArea: qtyOrArea.toDouble(),
       salePrice: ((map['sale_price'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
       lineDiscountAmount: ((map['line_discount_amount'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
       costPriceAtSale: ((map['cost_price_at_sale'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),

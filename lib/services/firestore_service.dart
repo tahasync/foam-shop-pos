@@ -9,6 +9,8 @@ import '../models/expense.dart';
 import '../models/payment.dart';
 import '../models/supplier_payment.dart';
 import '../models/opening_balance.dart';
+import '../models/shop_profile.dart';
+import '../models/cost_price_history.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -268,4 +270,59 @@ class FirestoreService {
 
   Stream<QuerySnapshot> get openingBalanceStream =>
       _openingBalances.orderBy('date', descending: true).limit(1).snapshots();
+
+  // Shop Profile
+  DocumentReference get _shopProfile =>
+      _db.collection('users').doc(_uid).collection('settings').doc('shopProfile');
+
+  Future<void> setShopProfile(ShopProfile profile) =>
+      _shopProfile.set(profile.toMap());
+
+  Future<ShopProfile?> getShopProfile() async {
+    final snap = await _shopProfile.get();
+    if (!snap.exists) return null;
+    return ShopProfile.fromMap(snap.data() as Map<String, dynamic>);
+  }
+
+  Stream<ShopProfile?> shopProfileStream() {
+    return _shopProfile.snapshots().map((snap) {
+      if (!snap.exists) return null;
+      return ShopProfile.fromMap(snap.data() as Map<String, dynamic>);
+    });
+  }
+
+  // Cost Price History
+  CollectionReference get _costPriceHistory =>
+      _db.collection('users').doc(_uid).collection('cost_price_history');
+
+  Future<void> updateCostPrice(String productId, double newCostPrice, {String note = ''}) async {
+    final productRef = _products.doc(productId);
+    await _db.runTransaction((transaction) async {
+      final snap = await transaction.get(productRef);
+      if (!snap.exists) throw Exception('Product not found');
+      final data = snap.data() as Map<String, dynamic>;
+      final oldCostPrice = (data['cost_price'] as num?)?.toDouble() ?? 0;
+      transaction.update(productRef, {'cost_price': newCostPrice});
+      final historyId = _db.collection('_ids').doc().id;
+      final history = CostPriceHistory(
+        id: historyId,
+        productId: productId,
+        oldCostPrice: oldCostPrice,
+        newCostPrice: newCostPrice,
+        date: DateTime.now(),
+        note: note,
+      );
+      transaction.set(_costPriceHistory.doc(historyId), history.toMap());
+    });
+  }
+
+  Stream<List<CostPriceHistory>> costPriceHistoryStream(String productId) {
+    return _costPriceHistory
+        .where('product_id', isEqualTo: productId)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => CostPriceHistory.fromMap(d.data() as Map<String, dynamic>))
+            .toList());
+  }
 }

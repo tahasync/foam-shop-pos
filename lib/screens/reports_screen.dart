@@ -6,6 +6,8 @@ import '../models/product.dart';
 import '../providers/sale_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/product_provider.dart';
+import '../providers/shop_provider.dart';
+import '../utils/currency.dart';
 import '../theme/app_theme.dart';
 
 enum ReportsPeriod { daily, weekly, monthly, yearly }
@@ -105,7 +107,7 @@ String _periodLabel(ReportsPeriod period) {
   }
 }
 
-String _format(double v) => 'Rs ${v.toStringAsFixed(0)}';
+String _format(double v, {String csym = 'Rs'}) => '$csym ${v.toStringAsFixed(0)}';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -147,6 +149,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       List<Sale> sales, List<Expense> expenses, List<Product> products) {
     final range = _dateRangeFor(_period);
     final report = _computeReport(sales, expenses, products, range);
+    final csym = ref.read(shopProfileProvider).asData?.value != null
+        ? currencySymbolFromCode(ref.read(shopProfileProvider).asData!.value!.currency)
+        : 'Rs';
+    String _fmtLocal(double v) => _format(v, csym: csym);
 
     return RefreshIndicator(
       onRefresh: () async {},
@@ -226,52 +232,52 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     )),
                     const SizedBox(height: 8),
                     Row(children: [
-                      _heroStat('Revenue', _format(report.revenue)),
+                      _heroStat('Revenue', _fmtLocal(report.revenue)),
                       const SizedBox(width: 16),
-                      _heroStat('Net Profit', _format(report.netProfit)),
+                      _heroStat('Net Profit', _fmtLocal(report.netProfit)),
                     ]),
                     const SizedBox(height: 6),
                     Row(children: [
                       _heroStat('Sales', '${report.salesCount}'),
                       const SizedBox(width: 16),
-                      _heroStat('Avg Sale', _format(report.avgSaleValue)),
+                      _heroStat('Avg Sale', _fmtLocal(report.avgSaleValue)),
                     ]),
                   ]),
                 ),
                 const SizedBox(height: 14),
                 Row(children: [
                   Expanded(
-                    child: _statCard(context, 'Revenue', _format(report.revenue),
-                        'Gross: ${_format(report.grossProfit)}', Icons.trending_up_rounded, ac.saleTint, ac.saleFg),
+                    child: _statCard(context, 'Revenue', _fmtLocal(report.revenue),
+                        'Gross: ${_fmtLocal(report.grossProfit)}', Icons.trending_up_rounded, ac.saleTint, ac.saleFg),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: _statCard(context, 'COGS', _format(report.cogs),
+                    child: _statCard(context, 'COGS', _fmtLocal(report.cogs),
                         'Cost of goods sold', Icons.inventory_2_rounded, ac.purchaseTint, ac.purchaseFg),
                   ),
                 ]),
                 const SizedBox(height: 10),
                 Row(children: [
                   Expanded(
-                    child: _statCard(context, 'Gross Profit', _format(report.grossProfit),
+                    child: _statCard(context, 'Gross Profit', _fmtLocal(report.grossProfit),
                         'Revenue \u2212 COGS', Icons.account_balance_rounded, ac.profitTint, ac.profitFg),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: _statCard(context, 'Expenses', _format(report.expenses),
+                    child: _statCard(context, 'Expenses', _fmtLocal(report.expenses),
                         'Total kharcha', Icons.trending_down_rounded, ac.expenseTint, ac.expenseFg),
                   ),
                 ]),
                 const SizedBox(height: 10),
                 Row(children: [
                   Expanded(
-                    child: _statCard(context, 'Net Profit', _format(report.netProfit),
+                    child: _statCard(context, 'Net Profit', _fmtLocal(report.netProfit),
                         'Margin: ${report.revenue > 0 ? ((report.netProfit / report.revenue) * 100).toStringAsFixed(0) : 0}%',
                         Icons.trending_up_rounded, ac.profitTint, ac.profitFg),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: _statCard(context, 'Avg Sale', _format(report.avgSaleValue),
+                    child: _statCard(context, 'Avg Sale', _fmtLocal(report.avgSaleValue),
                         '${report.salesCount} sales', Icons.sell_rounded, ac.saleTint, ac.saleFg),
                   ),
                 ]),

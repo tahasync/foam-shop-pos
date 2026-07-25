@@ -11,6 +11,8 @@ import '../providers/dashboard_provider.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../widgets/save_success_sheet.dart';
+import '../widgets/app_search_bar.dart';
+import '../providers/shop_provider.dart';
 import '../utils/safe_error_handler.dart';
 
 class CustomerRecoveryScreen extends ConsumerStatefulWidget {
@@ -40,36 +42,6 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Customer Recovery'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: TextField(
-                controller: _searchCtrl,
-                decoration: InputDecoration(
-                  hintText: 'Search customers\u2026',
-                  hintStyle: TextStyle(color: ac.inkFaint, fontSize: 12.5),
-                  border: InputBorder.none,
-                  filled: false,
-                  prefixIcon: Icon(Icons.search_rounded, size: 18, color: ac.inkFaint),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.clear_rounded, size: 16, color: cs.onSurfaceVariant),
-                          onPressed: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
-                        )
-                      : null,
-                ),
-                onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-              ),
-            ),
-          ),
-        ),
       ),
       body: customersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -105,18 +77,24 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
                 return (customer: c, outstanding: c.baqaya, totalDue: total);
               }).where((x) => x.outstanding > 0 || _searchQuery.isNotEmpty).toList();
 
-              if (withBaqaya.isEmpty) {
-                return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.check_circle_rounded, size: 72, color: ac.profitFg),
-                  const SizedBox(height: 16),
-                  Text('No outstanding baqaya!', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: cs.onSurface)),
-                  const SizedBox(height: 8),
-                  Text('All customers are settled', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
-                ]));
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
+              return Column(children: [
+                AppSearchBar(
+                  controller: _searchCtrl,
+                  hintText: 'Search customers\u2026',
+                  onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                  onClear: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
+                ),
+                Expanded(
+                  child: withBaqaya.isEmpty
+                      ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.check_circle_rounded, size: 72, color: ac.profitFg),
+                          const SizedBox(height: 16),
+                          Text('No outstanding baqaya!', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: cs.onSurface)),
+                          const SizedBox(height: 8),
+                          Text('All customers are settled', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+                        ]))
+                      : ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 itemCount: withBaqaya.length,
                 itemBuilder: (_, i) {
                   final item = withBaqaya[i];
@@ -126,7 +104,9 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
                   final customerPayments = payments
                       .where((p) => p.customerId == item.customer.id)
                       .toList();
+                  final csym = ref.read(currencySymbolProvider);
                   return _CustomerCard(
+                    csym: csym,
                     customer: item.customer,
                     outstanding: item.outstanding,
                     totalDue: item.totalDue,
@@ -135,8 +115,10 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
                     onCollect: () => _collectPayment(context, ref, item.customer, item.outstanding),
                   );
                 },
-              );
-            },
+              ),
+            ),
+          ]);
+          },
           ),
         ),
       ),
@@ -144,6 +126,7 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
   }
 
   void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, double outstanding) {
+    final csym = ref.read(currencySymbolProvider);
     final ctrl = TextEditingController(text: outstanding.toStringAsFixed(0));
     final formKey = GlobalKey<FormState>();
     showDialog(
@@ -154,17 +137,17 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
           child: Form(
             key: formKey,
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Outstanding: Rs. ${outstanding.toStringAsFixed(0)}',
+              Text('Outstanding: $csym. ${outstanding.toStringAsFixed(0)}',
                   style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
               const SizedBox(height: 12),
               TextFormField(
                 controller: ctrl,
-                decoration: const InputDecoration(labelText: 'Amount (PKR)', filled: true),
+                decoration: InputDecoration(labelText: 'Amount ($csym)', filled: true),
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   final amt = double.tryParse(v ?? '') ?? 0;
                   if (amt <= 0) return 'Enter a positive amount';
-                  if (amt > outstanding) return 'Cannot exceed Rs. ${outstanding.toStringAsFixed(0)}';
+                  if (amt > outstanding) return 'Cannot exceed ${ref.read(currencySymbolProvider)}. ${outstanding.toStringAsFixed(0)}';
                   return null;
                 },
               ),
@@ -182,15 +165,17 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
             ref.invalidate(accountingSummaryProvider);
             if (ctx.mounted) Navigator.pop(ctx);
             if (context.mounted) {
+              final csym2 = ref.read(currencySymbolProvider);
               SaveSuccessSheet.show(
                 context: context,
                 title: 'Payment Collected',
-                subtitle: '${customer.name} \u00b7 Rs ${NumberFormat('#,##0').format(amt.toInt())}',
-                items: [SheetLineItem(label: customer.name, value: 'Rs ${NumberFormat('#,##0').format(amt.toInt())}')],
+                subtitle: '${customer.name} \u00b7 $csym2 ${NumberFormat('#,##0').format(amt.toInt())}',
+                items: [SheetLineItem(label: customer.name, value: '$csym2 ${NumberFormat('#,##0').format(amt.toInt())}')],
                 paid: amt,
                 total: amt,
                 newLabel: '+ Collect Again',
                 onNew: () {},
+                csym: csym2,
               );
             }
           }, child: const Text('Record Payment')),
@@ -201,6 +186,7 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
 }
 
 class _CustomerCard extends StatelessWidget {
+  final String csym;
   final Customer customer;
   final double outstanding;
   final double totalDue;
@@ -209,6 +195,7 @@ class _CustomerCard extends StatelessWidget {
   final VoidCallback onCollect;
 
   const _CustomerCard({
+    required this.csym,
     required this.customer,
     required this.outstanding,
     required this.totalDue,
@@ -259,7 +246,7 @@ class _CustomerCard extends StatelessWidget {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Outstanding', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
                   const SizedBox(height: 2),
-                  Text('Rs. ${outstanding.toStringAsFixed(0)}',
+                  Text('$csym. ${outstanding.toStringAsFixed(0)}',
                       style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, fontFeatures: [FontFeature('tnum')], color: ac.expenseFg)),
                 ]),
               ),
@@ -267,7 +254,7 @@ class _CustomerCard extends StatelessWidget {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   Text('Total Due', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
                   const SizedBox(height: 2),
-                  Text('Rs. ${totalDue.toStringAsFixed(0)}',
+                  Text('$csym. ${totalDue.toStringAsFixed(0)}',
                       style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, fontFeatures: [FontFeature('tnum')], color: cs.onSurface)),
                 ]),
               ),
@@ -283,7 +270,7 @@ class _CustomerCard extends StatelessWidget {
                     child: Text('${t.desc}  \u2022  ${t.date.day}/${t.date.month}',
                         style: TextStyle(fontSize: 11.5, color: cs.onSurface)),
                   ),
-                  Text('${t.isDebit ? '+' : '-'} Rs. ${t.amount.abs().toStringAsFixed(0)}',
+                  Text('${t.isDebit ? '+' : '-'} $csym. ${t.amount.abs().toStringAsFixed(0)}',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 11.5,
