@@ -7,9 +7,10 @@ import '../theme/app_theme.dart';
 
 class AppUpdateConfig {
   static const repoOwner = 'tahasync';
-  static const repoName = 'foam-shop-erp';
+  static const repoName = 'foam-shop-pos';
   static const apiUrl = 'https://api.github.com/repos/$repoOwner/$repoName/releases/latest';
   static const latestReleaseUrl = 'https://github.com/$repoOwner/$repoName/releases/latest';
+  static const downloadUrl = 'https://github.com/$repoOwner/$repoName/releases/download';
 }
 
 class UpdateInfo {
