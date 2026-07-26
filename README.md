@@ -121,3 +121,5 @@ The test suite covers:
 ## Status
 
 **Production-ready Android app — actively maintained.** Used by foam/mattress shops with subscription-based commercial model. The founding account is free forever; new sign-ups get a 14-day free trial.
+
+The automated test suite (3 test files, 19 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, and notification detection. Not a full UI coverage suite — focused on the highest-regression-risk areas given the app's bug history.
