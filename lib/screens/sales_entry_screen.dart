@@ -729,9 +729,11 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           ]),
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: (salesState.cart.isEmpty || salesState.cart.any((c) => c.salePrice <= 0)) ? null : () => _save(isQuote: false),
-            icon: const Icon(Icons.save_rounded),
-            label: const Text('Save Sale', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            onPressed: (_saving || salesState.cart.isEmpty || salesState.cart.any((c) => c.salePrice <= 0)) ? null : () => _save(isQuote: false),
+            icon: _saving
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.save_rounded),
+            label: Text(_saving ? 'Saving\u2026' : 'Save Sale', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             style: FilledButton.styleFrom(
               minimumSize: const Size(double.infinity, 52),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -739,7 +741,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           ),
           const SizedBox(height: 6),
           TextButton(
-            onPressed: salesState.cart.isEmpty ? null : () => _save(isQuote: true),
+            onPressed: (_saving || salesState.cart.isEmpty) ? null : () => _save(isQuote: true),
             child: Text('Save as Quote',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
           ),

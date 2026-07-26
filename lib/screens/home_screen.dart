@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../providers/product_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/sale_provider.dart';
+import '../providers/payment_provider.dart';
 import '../services/update_checker.dart';
+import '../services/notification_service.dart';
 import '../widgets/custom_nav_bar.dart';
 import 'inventory_screen.dart';
 import 'sales_entry_screen.dart';
@@ -28,6 +31,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkUpdate());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkNotifications());
+  }
+
+  void _checkNotifications() async {
+    final products = ref.read(productsStreamProvider).asData?.value ?? [];
+    final sales = ref.read(salesStreamProvider).asData?.value ?? [];
+    final payments = ref.read(paymentsStreamProvider).asData?.value ?? [];
+    await LocalNotificationService.checkAndNotify(
+      products: products,
+      sales: sales,
+      payments: payments,
+    );
   }
 
   void _goToInventory() {

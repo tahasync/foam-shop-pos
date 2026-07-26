@@ -29,14 +29,34 @@ class CustomerKhataScreen extends ConsumerWidget {
     final combined = customersAsync.when(
       data: (csList) => salesAsync.when(
         data: (sales) => paymentsAsync.when(
-          data: (payments) => csList.map((c) {
-            final cSales = sales.where((s) => s.customerId == c.id && !s.isVoided && !s.isQuote);
-            final cPayments = payments.where((p) => p.customerId == c.id);
-            final total = cSales.fold(0.0, (s, x) => s + x.amount);
-            final paid = cSales.fold(0.0, (s, x) => s + x.paid);
-            final recv = cPayments.fold(0.0, (s, x) => s + x.amountCollected);
-            return _CustBal(customer: c, balance: (total - paid - recv).clamp(0, double.infinity));
-          }).toList(),
+          data: (payments) {
+            final balList = csList.map((c) {
+              final cSales = sales.where((s) => s.customerId == c.id && !s.isVoided && !s.isQuote);
+              final cPayments = payments.where((p) => p.customerId == c.id);
+              final total = cSales.fold(0.0, (s, x) => s + x.amount);
+              final paid = cSales.fold(0.0, (s, x) => s + x.paid);
+              final recv = cPayments.fold(0.0, (s, x) => s + x.amountCollected);
+              final lastSale = cSales.fold<DateTime?>(null, (prev, s) =>
+                  prev == null || s.date.isAfter(prev) ? s.date : prev);
+              final lastPayment = cPayments.fold<DateTime?>(null, (prev, p) =>
+                  prev == null || p.date.isAfter(prev) ? p.date : prev);
+              final lastActivity = [lastSale, lastPayment]
+                  .whereType<DateTime>()
+                  .fold<DateTime?>(null, (prev, d) =>
+                      prev == null || d.isAfter(prev) ? d : prev);
+              return _CustBal(
+                customer: c,
+                balance: (total - paid - recv).clamp(0, double.infinity),
+                lastActivity: lastActivity ?? DateTime(0),
+              );
+            }).toList();
+            balList.sort((a, b) {
+              final cmp = b.lastActivity.compareTo(a.lastActivity);
+              if (cmp != 0) return cmp;
+              return a.customer.name.compareTo(b.customer.name);
+            });
+            return balList;
+          },
           loading: () => null, error: (_, __) => null,
         ),
         loading: () => null, error: (_, __) => null,
@@ -110,8 +130,8 @@ class CustomerKhataScreen extends ConsumerWidget {
 }
 
 class _CustBal {
-  final Customer customer; final double balance;
-  const _CustBal({required this.customer, required this.balance});
+  final Customer customer; final double balance; final DateTime lastActivity;
+  const _CustBal({required this.customer, required this.balance, required this.lastActivity});
 }
 
 class _CustDetail extends ConsumerWidget {

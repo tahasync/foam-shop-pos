@@ -181,16 +181,22 @@ class FirestoreService {
       final saleRef = _sales.doc(sale.id);
       final existing = await transaction.get(saleRef);
       if (existing.exists) return;
-      for (final entry in deductions.entries) {
-        final productRef = _products.doc(entry.key);
-        final snap = await transaction.get(productRef);
+
+      final productEntries = deductions.entries.toList();
+      final productRefs = productEntries.map((e) => _products.doc(e.key)).toList();
+      final snaps = await Future.wait(productRefs.map((ref) => transaction.get(ref)));
+
+      for (int i = 0; i < productEntries.length; i++) {
+        final entry = productEntries[i];
+        final snap = snaps[i];
         if (!snap.exists) throw Exception('Product ${entry.key} not found');
         final currentStock = (snap.data() as Map<String, dynamic>)['current_stock'] as num? ?? 0;
         if ((currentStock).toDouble() < entry.value) {
           throw Exception('Insufficient stock for product ${entry.key}');
         }
-        transaction.update(productRef, {'current_stock': (currentStock).toDouble() - entry.value});
+        transaction.update(productRefs[i], {'current_stock': (currentStock).toDouble() - entry.value});
       }
+
       transaction.set(saleRef, sale.toMap());
       if (sale.customerId.isNotEmpty && sale.balance > 0) {
         transaction.update(_customers.doc(sale.customerId), {

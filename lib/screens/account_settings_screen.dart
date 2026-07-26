@@ -10,6 +10,8 @@ import '../theme/app_theme.dart';
 import '../utils/safe_error_handler.dart';
 import '../utils/currency.dart';
 import 'delete_account_sheet.dart';
+import 'notification_settings_screen.dart';
+import 'support_feedback_screen.dart';
 
 class AccountSettingsScreen extends ConsumerWidget {
   const AccountSettingsScreen({super.key});
@@ -64,6 +66,32 @@ class AccountSettingsScreen extends ConsumerWidget {
                 onTap: () => _editShopProfile(context, ref, profile),
               ),
             ]),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: Container(width: 36, height: 36,
+                decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.notifications_outlined, color: cs.onPrimaryContainer)),
+              title: const Text('Notifications'),
+              subtitle: Text('Low stock & overdue baqaya alerts',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationSettingsScreen())),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: Container(width: 36, height: 36,
+                decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.feedback_outlined, color: cs.onPrimaryContainer)),
+              title: const Text('Send Feedback'),
+              subtitle: Text('Contact support via WhatsApp or Email',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportFeedbackScreen())),
+            ),
           ),
           const SizedBox(height: 12),
           Card(

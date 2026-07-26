@@ -4,6 +4,7 @@ import '../models/shop_profile.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/constants.dart';
 
 class ShopOnboardingScreen extends ConsumerStatefulWidget {
   const ShopOnboardingScreen({super.key});
@@ -43,12 +44,20 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
     setState(() => _saving = true);
     try {
       final service = ref.read(firestoreServiceProvider);
+      final user = ref.read(authServiceProvider).currentUser;
+      final email = user?.email ?? '';
+      final isFounder = AppConstants.foundingAccountEmails.any(
+          (e) => e.toLowerCase() == email.toLowerCase());
+      final now = DateTime.now();
       final profile = ShopProfile(
         shopName: _nameCtrl.text.trim(),
         location: _locCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
         currency: _selectedCurrency,
-        createdAt: DateTime.now(),
+        createdAt: now,
+        subscriptionStatus: isFounder ? 'free_forever' : 'trial',
+        trialEndsAt: isFounder ? null : now.add(Duration(days: AppConstants.trialDays)),
+        founderExempt: isFounder,
       );
       await service.setShopProfile(profile);
       ref.invalidate(shopProfileFutureProvider);

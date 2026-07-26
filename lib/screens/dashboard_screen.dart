@@ -35,7 +35,11 @@ class DashboardScreen extends ConsumerWidget {
       body: as.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => const Center(child: Text('Could not load dashboard')),
-        data: (d) => SafeArea(
+            data: (d) {
+              final shopAsync = ref.watch(shopProfileProvider);
+              final profile = shopAsync.asData?.value;
+              final subLabel = profile?.subscriptionLabel;
+              return SafeArea(
           top: true,
           bottom: false,
           child: ListView(
@@ -55,6 +59,18 @@ class DashboardScreen extends ConsumerWidget {
                 ],
                 stubLeft: 'Register slip \u00b7 today',
                 stubRight: '#$slipNumber',
+                trailing: subLabel != null
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(subLabel,
+                            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800,
+                                color: const Color(0xFFFCE3B5))),
+                      )
+                    : null,
               ),
               const StitchedDivider(margin: EdgeInsets.symmetric(vertical: 14)),
               _StatGrid(summary: d, csym: csym),
@@ -63,7 +79,8 @@ class DashboardScreen extends ConsumerWidget {
                 _LowStockAlert(count: d.lowStockCount, onTap: onLowStockTap),
             ],
           ),
-        ),
+        );
+      },
       ),
     );
   }

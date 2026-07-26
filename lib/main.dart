@@ -16,6 +16,9 @@ import 'services/auth_service.dart';
 import 'screens/sign_in_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/shop_onboarding_screen.dart';
+import 'screens/subscription_expired_screen.dart';
+import 'utils/constants.dart';
+import 'services/notification_service.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -67,6 +70,7 @@ void main() {
     }
 
     unawaited(_initBackgroundServices());
+    unawaited(LocalNotificationService.initialize());
 
     final authService = AuthService();
     await authService.initialize();
@@ -165,7 +169,19 @@ class AuthGate extends ConsumerWidget {
             final shopAsync = ref.watch(shopProfileFutureProvider);
             return shopAsync.when(
               data: (profile) {
-                if (profile != null) return const HomeScreen();
+                if (profile != null) {
+                  final email = user.email ?? '';
+                  final isFounder = AppConstants.foundingAccountEmails.any(
+                      (e) => e.toLowerCase() == email.toLowerCase());
+                  if (isFounder || profile.founderExempt ||
+                      profile.subscriptionStatus == 'free_forever') {
+                    return const HomeScreen();
+                  }
+                  if (!profile.isSubscriptionActive) {
+                    return SubscriptionExpiredScreen(shopName: profile.shopName);
+                  }
+                  return const HomeScreen();
+                }
                 return const ShopOnboardingScreen();
               },
               loading: () => const Scaffold(

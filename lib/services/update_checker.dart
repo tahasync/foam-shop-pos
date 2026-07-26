@@ -60,7 +60,7 @@ bool isNewerVersion(String installed, String remote) {
 
 String formatChangelog(String rawNotes) {
   if (rawNotes.isEmpty) {
-    return '\u2022 Bug fixes and UI performance updates.';
+    return 'No changelog available for this release.';
   }
   final clean = rawNotes
       .replaceAll(RegExp(r'\*\*Full Changelog\*\*:\s*https?://\S+'), '')
@@ -68,7 +68,7 @@ String formatChangelog(String rawNotes) {
       .replaceAll(RegExp(r'\*\*'), '')
       .trim();
   if (clean.isEmpty) {
-    return '\u2022 System stability improvements and minor bug fixes.\n\u2022 Receipt, PDF, and Reports UI enhancements.';
+    return 'No changelog available for this release.';
   }
   return clean.length > 300 ? '${clean.substring(0, 300)}...' : clean;
 }
