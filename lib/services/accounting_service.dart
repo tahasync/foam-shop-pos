@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import '../models/product.dart';
 import '../models/sale.dart';
 import '../models/purchase.dart';
@@ -87,9 +88,20 @@ class AccountingService {
           unitCost = product?.costPrice ?? 0;
         }
         if (unitCost <= 0) {
-          unitCost = sanitize(li.salePrice) * 0.70;
+          developer.log('[COGS] Missing cost for sale ${sale.id}, line ${li.productId} — costPrice=0',
+              name: 'accounting');
         }
-        cogs += sanitize(li.qtyOrArea) * sanitize(unitCost);
+        final lineCogs = sanitize(li.qtyOrArea) * sanitize(unitCost);
+        final lineRevenue = sanitize(li.qtyOrArea) * sanitize(li.salePrice);
+        if (lineCogs >= lineRevenue && lineRevenue > 0) {
+          developer.log('[COGS] Sale ${sale.id}: line ${li.productId} '
+              'qty=${li.qtyOrArea} salePrice=${li.salePrice} '
+              'costPriceAtSale=${li.costPriceAtSale} '
+              'productCostPrice=${productMap[li.productId]?.costPrice} '
+              'unitCost=$unitCost lineRevenue=$lineRevenue lineCOGS=$lineCogs',
+              name: 'accounting');
+        }
+        cogs += lineCogs;
       }
     }
 
@@ -167,8 +179,11 @@ class AccountingService {
 
     double inventoryValue = 0;
     for (final p in products) {
-      double unitCost = sanitize(p.costPrice);
-      if (unitCost <= 0) unitCost = sanitize(p.unitPrice) * 0.70;
+      final unitCost = sanitize(p.costPrice);
+      if (unitCost <= 0) {
+        developer.log('[COGS] Missing cost for product ${p.id} — costPrice=0, inventory value=0',
+            name: 'accounting');
+      }
       inventoryValue += sanitize(p.currentStock) * unitCost;
     }
 

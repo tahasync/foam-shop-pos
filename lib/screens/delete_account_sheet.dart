@@ -33,7 +33,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
     super.dispose();
   }
 
-  bool get _canDelete => _confirmCtrl.text == 'DELETE' && !_deleting;
+  bool get _canDelete => _confirmCtrl.text.trim().toUpperCase() == 'DELETE' && !_deleting;
 
   Future<void> _delete() async {
     if (!_canDelete) return;

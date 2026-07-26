@@ -76,7 +76,6 @@ class ExportService {
           final prod = productMap[li.productId];
           unitCost = prod?.costPrice ?? 0;
         }
-        if (unitCost <= 0) unitCost = li.salePrice * 0.70;
         cogs += li.qtyOrArea * unitCost;
       }
       rows.add([
@@ -206,7 +205,7 @@ class ExportService {
                   final prod = productMap[li.productId];
                   unitCost = prod?.costPrice ?? 0;
                 }
-                if (unitCost <= 0) unitCost = li.salePrice * 0.70;
+                // fallback removed — Buy Price is required at product creation
                 cogs += li.qtyOrArea * unitCost;
               }
               return [
@@ -347,7 +346,7 @@ class ExportService {
           final prod = productMap[li.productId];
           unitCost = prod?.costPrice ?? 0;
         }
-        if (unitCost <= 0) unitCost = li.salePrice * 0.70;
+        // fallback removed — Buy Price is required at product creation
         cogs += li.qtyOrArea * unitCost;
       }
       totalAmount += s.amount;

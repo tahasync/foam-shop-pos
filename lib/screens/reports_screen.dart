@@ -51,10 +51,12 @@ _PeriodReport _computeReport(
     revenue += sale.amount;
     salesCount++;
     for (final li in sale.lineItems) {
-      final product = productMap[li.productId];
-      if (product != null) {
-        cogs += li.qtyOrArea * product.costPrice;
+      double unitCost = li.costPriceAtSale;
+      if (unitCost <= 0) {
+        final product = productMap[li.productId];
+        unitCost = product?.costPrice ?? 0;
       }
+      cogs += li.qtyOrArea * unitCost;
     }
   }
 

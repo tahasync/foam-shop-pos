@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import '../widgets/torn_receipt_card.dart';
 import '../widgets/save_success_sheet.dart';
+import '../widgets/initial_avatar.dart';
 import '../providers/shop_provider.dart';
 import '../utils/safe_error_handler.dart';
 
@@ -91,13 +92,12 @@ class CustomerKhataScreen extends ConsumerWidget {
                           MaterialPageRoute(builder: (_) => _CustDetail(customer: item.customer))),
                       child: Padding(
                         padding: const EdgeInsets.all(14),
-                        child: Row(children: [
-                          CircleAvatar(
-                            radius: 22,
+                          child: Row(children: [
+                          InitialAvatar(
+                            name: item.customer.name,
+                            size: 44,
                             backgroundColor: item.balance > 0 ? ac.expenseTint : ac.profitTint,
-                            child: Text((item.customer.name.isNotEmpty ? item.customer.name[0] : '?').toUpperCase(),
-                                style: TextStyle(fontWeight: FontWeight.w700,
-                                    color: item.balance > 0 ? ac.expenseFg : ac.profitFg)),
+                            foregroundColor: item.balance > 0 ? ac.expenseFg : ac.profitFg,
                           ),
                           const SizedBox(width: 14),
                           Expanded(child: Column(
@@ -179,10 +179,12 @@ class _CustDetail extends ConsumerWidget {
               padding: EdgeInsets.fromLTRB(16, 8, 16, 100 + bottomPad),
               children: [
                 Row(children: [
-                  Container(width: 38, height: 38,
-                    decoration: BoxDecoration(color: ac.inventoryTint, borderRadius: BorderRadius.circular(12)),
-                    child: Text((customer.name.isNotEmpty ? customer.name[0] : '?').toUpperCase(), textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: ac.inventoryFg))),
+                  InitialAvatar(
+                    name: customer.name,
+                    size: 38,
+                    backgroundColor: ac.inventoryTint,
+                    foregroundColor: ac.inventoryFg,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(customer.name, style: Theme.of(context).textTheme.titleLarge?.copyWith(

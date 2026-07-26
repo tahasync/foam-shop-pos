@@ -274,6 +274,13 @@ class _AddProductDialogState extends State<_AddProductDialog> {
 
   void _submit() {
     if (_nc.text.trim().isEmpty) return;
+    final buyPrice = double.tryParse(_cc.text) ?? 0;
+    if (buyPrice <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Buy Price is required and must be greater than 0')),
+      );
+      return;
+    }
     widget.onSave(Product(
       id: '',
       name: _nc.text.trim(),
@@ -284,7 +291,7 @@ class _AddProductDialogState extends State<_AddProductDialog> {
       density: 0,
       unitType: 'per_sqft',
       unitPrice: 0,
-      costPrice: double.tryParse(_cc.text) ?? 0,
+      costPrice: buyPrice,
       currentStock: double.tryParse(_sc.text) ?? 0,
       lowStockThreshold: double.tryParse(_thc.text) ?? 0,
     ));

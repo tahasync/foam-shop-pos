@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import '../providers/shop_provider.dart';
 import '../utils/debounce.dart';
 import '../widgets/save_success_sheet.dart';
+import '../widgets/initial_avatar.dart';
 import '../utils/safe_error_handler.dart';
 import 'package:flutter/services.dart';
 
@@ -59,10 +60,8 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
     final hasValidPrice = salePrice > 0;
     final isBelowCost = hasValidPrice && salePrice < costPrice;
     final qty = widget.item.quantity;
-    final grey300 = Colors.grey.shade300;
-    final grey600 = Colors.grey.shade600;
 
-    Color borderColor = grey300;
+    Color borderColor = cs.outlineVariant;
     String? flagText;
     Color? flagColor;
 
@@ -78,7 +77,7 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: borderColor, width: isBelowCost || hasValidPrice ? 1.5 : 1),
       ),
@@ -91,7 +90,7 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
                   maxLines: 1, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 2),
               Text(_buildDims(p),
-                  style: TextStyle(fontSize: 13, color: grey600),
+                  style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
             ]),
           ),
@@ -151,7 +150,7 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
           Container(
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFF2F2F2),
+              color: cs.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(999),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -822,10 +821,12 @@ error: (e, _) => Center(
                       return ListTile(
                         selected: selected,
                         selectedTileColor: cs.primaryContainer.withValues(alpha: 0.3),
-                        leading: CircleAvatar(
-                          radius: 16,
-                          child: Text(c.name[0].toUpperCase(),
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                        leading: InitialAvatar(
+                          name: c.name,
+                          size: 32,
+                          backgroundColor: cs.primaryContainer,
+                          foregroundColor: cs.onPrimaryContainer,
+                          fontSize: 12,
                         ),
                         title: Text(c.name, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                         subtitle: c.phone.isNotEmpty

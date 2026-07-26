@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../widgets/save_success_sheet.dart';
 import '../widgets/app_search_bar.dart';
+import '../widgets/initial_avatar.dart';
 import '../providers/shop_provider.dart';
 import '../utils/safe_error_handler.dart';
 
@@ -225,11 +226,11 @@ class _CustomerCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              CircleAvatar(
-                radius: 22,
+              InitialAvatar(
+                name: customer.name,
+                size: 44,
                 backgroundColor: ac.expenseTint,
-                child: Text((customer.name.isNotEmpty ? customer.name[0] : '?').toUpperCase(),
-                    style: TextStyle(fontWeight: FontWeight.w700, color: ac.expenseFg)),
+                foregroundColor: ac.expenseFg,
               ),
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

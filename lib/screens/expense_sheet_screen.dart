@@ -5,6 +5,7 @@ import '../providers/expense_provider.dart';
 import '../providers/firebase_providers.dart';
 import 'package:intl/intl.dart';
 import '../widgets/save_success_sheet.dart';
+import '../widgets/initial_avatar.dart';
 import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/safe_error_handler.dart';
@@ -76,10 +77,12 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
                 final e = filtered[i];
                 return Padding(padding: const EdgeInsets.only(bottom: 8), child: Card(
                   child: ListTile(
-                    leading: Container(width: 40, height: 40,
-                      decoration: BoxDecoration(color: ac.expenseTint, borderRadius: BorderRadius.circular(10)),
-                      child: Text(e.category[0], textAlign: TextAlign.center,
-                          style: TextStyle(fontWeight: FontWeight.w700, color: ac.expenseFg))),
+                    leading: InitialAvatar(
+                      name: e.category,
+                      size: 40,
+                      backgroundColor: ac.expenseTint,
+                      foregroundColor: ac.expenseFg,
+                    ),
                     title: Text('${e.category} — $csym. ${e.amount.toStringAsFixed(0)}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500, color: cs.onSurface)),
                     subtitle: Text(e.description.isNotEmpty

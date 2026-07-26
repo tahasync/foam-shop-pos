@@ -91,8 +91,9 @@ class ShopProfile {
 
   String? get subscriptionLabel {
     if (founderExempt || subscriptionStatus == 'free_forever') return null;
-    if (subscriptionStatus == 'trial' && trialEndsAt != null) {
-      final days = trialEndsAt!.difference(DateTime.now()).inDays;
+    if (subscriptionStatus == 'trial') {
+      final end = trialEndsAt ?? createdAt.add(const Duration(days: 14));
+      final days = end.difference(DateTime.now()).inDays;
       if (days < 0) return null;
       return 'Trial: $days day${days == 1 ? '' : 's'} left';
     }

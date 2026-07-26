@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../firebase_options.dart';
@@ -23,10 +24,12 @@ class AuthService {
     _googleSignIn = GoogleSignIn.instance;
     final clientId = DefaultFirebaseOptions.webClientId;
     if (clientId.isEmpty) {
-      throw AssertionError(
-        'FIREBASE_WEB_CLIENT_ID is not set. '
+      developer.log(
+        '[Auth] FIREBASE_WEB_CLIENT_ID not set — Google Sign-In will fail at use time. '
         'Build with: flutter run --dart-define-from-file=env/firebase_config.json',
+        name: 'auth',
       );
+      return;
     }
     await _googleSignIn!.initialize(serverClientId: clientId);
   }

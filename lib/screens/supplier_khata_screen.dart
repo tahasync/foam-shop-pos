@@ -8,6 +8,7 @@ import '../providers/supplier_payment_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/initial_avatar.dart';
 import '../utils/safe_error_handler.dart';
 
 class SupplierKhataScreen extends ConsumerWidget {
@@ -64,11 +65,11 @@ class SupplierKhataScreen extends ConsumerWidget {
                     onTap: () => Navigator.push(context, MaterialPageRoute(
                         builder: (_) => _SupDetail(supplier: item.supplier))),
                     child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
-                      CircleAvatar(radius: 22,
+                      InitialAvatar(
+                        name: item.supplier.name,
+                        size: 44,
                         backgroundColor: item.balance > 0 ? ac.purchaseTint : ac.profitTint,
-                        child: Text((item.supplier.name.isNotEmpty ? item.supplier.name[0] : '?').toUpperCase(),
-                            style: TextStyle(fontWeight: FontWeight.w700,
-                                color: item.balance > 0 ? ac.purchaseFg : ac.profitFg))),
+                        foregroundColor: item.balance > 0 ? ac.purchaseFg : ac.profitFg),
                       const SizedBox(width: 14),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(item.supplier.name, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),

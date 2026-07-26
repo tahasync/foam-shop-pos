@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../models/product.dart';
+import '../models/sale.dart';
+import '../models/payment.dart';
 import '../providers/product_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/sale_provider.dart';
@@ -26,19 +29,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _tab = 0;
   bool _invLowStockFilter = false;
   String? _invHighlightId;
+  bool _notifiedOnce = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkUpdate());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkNotifications());
   }
 
-  void _checkNotifications() async {
-    final products = ref.read(productsStreamProvider).asData?.value ?? [];
-    final sales = ref.read(salesStreamProvider).asData?.value ?? [];
-    final payments = ref.read(paymentsStreamProvider).asData?.value ?? [];
-    await LocalNotificationService.checkAndNotify(
+  void _checkNotifications(List<Product> products, List<Sale> sales, List<Payment> payments) {
+    LocalNotificationService.checkAndNotify(
       products: products,
       sales: sales,
       payments: payments,
@@ -75,6 +75,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final as = ref.watch(accountingSummaryProvider);
     final lowStockCount = as.asData?.value.lowStockCount ?? 0;
     final khataCount = ref.watch(accountingSummaryProvider).asData?.value.totalCustomerBaqaya ?? 0;
+
+    if (!_notifiedOnce) {
+      final products = ref.read(productsStreamProvider).asData?.value;
+      final sales = ref.read(salesStreamProvider).asData?.value;
+      final payments = ref.read(paymentsStreamProvider).asData?.value;
+      if (products != null && sales != null && payments != null) {
+        _notifiedOnce = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _checkNotifications(products, sales, payments);
+        });
+      }
+    }
 
     final cs = Theme.of(context).colorScheme;
 

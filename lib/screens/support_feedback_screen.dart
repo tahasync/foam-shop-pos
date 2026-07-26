@@ -42,15 +42,32 @@ class _SupportFeedbackScreenState extends ConsumerState<SupportFeedbackScreen> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         return;
       }
+    } else {
+      final uri = Uri(
+        scheme: 'mailto',
+        path: AppConstants.supportEmail,
+        queryParameters: {
+          'subject': 'Feedback: $shopName',
+          'body': fullMsg,
+        },
+      );
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
     }
 
-    final subject = Uri.encodeComponent('Feedback: $shopName');
-    final body = Uri.encodeComponent(fullMsg);
-    final uri = Uri.parse(
-        'mailto:${AppConstants.supportEmail}?subject=$subject&body=$body');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _channel == SupportChannel.email
+              ? 'No email app found. Contact us at ${AppConstants.supportEmail}'
+              : 'No WhatsApp app found. Contact us at ${AppConstants.supportWhatsAppNumber}',
+        ),
+        backgroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    );
   }
 
   @override
