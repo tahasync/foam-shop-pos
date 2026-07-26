@@ -95,23 +95,34 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
-      - name: Generate Changelog from Commits
+      - name: Generate Changelog from CHANGELOG.md or Commits
         if: startsWith(github.ref, 'refs/tags/')
         run: |
+          TAG="${GITHUB_REF_NAME}"
+          # Try to extract from CHANGELOG.md first (curated, user-facing text)
+          if [ -f CHANGELOG.md ]; then
+            SECTION=$(awk -v tag="## $TAG" 'BEGIN{found=0} $0 ~ "^## " && found && !/^## /{exit} $0 ~ "^"tag"$"{found=1;next} found{print}' CHANGELOG.md)
+            if [ -n "$SECTION" ]; then
+              echo "$SECTION" > changelog.txt
+              echo "::notice ::Changelog read from CHANGELOG.md for $TAG"
+              wc -l < changelog.txt
+              exit 0
+            fi
+          fi
+          # Fallback: generate from commit messages between tags
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
             LOG=$(git log "$PREV_TAG"..HEAD --pretty=format:"- %s" --no-merges)
           else
             LOG=$(git log --pretty=format:"- %s" --no-merges)
           fi
-          # Filter noise commits (ci:, chore:, docs:)
           CLEAN=$(echo "$LOG" | grep -viE '^( - )?(ci:|chore:|docs:)' || true)
           if [ -z "$CLEAN" ]; then
             echo "No user-facing changes in this release" > changelog.txt
           else
             echo "$CLEAN" > changelog.txt
           fi
-          echo "::notice ::Changelog generated ($(wc -l < changelog.txt) lines)"
+          echo "::notice ::Changelog generated from commits ($(wc -l < changelog.txt) lines)"
 
       - name: Attach APK to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
