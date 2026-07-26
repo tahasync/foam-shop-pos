@@ -270,4 +270,84 @@ void main() {
       expect(result.cashInHand, 100.0);
     });
   });
+
+  group('Fix 5 — COGS vs Revenue diagnosis', () {
+    test('COGS when costPriceAtSale=0 and product.costPrice=0 is 0 (no estimation)', () {
+      final result = service.compute(
+        sales: [
+          Sale(id: 's_diag', date: DateTime(2026, 7, 26), customerId: 'c1', lineItems: [
+            SaleLineItem(productId: 'p1', qtyOrArea: 10, salePrice: 3600, costPriceAtSale: 0),
+          ], paid: 36000),
+        ],
+        purchases: [],
+        expenses: [],
+        payments: [],
+        supplierPayments: [],
+        products: [
+          Product(id: 'p1', name: 'Test Foam', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
+              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 0,
+              costPrice: 0, currentStock: 100, lowStockThreshold: 5),
+        ],
+        openingBal: null,
+      );
+      // Both costPriceAtSale and product.costPrice are 0 → COGS = 0 (no estimation)
+      expect(result.revenue, 36000.0);
+      expect(result.cogs, 0.0);
+      expect(result.grossProfit, 36000.0);
+    });
+
+    test('COGS when costPriceAtSale equals salePrice (cost price data entry error)', () {
+      // Simulates: user entered selling price into "Buy Price" field
+      final result = service.compute(
+        sales: [
+          Sale(id: 's_data_err', date: DateTime(2026, 7, 26), customerId: 'c1', lineItems: [
+            SaleLineItem(productId: 'p1', qtyOrArea: 10, salePrice: 3600, costPriceAtSale: 3600),
+          ], paid: 36000),
+        ],
+        purchases: [],
+        expenses: [],
+        payments: [],
+        supplierPayments: [],
+        products: [
+          Product(id: 'p1', name: 'Test Foam', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
+              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 100,
+              costPrice: 3600, currentStock: 100, lowStockThreshold: 5),
+        ],
+        openingBal: null,
+      );
+      // costPriceAtSale = 3600 (same as salePrice) → COGS = 10 * 3600 = 36,000
+      // Revenue = 36,000
+      // Gross Profit = 0 (user entered selling price as cost price)
+      expect(result.revenue, 36000.0);
+      expect(result.cogs, 36000.0);
+      expect(result.grossProfit, 0.0);
+    });
+
+    test('COGS with distinct cost price shows correct Gross Profit', () {
+      // Correct scenario: costPrice=200, salePrice=500, qty=10
+      final result = service.compute(
+        sales: [
+          Sale(id: 's_correct', date: DateTime(2026, 7, 26), customerId: 'c1', lineItems: [
+            SaleLineItem(productId: 'p1', qtyOrArea: 10, salePrice: 500, costPriceAtSale: 200),
+          ], paid: 5000),
+        ],
+        purchases: [],
+        expenses: [],
+        payments: [],
+        supplierPayments: [],
+        products: [
+          Product(id: 'p1', name: 'Test Foam', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
+              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 500,
+              costPrice: 200, currentStock: 100, lowStockThreshold: 5),
+        ],
+        openingBal: null,
+      );
+      // Revenue = 10 * 500 = 5,000
+      // COGS = 10 * 200 = 2,000
+      // Gross Profit = 3,000
+      expect(result.revenue, 5000.0);
+      expect(result.cogs, 2000.0);
+      expect(result.grossProfit, 3000.0);
+    });
+  });
 }
