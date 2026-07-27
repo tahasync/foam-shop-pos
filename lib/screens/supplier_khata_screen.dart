@@ -8,6 +8,7 @@ import '../providers/supplier_payment_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/animations.dart';
 import '../widgets/initial_avatar.dart';
 import '../utils/safe_error_handler.dart';
 
@@ -62,8 +63,8 @@ class SupplierKhataScreen extends ConsumerWidget {
                 return Padding(padding: const EdgeInsets.only(bottom: 8), child: Card(
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => _SupDetail(supplier: item.supplier))),
+                    onTap: () => Navigator.push(context, slideUpRoute(
+                        _SupDetail(supplier: item.supplier))),
                     child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
                       InitialAvatar(
                         name: item.supplier.name,

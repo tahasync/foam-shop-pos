@@ -7,6 +7,7 @@ import '../providers/dashboard_provider.dart';
 import '../providers/sale_provider.dart';
 import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/animations.dart';
 import '../widgets/torn_receipt_card.dart';
 import '../widgets/stitched_divider.dart';
 import 'account_settings_screen.dart';
@@ -253,7 +254,7 @@ class _LowStockAlert extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return GestureDetector(
+    return TapScale(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -276,4 +277,4 @@ class _LowStockAlert extends StatelessWidget {
 }
 
 void _push(BuildContext context, Widget screen) =>
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+    Navigator.push(context, slideUpRoute(screen));

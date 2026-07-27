@@ -70,7 +70,7 @@ String formatChangelog(String rawNotes) {
   if (clean.isEmpty) {
     return 'No changelog available for this release.';
   }
-  return clean.length > 300 ? '${clean.substring(0, 300)}...' : clean;
+  return clean;
 }
 
 Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
@@ -80,11 +80,12 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
   await showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-      content: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+    builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // ── Header (fixed) ──
           Container(
             width: 52, height: 52,
             decoration: BoxDecoration(
@@ -115,20 +116,22 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.teal.withValues(alpha: 0.12),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(update.tagName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                  color: AppTheme.teal)),
+                  color: Theme.of(context).colorScheme.primary)),
             ),
           ]),
           const SizedBox(height: 14),
+
+          // ── Scrollable changelog container ──
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text('What\'s New', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700,
@@ -137,6 +140,7 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
               SizedBox(
                 height: 200,
                 child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
                   child: Text(
                     formatChangelog(update.body),
                     style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface, height: 1.6),
@@ -145,32 +149,33 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
               ),
             ]),
           ),
-        ]),
-      ),
-      actions: [
+
+          const SizedBox(height: 16),
+
+          // ── Action buttons (fixed) ──
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: () async {
                 await launchUrl(Uri.parse(AppUpdateConfig.latestReleaseUrl), mode: LaunchMode.externalApplication);
               },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.teal,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(vertical: 13),
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.download_rounded, size: 16),
+              label: const Text('Update Now', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             ),
-            icon: const Icon(Icons.download_rounded, size: 16),
-            label: const Text('Update Now', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
           ),
-        ),
-        SizedBox(
-          width: double.infinity,
-          child: TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Remind me later', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Remind me later', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+            ),
           ),
-        ),
-      ],
+        ]),
+      ),
     ),
   );
 }

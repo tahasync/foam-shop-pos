@@ -8,6 +8,7 @@ import '../providers/payment_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/animations.dart';
 import 'package:intl/intl.dart';
 import '../widgets/torn_receipt_card.dart';
 import '../widgets/save_success_sheet.dart';
@@ -89,7 +90,7 @@ class CustomerKhataScreen extends ConsumerWidget {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
                       onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => _CustDetail(customer: item.customer))),
+                          slideUpRoute(_CustDetail(customer: item.customer))),
                       child: Padding(
                         padding: const EdgeInsets.all(14),
                           child: Row(children: [

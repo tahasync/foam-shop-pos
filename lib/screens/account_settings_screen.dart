@@ -7,6 +7,7 @@ import '../providers/dashboard_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/animations.dart';
 import '../utils/safe_error_handler.dart';
 import '../utils/currency.dart';
 import 'delete_account_sheet.dart';
@@ -77,7 +78,7 @@ class AccountSettingsScreen extends ConsumerWidget {
               subtitle: Text('Low stock & overdue baqaya alerts',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
               trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationSettingsScreen())),
+              onTap: () => Navigator.push(context, slideUpRoute(const NotificationSettingsScreen())),
             ),
           ),
           const SizedBox(height: 12),
@@ -90,7 +91,7 @@ class AccountSettingsScreen extends ConsumerWidget {
               subtitle: Text('Contact support via WhatsApp or Email',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
               trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportFeedbackScreen())),
+              onTap: () => Navigator.push(context, slideUpRoute(const SupportFeedbackScreen())),
             ),
           ),
           const SizedBox(height: 12),
