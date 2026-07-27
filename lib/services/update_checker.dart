@@ -130,13 +130,18 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
               color: Theme.of(context).colorScheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text('What\'s New', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700,
                   letterSpacing: 0.05, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: 7),
-              Text(
-                formatChangelog(update.body),
-                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface, height: 1.6),
+              SizedBox(
+                height: 200,
+                child: SingleChildScrollView(
+                  child: Text(
+                    formatChangelog(update.body),
+                    style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface, height: 1.6),
+                  ),
+                ),
               ),
             ]),
           ),

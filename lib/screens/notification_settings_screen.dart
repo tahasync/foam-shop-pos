@@ -109,27 +109,6 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
             ),
             child: const Text('Save Settings', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline_rounded, size: 14, color: ac.inkFaint),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'On-device notifications only — checked when you open the app. No server, no cost.',
-                    style: TextStyle(fontSize: 11, color: ac.inkFaint, height: 1.4),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.5 — July 2026
+
+- Fixed: Contact Support — Email option now correctly opens installed mail apps (Gmail, Outlook)
+- Fixed: Update Available dialog now scrollable for long changelog content
+- Removed: Redundant "No server, no cost" hint text from Notification Settings
+- Improved: Customer name overflow handling in Khata list
+
 ## v1.0.4 — July 2026
 
 - Fixed: Trial period indicator now shows correctly for new accounts

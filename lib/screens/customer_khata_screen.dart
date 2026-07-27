@@ -103,7 +103,7 @@ class CustomerKhataScreen extends ConsumerWidget {
                           Expanded(child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(item.customer.name,
+                              Text(item.customer.name, maxLines: 1, overflow: TextOverflow.ellipsis,
                                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),
                               if (item.customer.phone.isNotEmpty)
                                 Text(item.customer.phone,
