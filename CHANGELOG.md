@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.6 — July 2026
+
+- Added: Animation system — TapScale micro-interactions on press, smooth slide-up page transitions app-wide
+- Fixed: Update Available dialog now shows full changelog text without truncation, scrollable inside bounded container
+- Fixed: CI workflow updated to Flutter 3.44.8 for build compatibility
+- Improved: Navigation transitions across all screens for a polished, professional feel
+
 ## v1.0.5 — July 2026
 
 - Fixed: Contact Support — Email option now correctly opens installed mail apps (Gmail, Outlook)
