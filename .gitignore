@@ -1,0 +1,75 @@
+# Flutter/Dart build outputs
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+**/doc/api/
+.coverage/
+coverage/
+
+# Android specific leaks
+android/app/local.properties
+android/.gradle/
+android/app/release/
+android/app/debug/
+android/app/profile/
+*.keystore
+*.jks
+key.properties
+
+# iOS specific
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Pods/
+**/ios/.symlinks/
+
+# macOS specific
+**/macos/Pods/
+
+# Web specific
+**/web/favicon.png
+
+# IDE and editor files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.DS_Store
+.atom/
+.history
+.svn/
+.swiftpm/
+
+# Symbolication & obfuscation
+app.*.symbols
+app.*.map.json
+
+# OS files
+*.class
+*.log
+*.pyc
+Thumbs.db
+Desktop.ini
+
+# Environment & secrets
+.env
+.env.local
+*.env
+service_account.json
+google-services.json
+GoogleService-Info.plist
+env/
+!env/.gitkeep
+
+# Temp
+migrate_working_dir/
+.build/
+.buildlog/

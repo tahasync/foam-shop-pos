@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Asif Foam Center — UI Mockup v4 (Search, Save Modal, Update Dialog)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#0F6B64; --teal-dark:#0B4E49; --amber:#E8A33D;
+    --terracotta:#B54A38; --sage:#3B8264; --purple:#6C4FA0;
+    --bg:#F6F4F0; --surface:#FFFFFF; --surface-2:#FBFAF8;
+    --border: rgba(15,20,20,0.10);
+    --ink:#1B1F1E; --ink-soft:#5B6461; --ink-faint:#8A928F;
+    --shadow: 0 8px 24px rgba(20,25,24,0.08), 0 1px 2px rgba(20,25,24,0.06);
+    --tint-sales-bg:#EAF3F1; --tint-sales-fg:#0F6B64;
+    --tint-profit-bg:#EAF3EC; --tint-profit-fg:#2E6B4E;
+    --tint-inventory-bg:#F1EDF9; --tint-inventory-fg:#6C4FA0;
+    --tint-purchase-bg:#FDF1E4; --tint-purchase-fg:#B4712A;
+  }
+  [data-theme="dark"]{
+    --bg:#12171A; --surface:#1A2124; --surface-2:#1F2729;
+    --border: rgba(255,255,255,0.10);
+    --ink:#F5F7F6; --ink-soft:#B7C0BD; --ink-faint:#7C8582;
+    --shadow: 0 10px 28px rgba(0,0,0,0.5);
+    --tint-sales-bg:#16302C; --tint-sales-fg:#6ED8C7;
+    --tint-profit-bg:#17301F; --tint-profit-fg:#7DE0A3;
+    --tint-inventory-bg:#241D33; --tint-inventory-fg:#C7ADF5;
+    --tint-purchase-bg:#332512; --tint-purchase-fg:#F0B876;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; padding:20px 24px 90px; background:var(--bg); font-family:'Inter',sans-serif; color:var(--ink); }
+  .toolbar{ display:flex; align-items:flex-end; justify-content:space-between; max-width:1300px; margin:0 auto 24px; }
+  h1.page-title{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:24px; margin:0 0 4px; letter-spacing:-0.02em;}
+  p.page-sub{ color:var(--ink-soft); margin:0; font-size:13px;}
+  .toggle{ display:flex; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:4px; box-shadow:var(--shadow); gap:2px;}
+  .toggle button{ border:none; background:transparent; padding:8px 16px; border-radius:999px; font-weight:600; font-size:13px; cursor:pointer; color:var(--ink-soft);}
+  .toggle button.active{ background:var(--teal); color:#fff;}
+
+  .rail{ max-width:1300px; margin:0 auto; display:flex; gap:26px; overflow-x:auto; padding-bottom:20px;}
+  .frame-wrap{ flex:0 0 auto; text-align:center; }
+  .frame-label{ font-family:'Plus Jakarta Sans'; font-weight:700; font-size:12.5px; letter-spacing:.06em; margin-bottom:10px; text-transform:uppercase; color:var(--ink-faint);}
+  .phone{ width:290px; height:630px; background:var(--surface-2); border-radius:36px; border:8px solid var(--surface);
+    box-shadow: 0 22px 55px rgba(15,20,20,0.18), var(--shadow); overflow:hidden; position:relative; display:flex; flex-direction:column;}
+  .statusbar{ height:26px; display:flex; align-items:center; justify-content:space-between; padding:0 17px; font-size:10.5px; color:var(--ink-soft); font-weight:600;}
+  .screen{ flex:1; overflow-y:auto; padding:10px 15px 15px; position:relative;}
+  .screen::-webkit-scrollbar{ width:0; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; padding:8px 2px 12px;}
+  .topbar .t{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:16px;}
+
+  /* ENHANCED SEARCH BAR */
+  .search-label{ font-size:11px; font-weight:700; color:var(--ink-soft); margin-bottom:7px;}
+  .search-wrap{ position:relative; margin-bottom:14px;}
+  .search-input{
+    display:flex; align-items:center; gap:10px; background:var(--surface);
+    border:1.5px solid var(--teal); border-radius:14px; padding:12px 14px;
+    box-shadow: 0 0 0 4px rgba(15,107,100,0.12), var(--shadow);
+  }
+  .search-input .sicon{ font-size:15px; color:var(--teal);}
+  .search-input input-fake{ flex:1; font-size:13px; color:var(--ink); font-weight:500;}
+  .search-input .clearx{ width:18px; height:18px; border-radius:50%; background:var(--tint-sales-bg); color:var(--tint-sales-fg);
+    display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;}
+  .search-results{
+    margin-top:8px; background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    box-shadow:var(--shadow); overflow:hidden;
+  }
+  .sres-item{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--border);}
+  .sres-item:last-child{ border-bottom:none; }
+  .sres-thumb{ width:34px; height:34px; border-radius:9px; background:var(--tint-inventory-bg); color:var(--tint-inventory-fg);
+    display:flex; align-items:center; justify-content:center; font-size:15px; flex:0 0 auto;}
+  .sres-info{ flex:1; }
+  .sres-info .n{ font-size:12px; font-weight:700;}
+  .sres-info .n mark{ background:var(--tint-sales-bg); color:var(--tint-sales-fg); border-radius:3px; padding:0 2px; font-weight:800;}
+  .sres-info .s{ font-size:10px; color:var(--ink-soft); margin-top:1px;}
+  .sres-price{ font-size:12px; font-weight:800; color:var(--tint-sales-fg);}
+  .sres-add{ width:24px;height:24px;border-radius:8px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;}
+  .recent-chip-row{ display:flex; gap:7px; margin-top:10px; flex-wrap:wrap;}
+  .recent-chip{ font-size:10.5px; font-weight:700; padding:5px 11px; border-radius:999px; background:var(--tint-inventory-bg); color:var(--tint-inventory-fg);}
+
+  /* SAVE SALE SUCCESS MODAL */
+  .overlay{ position:absolute; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:flex-end; z-index:5;}
+  .modal-sheet{
+    width:100%; background:var(--surface); border-radius:24px 24px 0 0; padding:22px 20px 20px;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+  }
+  .success-icon{ width:56px; height:56px; border-radius:50%; background:var(--tint-profit-bg); color:var(--tint-profit-fg);
+    display:flex; align-items:center; justify-content:center; font-size:28px; margin:0 auto 12px;}
+  .modal-title{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:19px; text-align:center; margin-bottom:2px;}
+  .modal-sub{ font-size:12px; color:var(--ink-soft); text-align:center; margin-bottom:16px;}
+  .receipt-card{ background:var(--surface-2); border:1px solid var(--border); border-radius:16px; padding:14px; margin-bottom:16px;}
+  .receipt-row{ display:flex; justify-content:space-between; font-size:12px; padding:5px 0;}
+  .receipt-row .lbl{ color:var(--ink-soft);}
+  .receipt-row .val{ font-weight:700;}
+  .receipt-div{ height:1px; background:var(--border); margin:8px 0;}
+  .receipt-row.total .lbl{ font-weight:800; color:var(--ink); font-size:13px;}
+  .receipt-row.total .val{ font-size:15px; color:var(--tint-sales-fg); font-weight:800;}
+  .modal-btns{ display:flex; gap:10px;}
+  .btn-secondary{ flex:1; background:var(--tint-inventory-bg); color:var(--tint-inventory-fg); border:none; border-radius:12px; padding:13px; font-weight:700; font-size:12.5px;}
+  .btn-primary2{ flex:1; background:var(--teal); color:#fff; border:none; border-radius:12px; padding:13px; font-weight:700; font-size:12.5px;}
+
+  /* UPDATE AVAILABLE DIALOG */
+  .overlay-center{ position:absolute; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; z-index:5; padding:20px;}
+  .update-card{ width:100%; background:var(--surface); border-radius:22px; padding:22px 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.35);}
+  .update-icon{ width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg,var(--teal),var(--teal-dark)); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:24px; margin:0 auto 12px;}
+  .update-title{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:17px; text-align:center;}
+  .version-row{ display:flex; align-items:center; justify-content:center; gap:10px; margin:10px 0 14px; font-size:12px; font-weight:700;}
+  .vchip{ background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:4px 12px; color:var(--ink-soft);}
+  .vchip.new{ background:var(--tint-sales-bg); color:var(--tint-sales-fg); border-color:transparent;}
+  .changelog{ background:var(--surface-2); border-radius:14px; padding:12px 14px; margin-bottom:16px;}
+  .changelog .h{ font-size:10.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; margin-bottom:7px;}
+  .changelog ul{ margin:0; padding-left:16px; font-size:12px; color:var(--ink); line-height:1.6;}
+  .update-btns{ display:flex; flex-direction:column; gap:8px;}
+  .btn-update{ background:var(--teal); color:#fff; border:none; border-radius:12px; padding:13px; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px;}
+  .btn-later{ background:transparent; color:var(--ink-soft); border:none; padding:10px; font-weight:600; font-size:12px;}
+
+  .bg-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:12px; margin-bottom:10px; box-shadow:var(--shadow); opacity:.5;}
+  .bg-card .n{ font-weight:700; font-size:13px;}
+  .bg-card .p{ font-size:11px; color:var(--ink-soft); margin-top:3px;}
+
+  .navbar{ display:flex; justify-content:space-around; padding:9px 4px 12px; border-top:1px solid var(--border); background:var(--surface);}
+  .navbar .item{ display:flex; flex-direction:column; align-items:center; gap:2px; font-size:9px; color:var(--ink-faint); font-weight:700;}
+  .navbar .item.active{ color:var(--teal);}
+  .navbar .ic{ font-size:15px;}
+
+  .note{ max-width:1300px; margin:28px auto 0; padding:18px 20px; background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; box-shadow:var(--shadow); font-size:13px; color:var(--ink-soft); line-height:1.6;}
+  .note b{ color:var(--ink);}
+</style>
+</head>
+<body data-theme="light">
+
+<div class="toolbar">
+  <div>
+    <h1 class="page-title">Asif Foam Center</h1>
+    <p class="page-sub">UI mockup v4 — enhanced search, save-sale modal, update dialog</p>
+  </div>
+  <div class="toggle">
+    <button onclick="setTheme('light')" id="btn-light" class="active">☀ Light</button>
+    <button onclick="setTheme('dark')" id="btn-dark">☾ Dark</button>
+  </div>
+</div>
+
+<div class="rail">
+
+  <!-- ENHANCED SEARCH -->
+  <div class="frame-wrap">
+    <div class="frame-label">Enhanced Search — Sales Entry</div>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+      <div class="screen">
+        <div class="topbar"><div class="t">New Sale</div></div>
+        <div class="search-label">Select Product</div>
+        <div class="search-wrap">
+          <div class="search-input">
+            <span class="sicon">🔍</span>
+            <span input-fake style="flex:1;font-size:13px;color:var(--ink);font-weight:500;">com</span>
+            <span class="clearx">✕</span>
+          </div>
+          <div class="search-results">
+            <div class="sres-item">
+              <div class="sres-thumb">🟪</div>
+              <div class="sres-info"><div class="n"><mark>Com</mark>fort</div><div class="s">78in × 72in · 5in · 7 in stock</div></div>
+              <div class="sres-price">Rs 15,000</div>
+              <div class="sres-add">+</div>
+            </div>
+            <div class="sres-item">
+              <div class="sres-thumb">🟪</div>
+              <div class="sres-info"><div class="n"><mark>Com</mark>fort XL</div><div class="s">84in × 78in · 6in · 3 in stock</div></div>
+              <div class="sres-price">Rs 19,500</div>
+              <div class="sres-add">+</div>
+            </div>
+          </div>
+        </div>
+        <div class="recent-chip-row">
+          <div class="recent-chip">🕑 luxury</div>
+          <div class="recent-chip">🕑 power plus</div>
+          <div class="recent-chip">🕑 comfort</div>
+        </div>
+      </div>
+      <div class="navbar">
+        <div class="item"><span class="ic">⊞</span>Dashboard</div>
+        <div class="item active"><span class="ic">🏷</span>Sales</div>
+        <div class="item"><span class="ic">📦</span>Inventory</div>
+        <div class="item"><span class="ic">👤</span>Khata</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAVE SALE MODAL -->
+  <div class="frame-wrap">
+    <div class="frame-label">Save Sale — Success Modal</div>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+      <div class="screen">
+        <div class="topbar"><div class="t">New Sale</div></div>
+        <div class="bg-card"><div class="n">power plus</div><div class="p">Rs 1,250 × 1 = Rs 1,250</div></div>
+        <div class="bg-card"><div class="n">comfort</div><div class="p">Rs 18,000 × 1 = Rs 18,000</div></div>
+
+        <div class="overlay">
+          <div class="modal-sheet">
+            <div class="success-icon">✓</div>
+            <div class="modal-title">Sale Saved</div>
+            <div class="modal-sub">Walk-in Customer · 2 items</div>
+            <div class="receipt-card">
+              <div class="receipt-row"><span class="lbl">power plus × 1</span><span class="val">Rs 1,250</span></div>
+              <div class="receipt-row"><span class="lbl">comfort × 1</span><span class="val">Rs 18,000</span></div>
+              <div class="receipt-div"></div>
+              <div class="receipt-row"><span class="lbl">Paid</span><span class="val">Rs 19,250</span></div>
+              <div class="receipt-row total"><span class="lbl">Total</span><span class="val">Rs 19,250</span></div>
+            </div>
+            <div class="modal-btns">
+              <button class="btn-secondary">🖨 Print Receipt</button>
+              <button class="btn-primary2">+ New Sale</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="navbar">
+        <div class="item"><span class="ic">⊞</span>Dashboard</div>
+        <div class="item active"><span class="ic">🏷</span>Sales</div>
+        <div class="item"><span class="ic">📦</span>Inventory</div>
+        <div class="item"><span class="ic">👤</span>Khata</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPDATE AVAILABLE -->
+  <div class="frame-wrap">
+    <div class="frame-label">Update Available Dialog</div>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+      <div class="screen">
+        <div class="topbar"><div class="t">Dashboard</div></div>
+        <div class="bg-card"><div class="n">Cash in Hand</div><div class="p">Rs 21,000</div></div>
+        <div class="bg-card"><div class="n">Revenue</div><div class="p">Rs 81,000</div></div>
+
+        <div class="overlay-center">
+          <div class="update-card">
+            <div class="update-icon">⬆</div>
+            <div class="update-title">Update Available</div>
+            <div class="version-row">
+              <span class="vchip">v1.0.2</span>
+              <span style="color:var(--ink-faint)">→</span>
+              <span class="vchip new">v1.0.3</span>
+            </div>
+            <div class="changelog">
+              <div class="h">What's New</div>
+              <ul>
+                <li>Fixed Baqaya calculation on Dashboard</li>
+                <li>Improved search &amp; save sale flow</li>
+                <li>General stability fixes</li>
+              </ul>
+            </div>
+            <div class="update-btns">
+              <button class="btn-update">⬇ Update Now</button>
+              <button class="btn-later">Remind me later</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="navbar">
+        <div class="item active"><span class="ic">⊞</span>Dashboard</div>
+        <div class="item"><span class="ic">🏷</span>Sales</div>
+        <div class="item"><span class="ic">📦</span>Inventory</div>
+        <div class="item"><span class="ic">👤</span>Khata</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="note">
+  <b>Design notes:</b> Search bar uses a focused teal border + soft glow ring when active, with a live-filtered dropdown showing matched text in bold/tinted (<mark>highlight</mark>) plus a compact "+" add button per result, and recent-item chips below for quick re-add. The Save Sale success modal replaces any raw text/debug output with a bottom-sheet showing a checkmark, itemized recap, and two clear actions. The Update dialog is a center modal (not bottom sheet, since it's an unprompted system-level interrupt) showing current → new version and a short changelog, with "Update Now" opening the GitHub release page and "Remind me later" dismissing without blocking the app.
+</div>
+
+<script>
+  function setTheme(mode){
+    document.body.setAttribute('data-theme', mode);
+    document.getElementById('btn-light').classList.toggle('active', mode==='light');
+    document.getElementById('btn-dark').classList.toggle('active', mode==='dark');
+  }
+</script>
+</body>
+</html>

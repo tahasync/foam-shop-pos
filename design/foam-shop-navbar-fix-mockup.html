@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Asif Foam Center — Floating Nav Bar Fix (Correct vs Broken)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#0F6B64; --teal-dark:#0B4E49; --amber:#E8A33D;
+    --terracotta:#B54A38; --sage:#3B8264; --purple:#6C4FA0;
+    --bg:#F6F4F0; --surface:#FFFFFF; --surface-2:#FBFAF8;
+    --border: rgba(15,20,20,0.10);
+    --ink:#1B1F1E; --ink-soft:#5B6461; --ink-faint:#8A928F;
+    --shadow: 0 8px 24px rgba(20,25,24,0.08), 0 1px 2px rgba(20,25,24,0.06);
+    --tint-sales-bg:#EAF3F1; --tint-sales-fg:#0F6B64;
+    --tint-profit-bg:#EAF3EC; --tint-profit-fg:#2E6B4E;
+    --tint-inventory-bg:#F1EDF9; --tint-inventory-fg:#6C4FA0;
+  }
+  [data-theme="dark"]{
+    --bg:#12171A; --surface:#1A2124; --surface-2:#1F2729;
+    --border: rgba(255,255,255,0.10);
+    --ink:#F5F7F6; --ink-soft:#B7C0BD; --ink-faint:#7C8582;
+    --shadow: 0 10px 28px rgba(0,0,0,0.5);
+    --tint-sales-bg:#16302C; --tint-sales-fg:#6ED8C7;
+    --tint-profit-bg:#17301F; --tint-profit-fg:#7DE0A3;
+    --tint-inventory-bg:#241D33; --tint-inventory-fg:#C7ADF5;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; padding:20px 24px 90px; background:var(--bg); font-family:'Inter',sans-serif; color:var(--ink); }
+  .toolbar{ display:flex; align-items:flex-end; justify-content:space-between; max-width:1300px; margin:0 auto 24px; }
+  h1.page-title{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:24px; margin:0 0 4px; letter-spacing:-0.02em;}
+  p.page-sub{ color:var(--ink-soft); margin:0; font-size:13px;}
+  .toggle{ display:flex; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:4px; box-shadow:var(--shadow); gap:2px;}
+  .toggle button{ border:none; background:transparent; padding:8px 16px; border-radius:999px; font-weight:600; font-size:13px; cursor:pointer; color:var(--ink-soft);}
+  .toggle button.active{ background:var(--teal); color:#fff;}
+
+  .rail{ max-width:1300px; margin:0 auto; display:flex; gap:26px; overflow-x:auto; padding-bottom:20px;}
+  .frame-wrap{ flex:0 0 auto; text-align:center; }
+  .frame-label{ font-family:'Plus Jakarta Sans'; font-weight:700; font-size:12.5px; letter-spacing:.06em; margin-bottom:10px; text-transform:uppercase; }
+  .frame-label.bad{ color:var(--terracotta); }
+  .frame-label.good{ color:var(--sage); }
+  .phone{ width:290px; height:560px; background:var(--surface-2); border-radius:36px; border:8px solid var(--surface);
+    box-shadow: 0 22px 55px rgba(15,20,20,0.18), var(--shadow); overflow:hidden; position:relative; display:flex; flex-direction:column;}
+  .statusbar{ height:26px; display:flex; align-items:center; justify-content:space-between; padding:0 17px; font-size:10.5px; color:var(--ink-soft); font-weight:600; flex:0 0 auto;}
+  .screen{ flex:1; position:relative; overflow:hidden; padding:10px 15px 0;}
+
+  .content-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:12px; margin-bottom:10px; box-shadow:var(--shadow);}
+  .content-card .n{ font-weight:700; font-size:13px;}
+  .content-card .p{ font-size:11px; color:var(--ink-soft); margin-top:3px;}
+
+  /* BROKEN: solid rectangle slot behind the pill */
+  .navzone-broken{ position:absolute; left:0; right:0; bottom:0; height:92px; background:var(--surface); border-top:1px solid var(--border);}
+  .navzone-broken::after{ content:"solid background block"; position:absolute; top:6px; left:50%; transform:translateX(-50%);
+    font-size:9px; font-weight:700; color:var(--terracotta); text-transform:uppercase; letter-spacing:.04em;}
+
+  /* CORRECT: nothing behind the pill except the screen itself */
+  .navzone-correct{ position:absolute; left:0; right:0; bottom:0; height:92px; pointer-events:none;}
+
+  .pill{ position:absolute; left:14px; right:14px; bottom:14px; background:var(--surface); border:1px solid var(--border);
+    border-radius:24px; box-shadow:var(--shadow); display:flex; justify-content:space-around; padding:10px 4px; pointer-events:auto;}
+  .pill .item{ display:flex; flex-direction:column; align-items:center; gap:2px; font-size:9px; color:var(--ink-faint); font-weight:700;}
+  .pill .item.active{ color:var(--teal);}
+  .pill .ic{ font-size:15px;}
+
+  .note{ max-width:1300px; margin:28px auto 0; padding:18px 20px; background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; box-shadow:var(--shadow); font-size:13px; color:var(--ink-soft); line-height:1.6;}
+  .note b{ color:var(--ink);}
+  .note code{ background:var(--surface-2); padding:2px 6px; border-radius:6px; font-size:12px; color:var(--terracotta);}
+</style>
+</head>
+<body data-theme="light">
+<div class="toolbar">
+  <div>
+    <h1 class="page-title">Floating nav bar — correct vs broken</h1>
+    <p class="page-sub">Visual reference for the Scaffold/theme fix</p>
+  </div>
+  <div class="toggle">
+    <button id="btn-light" class="active" onclick="setTheme('light')">Light</button>
+    <button id="btn-dark" onclick="setTheme('dark')">Dark</button>
+  </div>
+</div>
+
+<div class="rail">
+
+  <div class="frame-wrap">
+    <div class="frame-label bad">Broken — current behavior</div>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+      <div class="screen">
+        <div class="content-card"><div class="n">Net Profit</div><div class="p">Rs -20,250</div></div>
+        <div class="content-card"><div class="n">Inventory Value</div><div class="p">Rs 381,500</div></div>
+        <div class="navzone-broken"></div>
+        <div class="pill">
+          <div class="item active"><span class="ic">⊞</span>Dashboard</div>
+          <div class="item"><span class="ic">🏷</span>Sales</div>
+          <div class="item"><span class="ic">📦</span>Inventory</div>
+          <div class="item"><span class="ic">👤</span>Khata</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-wrap">
+    <div class="frame-label good">Correct — target behavior</div>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+      <div class="screen">
+        <div class="content-card"><div class="n">Net Profit</div><div class="p">Rs -20,250</div></div>
+        <div class="content-card"><div class="n">Inventory Value</div><div class="p">Rs 381,500</div></div>
+        <div class="navzone-correct">
+          <div class="pill">
+            <div class="item active"><span class="ic">⊞</span>Dashboard</div>
+            <div class="item"><span class="ic">🏷</span>Sales</div>
+            <div class="item"><span class="ic">📦</span>Inventory</div>
+            <div class="item"><span class="ic">👤</span>Khata</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="note">
+  <b>Design notes:</b> In the broken version, the bottom 92px of the screen is a separate opaque surface (<code>--surface</code> block with a top border) that the pill merely sits on top of — this is what <code>Scaffold.bottomNavigationBar</code> paints by default, and what <code>bottomNavigationBarTheme</code> re-introduces even after removing an explicit <code>Container</code> color. In the correct version, that entire zone is transparent (<code>pointer-events:none</code> so it doesn't block taps on content behind it) and only the pill itself — a rounded card with its own background, border, and shadow — is visible. The scrollable content should be allowed to render behind the pill's transparent zone (<code>extendBody: true</code>), with enough bottom padding on the scroll view so real content never sits under the pill itself.
+</div>
+
+<script>
+  function setTheme(mode){
+    document.body.setAttribute('data-theme', mode);
+    document.getElementById('btn-light').classList.toggle('active', mode==='light');
+    document.getElementById('btn-dark').classList.toggle('active', mode==='dark');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Asif Foam Center — Digital Register — UI Mockup v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#0F6B64;
+    --teal-dark:#0A4640;
+    --teal-tint:#E9F2F1;
+    --amber:#E8A33D;      /* single reserved accent — CTAs + one alert state only */
+    --terracotta:#B54A38;
+    --sage:#3B8264;
+
+    --bg:#F5F2EA;
+    --surface:#FFFFFF;
+    --surface-2:#FAF8F3;
+    --border: rgba(20,24,22,0.09);
+    --thread: rgba(20,24,22,0.16);   /* stitch-dash colour */
+    --ink:#171C1B;
+    --ink-soft:#5C6663;
+    --ink-faint:#8C948F;
+    --shadow-ambient: 0 10px 26px rgba(20,25,24,0.07);
+    --shadow-key: 0 1px 2px rgba(20,25,24,0.06);
+    --bevel-hi: inset 0 1px 0 rgba(255,255,255,0.6);
+
+    --tint-sales-bg:#E9F2F1; --tint-sales-fg:#0F6B64;
+    --tint-purchase-bg:#FBF0E1; --tint-purchase-fg:#AD6A26;
+    --tint-expense-bg:#FAEAE7; --tint-expense-fg:#B54A38;
+    --tint-profit-bg:#E9F3EC; --tint-profit-fg:#2E6B4E;
+    --tint-inventory-bg:#EFEAF8; --tint-inventory-fg:#6C4FA0;
+  }
+  [data-theme="dark"]{
+    --bg:#111616;
+    --surface:#1A2120;
+    --surface-2:#1F2726;
+    --border: rgba(255,255,255,0.09);
+    --thread: rgba(255,255,255,0.16);
+    --teal-tint:#16302C;
+    --ink:#F6F8F7;
+    --ink-soft:#B6C0BC;
+    --ink-faint:#7C8582;
+    --shadow-ambient: 0 12px 30px rgba(0,0,0,0.45);
+    --shadow-key: 0 1px 2px rgba(0,0,0,0.3);
+    --bevel-hi: inset 0 1px 0 rgba(255,255,255,0.04);
+
+    --tint-sales-bg:#16302C; --tint-sales-fg:#6ED8C7;
+    --tint-purchase-bg:#31240F; --tint-purchase-fg:#F0B876;
+    --tint-expense-bg:#301C17; --tint-expense-fg:#F09A80;
+    --tint-profit-bg:#16301F; --tint-profit-fg:#7DE0A3;
+    --tint-inventory-bg:#231C31; --tint-inventory-fg:#C7ADF5;
+  }
+
+  *{box-sizing:border-box; -webkit-font-smoothing:antialiased;}
+  body{
+    margin:0; padding:48px 24px 110px;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(15,107,100,0.07), transparent 45%),
+      var(--bg);
+    font-family:'Inter',sans-serif; color:var(--ink);
+    transition: background .3s ease;
+  }
+  svg.ic{ width:1em; height:1em; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; display:block; }
+
+  h1.page-title{ font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:28px; letter-spacing:-0.02em; margin:0 0 6px; }
+  p.page-sub{ color:var(--ink-soft); margin:0 0 14px; font-size:14px; max-width:560px; line-height:1.5; }
+
+  .toolbar{ display:flex; align-items:flex-end; justify-content:space-between; max-width:1360px; margin:0 auto 34px; gap:24px; flex-wrap:wrap; }
+  .toggle{ display:flex; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:4px; box-shadow:var(--shadow-ambient); gap:2px; }
+  .toggle button{ border:none; background:transparent; padding:8px 16px; border-radius:999px; font-family:'Inter'; font-weight:600; font-size:13px; cursor:pointer; color:var(--ink-soft); display:flex; align-items:center; gap:6px; }
+  .toggle button.active{ background:var(--teal); color:#fff; }
+  .toggle button svg{ width:14px; height:14px; }
+
+  .rail{ max-width:1360px; margin:0 auto; display:flex; gap:30px; overflow-x:auto; padding:6px 4px 24px; }
+  .frame-wrap{ flex:0 0 auto; text-align:center; }
+  .frame-label{ font-family:'Plus Jakarta Sans'; font-weight:700; font-size:12.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.09em; margin-bottom:12px; }
+
+  .phone{
+    width:300px; height:650px; border-radius:40px; border:8px solid var(--surface);
+    box-shadow: 0 26px 64px rgba(15,20,20,0.20), var(--shadow-ambient);
+    overflow:hidden; position:relative; display:flex; flex-direction:column;
+    background:
+      repeating-linear-gradient(45deg, rgba(20,24,22,0.012) 0 1px, transparent 1px 7px),
+      repeating-linear-gradient(-45deg, rgba(20,24,22,0.012) 0 1px, transparent 1px 7px),
+      var(--surface-2);
+  }
+  .statusbar{ height:30px; display:flex; align-items:center; justify-content:space-between; padding:0 20px; font-size:11px; color:var(--ink-soft); font-weight:700; flex:0 0 auto; }
+  .screen{ flex:1; overflow-y:auto; padding: 2px 16px 90px; }
+  .screen::-webkit-scrollbar{ width:0; }
+
+  /* ---- Header / greet ---- */
+  .greet{ display:flex; align-items:center; justify-content:space-between; padding:8px 2px 16px; }
+  .greet .shop{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:18px; letter-spacing:-0.01em; }
+  .greet .date{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+  .avatar-btn{ width:34px; height:34px; border-radius:11px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-key); display:flex; align-items:center; justify-content:center; color:var(--ink-soft); flex:0 0 auto; }
+  .sync-pill{ display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:700; background:var(--tint-sales-bg); color:var(--tint-sales-fg); padding:4px 10px 4px 8px; border-radius:999px; margin-top:6px; }
+  .sync-dot{ width:6px; height:6px; border-radius:50%; background:var(--sage); box-shadow:0 0 0 3px rgba(59,130,100,0.18); }
+
+  /* ---- Signature: torn-receipt money card ----
+     v3.1 fix: the previous version used a CSS clip-path zigzag directly on
+     the content box, which clipped/overlapped the stat row underneath it —
+     that's the broken green-bar render you saw. This version draws the
+     torn edge as a separate, non-overlapping strip below the content, and
+     replaces the stretched 1px divider divs with border-left rules that
+     can't stretch or mis-render. */
+  .slip{
+    position:relative; margin:2px 0 20px;
+    box-shadow: 0 16px 30px rgba(15,107,100,0.30);
+    border-radius:20px 20px 4px 4px; overflow:hidden;
+  }
+  .slip .body{
+    position:relative;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    padding:18px 18px 16px; color:#fff;
+  }
+  .slip .tear{
+    height:11px;
+    background:
+      linear-gradient(-45deg, transparent 7px, var(--surface-2) 7px) 0 0/14px 14px repeat-x,
+      linear-gradient(45deg, transparent 7px, var(--surface-2) 7px) 0 0/14px 14px repeat-x;
+  }
+  .slip .stub{
+    background:var(--surface-2); padding:8px 18px 10px; border-radius:0 0 14px 14px;
+    display:flex; justify-content:space-between; align-items:center; font-size:9.5px; color:var(--ink-faint); font-weight:700; letter-spacing:.03em;
+  }
+  .slip .stub b{ color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+  .slip .label{ font-size:11px; opacity:.92; font-weight:700; text-transform:uppercase; letter-spacing:.07em; display:flex; align-items:center; gap:6px; }
+  .slip .amount{ font-family:'Plus Jakarta Sans'; font-size:32px; font-weight:800; margin:5px 0 14px; font-variant-numeric:tabular-nums; letter-spacing:-0.01em; }
+  .slip .row{ display:flex; border-top:1px dashed rgba(255,255,255,0.3); padding-top:12px; }
+  .slip .row div{ font-size:10.5px; opacity:.85; flex:1; padding-left:14px; border-left:1px dashed rgba(255,255,255,0.3); }
+  .slip .row div:first-child{ padding-left:0; border-left:none; }
+  .slip .row b{ display:block; font-size:14px; font-variant-numeric:tabular-nums; margin-top:2px; font-weight:800; }
+
+  .stitch{ border:none; border-top:2px dashed var(--thread); margin:18px 0; height:0; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;}
+  .stat-card{
+    background:var(--surface); border-radius:16px; padding:14px; border:1px solid var(--border);
+    box-shadow:var(--shadow-ambient), var(--bevel-hi);
+  }
+  .stat-card .chip{ width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; margin-bottom:10px; }
+  .stat-card .title{ font-size:11px; color:var(--ink-soft); font-weight:700; }
+  .stat-card .value{ font-family:'Plus Jakarta Sans'; font-size:18px; font-weight:800; margin-top:3px; font-variant-numeric:tabular-nums; }
+  .stat-card .sub{ font-size:9.5px; color:var(--ink-faint); margin-top:3px;}
+  .sales-c .chip{ background:var(--tint-sales-bg); color:var(--tint-sales-fg);}
+  .purchase-c .chip{ background:var(--tint-purchase-bg); color:var(--tint-purchase-fg);}
+  .expense-c .chip{ background:var(--tint-expense-bg); color:var(--tint-expense-fg);}
+  .profit-c .chip{ background:var(--tint-profit-bg); color:var(--tint-profit-fg);}
+  .inventory-c .chip{ background:var(--tint-inventory-bg); color:var(--tint-inventory-fg);}
+
+  .alert-card{ background:var(--tint-purchase-bg); border-radius:16px; padding:13px 14px; margin-top:2px; display:flex; align-items:center; gap:11px; border:1px solid transparent; }
+  .alert-card .chip2{ width:32px; height:32px; border-radius:10px; background:rgba(255,255,255,0.6); display:flex; align-items:center; justify-content:center; font-size:15px; flex:0 0 auto; color:var(--amber); }
+  [data-theme="dark"] .alert-card .chip2{ background: rgba(255,255,255,0.08); }
+  .alert-card .t1{ font-size:12.5px; font-weight:700; color:var(--tint-purchase-fg); }
+  .alert-card .t2{ font-size:10.5px; color:var(--ink-soft); margin-top:1px;}
+  .alert-card .go{ margin-left:auto; color:var(--ink-faint); }
+
+  /* ---- Nav: stitched floating pill ---- */
+  .navbar{ position:absolute; left:14px; right:14px; bottom:14px; display:flex; justify-content:space-around; align-items:center; padding:8px; border-radius:22px; background:var(--surface); border:1px solid var(--border); box-shadow:0 12px 26px rgba(15,20,20,0.18); }
+  .navbar .item{ display:flex; flex-direction:column; align-items:center; gap:3px; font-size:9px; color:var(--ink-faint); font-weight:700; padding:7px 12px; border-radius:14px; position:relative; }
+  .navbar .item svg{ width:18px; height:18px; }
+  .navbar .item.active{ color:var(--teal); background:var(--tint-sales-bg); }
+  [data-theme="dark"] .navbar .item.active{ color:var(--tint-sales-fg); }
+  .navbar .item.active::after{ content:""; position:absolute; top:2px; right:10px; width:5px; height:5px; border-radius:50%; background:var(--amber); }
+
+  /* ---- Topbar (sub-screens) ---- */
+  .topbar{ display:flex; align-items:center; gap:10px; padding:10px 2px 16px; }
+  .topbar .back, .topbar .close{ width:30px; height:30px; border-radius:10px; background:var(--surface); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--ink-soft); flex:0 0 auto; }
+  .topbar .back svg, .topbar .close svg{ width:15px; height:15px; }
+  .topbar .t{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:16.5px; flex:1; }
+
+  .field{ margin-bottom:13px; }
+  .field label{ font-size:11px; font-weight:700; color:var(--ink-soft); display:block; margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em; }
+  .field .box{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 13px; font-size:13.5px; box-shadow:var(--shadow-key); font-weight:500; display:flex; align-items:center; gap:8px; }
+  .field .box.calc{ background:var(--tint-sales-bg); border-color:transparent; color:var(--tint-sales-fg); font-weight:800; }
+  .field .box svg{ width:15px; height:15px; color:var(--ink-faint); flex:0 0 auto; }
+  .hint{ font-size:10.5px; color:var(--ink-faint); margin-top:5px; display:flex; gap:5px; align-items:flex-start; }
+  .hint svg{ width:12px; height:12px; margin-top:1.5px; flex:0 0 auto; }
+
+  /* ---- Empty states ---- */
+  .empty{ text-align:center; padding:44px 20px 30px; }
+  .empty .ic-wrap{ width:56px; height:56px; border-radius:18px; background:var(--tint-sales-bg); color:var(--tint-sales-fg); display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
+  .empty .ic-wrap svg{ width:24px; height:24px; }
+  .empty .t1{ font-weight:700; font-size:13.5px; }
+  .empty .t2{ font-size:11.5px; color:var(--ink-soft); margin-top:5px; line-height:1.5; max-width:210px; margin-left:auto; margin-right:auto;}
+
+  .searchbar{ background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:11px 13px; font-size:12.5px; color:var(--ink-faint); margin:8px 0 14px; box-shadow:var(--shadow-key); display:flex; align-items:center; gap:9px; }
+  .searchbar svg{ width:15px; height:15px; }
+
+  .totalcard{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px 15px; box-shadow:var(--shadow-ambient); margin-bottom:14px; }
+  .totalrow{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; color:var(--ink-soft);}
+  .totalrow.final{ font-weight:800; font-size:15px; color:var(--ink); font-variant-numeric:tabular-nums; padding-top:8px; border-top:2px dashed var(--thread); margin-top:2px;}
+
+  .btn-primary{ background:var(--amber); color:#2A1A00; border:none; border-radius:13px; padding:14px; width:100%; font-family:'Inter'; font-weight:800; font-size:13.5px; margin-top:6px; box-shadow: 0 10px 22px rgba(232,163,61,0.4); display:flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-primary svg{ width:16px; height:16px; }
+  .btn-primary.disabled{ background:var(--border); color:var(--ink-faint); box-shadow:none; }
+  .btn-ghost{ background:transparent; color:var(--ink-soft); border:none; padding:10px; width:100%; font-weight:700; font-size:12.5px; }
+
+  /* ---- Inventory ---- */
+  .filter-row{ display:flex; gap:8px; margin-bottom:14px; }
+  .filter-pill{ font-size:11px; font-weight:700; padding:6px 13px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--ink-soft);}
+  .filter-pill.active{ background:var(--teal); color:#fff; border-color:var(--teal);}
+  .inv-banner{ background:var(--tint-profit-bg); color:var(--tint-profit-fg); border-radius:13px; padding:10px 13px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  .inv-banner svg{ width:15px; height:15px; }
+
+  .prod-card{ background:var(--surface); border-radius:16px; padding:13px; margin-bottom:10px; display:flex; gap:12px; border:1px solid var(--border); box-shadow:var(--shadow-ambient), var(--bevel-hi); }
+  .prod-thumb{ width:46px; height:46px; border-radius:12px; background:var(--tint-inventory-bg); color:var(--tint-inventory-fg); display:flex; align-items:center; justify-content:center; font-size:18px; flex:0 0 auto; }
+  .prod-thumb svg{ width:20px; height:20px; }
+  .prod-info{ flex:1; min-width:0; }
+  .prod-info .name{ font-weight:700; font-size:13.5px; }
+  .prod-info .spec{ font-size:10.5px; color:var(--ink-soft); margin-top:2px;}
+  .prod-info .stockrow{ display:flex; justify-content:space-between; align-items:center; margin-top:8px;}
+  .stock-ok{ font-size:10px; font-weight:700; color:var(--tint-profit-fg); background:var(--tint-profit-bg); padding:3px 8px; border-radius:999px;}
+  .stock-low{ font-size:10px; font-weight:700; color:var(--tint-expense-fg); background:var(--tint-expense-bg); padding:3px 8px; border-radius:999px;}
+  .price-tag{ font-weight:800; font-size:12.5px; font-variant-numeric:tabular-nums; }
+  .prod-value{ font-size:10px; color:var(--ink-faint); margin-top:6px; padding-top:6px; border-top:1px dashed var(--thread); font-weight:600; }
+  .prod-value b{ color:var(--tint-profit-fg); font-variant-numeric:tabular-nums; }
+
+  .fab{ position:absolute; bottom:78px; right:16px; width:48px; height:48px; border-radius:16px; background:var(--amber); color:#2A1A00; display:flex; align-items:center; justify-content:center; box-shadow: 0 12px 22px rgba(232,163,61,0.45); }
+  .fab svg{ width:20px; height:20px; }
+
+  /* ---- Khata ---- */
+  .khata-header{ display:flex; align-items:center; gap:10px; padding:8px 2px 14px; }
+  .khata-avatar{ width:38px; height:38px; border-radius:12px; background:var(--tint-inventory-bg); color:var(--tint-inventory-fg); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex:0 0 auto; }
+  .khata-header .name{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:15px; }
+  .khata-header .sub{ font-size:10.5px; color:var(--ink-soft); }
+
+  .collect-btn{ background:var(--teal); color:#fff; border:none; border-radius:13px; padding:13px; width:100%; font-weight:700; font-size:13px; margin-top:14px; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow: 0 10px 22px rgba(15,107,100,0.32); }
+  .collect-btn svg{ width:16px; height:16px; }
+  .khata-sec-title{ font-size:11px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; margin:18px 2px 9px; display:flex; align-items:center; gap:8px; }
+  .khata-sec-title::after{ content:""; flex:1; border-top:2px dashed var(--thread); }
+  .txn-row{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:11px 13px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; box-shadow:var(--shadow-key); }
+  .txn-row .l .n{ font-size:12.5px; font-weight:700; }
+  .txn-row .l .d{ font-size:10.5px; color:var(--ink-faint); margin-top:1px;}
+  .txn-row .r{ font-weight:800; font-size:13px; font-variant-numeric:tabular-nums; }
+  .txn-row .r.credit{ color:var(--tint-profit-fg); }
+  .txn-row .r.debit{ color:var(--tint-expense-fg); }
+
+  /* ---- Account / Settings ---- */
+  .acc-card{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:20px; text-align:center; box-shadow:var(--shadow-ambient); margin-bottom:16px; }
+  .acc-card .pic{ width:64px; height:64px; border-radius:20px; background:var(--tint-sales-bg); color:var(--tint-sales-fg); display:flex; align-items:center; justify-content:center; font-family:'Plus Jakarta Sans'; font-weight:800; font-size:22px; margin:0 auto 10px; }
+  .acc-card .nm{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:15px; }
+  .acc-card .em{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+
+  .setting-row{ background:var(--surface); border:1px solid var(--border); border-radius:15px; padding:13px 14px; margin-bottom:9px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow-key); }
+  .setting-row .sic{ width:34px; height:34px; border-radius:10px; background:var(--tint-sales-bg); color:var(--tint-sales-fg); display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .setting-row .sic svg{ width:16px; height:16px; }
+  .setting-row .lbl{ font-size:11.5px; color:var(--ink-soft); font-weight:600; }
+  .setting-row .val{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:14.5px; }
+  .setting-row .edit{ margin-left:auto; color:var(--ink-faint); }
+  .setting-row .edit svg{ width:15px; height:15px; }
+  .theme-seg{ display:flex; gap:6px; margin-left:auto; }
+  .theme-seg button{ width:30px; height:30px; border-radius:9px; border:1px solid var(--border); background:var(--surface-2); color:var(--ink-soft); display:flex; align-items:center; justify-content:center; }
+  .theme-seg button.on{ background:var(--teal); color:#fff; border-color:var(--teal); }
+  .theme-seg svg{ width:14px; height:14px; }
+  .logout-row{ color:var(--terracotta); font-weight:700; justify-content:center; margin-top:16px; }
+
+  /* ---- More menu (sheet) ---- */
+  .sheet{ background:var(--surface); border-radius:20px 20px 0 0; padding:8px 6px 4px; margin-top:auto; box-shadow: 0 -14px 34px rgba(0,0,0,0.18); border:1px solid var(--border); border-bottom:none; }
+  .sheet .grabber{ width:34px; height:4px; border-radius:99px; background:var(--border); margin:6px auto 12px; }
+  .menu-row{ display:flex; align-items:center; gap:13px; padding:12px 12px; border-radius:13px; }
+  .menu-row .mic{ width:34px; height:34px; border-radius:10px; background:var(--surface-2); color:var(--ink-soft); display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .menu-row .mic svg{ width:16px; height:16px; }
+  .menu-row .txt{ font-size:13px; font-weight:700; }
+  .menu-row .chev{ margin-left:auto; color:var(--ink-faint); }
+  .menu-row .chev svg{ width:15px; height:15px; }
+  .menu-row.danger .mic{ background:var(--tint-expense-bg); color:var(--tint-expense-fg); }
+  .menu-row.danger .txt{ color:var(--terracotta); }
+  .menu-divider{ border-top:2px dashed var(--thread); margin:6px 14px; }
+
+  .note{ max-width:1360px; margin:40px auto 0; padding:20px 22px; background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow-ambient); font-size:13px; color:var(--ink-soft); line-height:1.65; }
+  .note b{ color:var(--ink); }
+  .note h3{ font-family:'Plus Jakarta Sans'; font-size:14px; margin:18px 0 6px; color:var(--ink); }
+  .note h3:first-child{ margin-top:0; }
+  .swatches{ display:flex; gap:8px; margin:8px 0 4px; flex-wrap:wrap; }
+  .sw{ width:26px; height:26px; border-radius:8px; border:1px solid var(--border); }
+</style>
+</head>
+<body data-theme="light">
+
+<!-- icon sprite -->
+<svg style="display:none">
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></symbol>
+<symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="20" r="1.4" fill="currentColor" stroke="none"/><path d="M2 3h2l2.2 12.2a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L21 7H6"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v9l9 5 9-5V8"/><path d="M12 13v9"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.5 14.3c2.6.4 4.5 2.4 4.5 5.7"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v3"/><path d="M3 7v10a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1h-5a2.3 2.3 0 0 0 0 4.6h6"/></symbol>
+<symbol id="i-trend-up" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 5h6v6"/></symbol>
+<symbol id="i-trend-down" viewBox="0 0 24 24"><path d="M3 7l6 6 4-4 8 9"/><path d="M15 19h6v-6"/></symbol>
+<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 2h12v19l-2.5-1.6L13 21l-2.5-1.6L8 21l-2-19z" fill="none"/><path d="M8.5 7h7M8.5 11h7M8.5 15h4"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4"/><circle cx="12" cy="17.2" r=".9" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+<symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-credit-card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19"/><path d="M6 15h4"/></symbol>
+<symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M4 10v9M9 10v9M15 10v9M20 10v9"/><path d="M2 21h20"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></symbol>
+<symbol id="i-half" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20l1-4.2L15.5 5.3a1.5 1.5 0 0 1 2.2 0l1 1a1.5 1.5 0 0 1 0 2.2L8.2 19 4 20z"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-4.1 3.3-7 7.5-7s7.5 2.9 7.5 7"/></symbol>
+<symbol id="i-package" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M3 11h18M9 7V4h6v3"/></symbol>
+<symbol id="i-file-text" viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/><path d="M8.5 12h7M8.5 16h7"/></symbol>
+<symbol id="i-truck" viewBox="0 0 24 24"><rect x="1" y="7" width="13" height="9"/><path d="M14 10h4l4 3.5V16h-8z"/><circle cx="6" cy="19" r="1.6"/><circle cx="17.5" cy="19" r="1.6"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M4 21h16"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4.7a7.6 7.6 0 0 0-2.6-1.5L14 2h-4l-.4 2.4a7.6 7.6 0 0 0-2.6 1.5l-2.4-.7-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-.7a7.6 7.6 0 0 0 2.6 1.5L10 22h4l.4-2.3a7.6 7.6 0 0 0 2.6-1.5l2.4.7 2-3.4z"/></symbol>
+</svg>
+
+<div class="toolbar">
+  <div>
+    <h1 class="page-title">Asif Foam Center — Digital Register</h1>
+    <p class="page-sub">UI mockup v3 — a design language built around what this app actually is: a paper khata gone digital. The cash &amp; baqaya cards are treated as torn register slips; dashed "stitch" lines nod to the shop's own product; every emoji is replaced with a proper icon set.</p>
+  </div>
+  <div class="toggle">
+    <button onclick="setTheme('light')" id="btn-light" class="active"><svg class="ic"><use href="#i-sun"/></svg>Light</button>
+    <button onclick="setTheme('dark')" id="btn-dark"><svg class="ic"><use href="#i-moon"/></svg>Dark</button>
+  </div>
+</div>
+
+<div class="rail">
+
+  <!-- DASHBOARD -->
+  <div class="frame-wrap">
+    <div class="frame-label">Dashboard</div>
+    <div class="phone">
+      <div class="statusbar"><span>11:40</span><span>●●●  📶  🔋</span></div>
+      <div class="screen">
+        <div class="greet">
+          <div>
+            <div class="shop">Asif Foam Center</div>
+            <div class="date">Monday, 20 July 2026</div>
+            <div class="sync-pill"><span class="sync-dot"></span>Synced just now</div>
+          </div>
+          <div class="avatar-btn"><svg class="ic"><use href="#i-user"/></svg></div>
+        </div>
+
+        <div class="slip">
+          <div class="body">
+            <div class="label"><svg class="ic"><use href="#i-wallet"/></svg>Cash in Hand</div>
+            <div class="amount">Rs 22,000</div>
+            <div class="row">
+              <div>Revenue<b>Rs 22,000</b></div>
+              <div>Net Profit<b>Rs 2,500</b></div>
+              <div>Baqaya<b>Rs 0</b></div>
+            </div>
+          </div>
+          <div class="tear"></div>
+          <div class="stub"><span>Register slip · today</span><b>#0001</b></div>
+        </div>
+
+        <div class="grid2">
+          <div class="stat-card sales-c">
+            <div class="chip"><svg class="ic"><use href="#i-trend-up"/></svg></div>
+            <div class="title">Revenue</div>
+            <div class="value">Rs 22,000</div>
+            <div class="sub">Gross: Rs 2,500</div>
+          </div>
+          <div class="stat-card purchase-c">
+            <div class="chip"><svg class="ic"><use href="#i-receipt"/></svg></div>
+            <div class="title">COGS</div>
+            <div class="value">Rs 19,500</div>
+            <div class="sub">Cost of goods sold</div>
+          </div>
+          <div class="stat-card profit-c">
+            <div class="chip"><svg class="ic"><use href="#i-bank"/></svg></div>
+            <div class="title">Gross Profit</div>
+            <div class="value">Rs 2,500</div>
+            <div class="sub">Revenue − COGS</div>
+          </div>
+          <div class="stat-card expense-c">
+            <div class="chip"><svg class="ic"><use href="#i-trend-down"/></svg></div>
+            <div class="title">Expenses</div>
+            <div class="value">Rs 0</div>
+            <div class="sub">Total kharcha</div>
+          </div>
+          <div class="stat-card profit-c">
+            <div class="chip"><svg class="ic"><use href="#i-trend-up"/></svg></div>
+            <div class="title">Net Profit</div>
+            <div class="value">Rs 2,500</div>
+            <div class="sub">Margin: 11%</div>
+          </div>
+          <div class="stat-card inventory-c">
+            <div class="chip"><svg class="ic"><use href="#i-box"/></svg></div>
+            <div class="title">Inventory Value</div>
+            <div class="value">Rs 136,500</div>
+            <div class="sub">1 product</div>
+          </div>
+        </div>
+      </div>
+      <div class="navbar">
+        <div class="item active"><svg class="ic"><use href="#i-grid"/></svg>Dashboard</div>
+        <div class="item"><svg class="ic"><use href="#i-cart"/></svg>Sales</div>
+        <div class="item"><svg class="ic"><use href="#i-box"/></svg>Inventory</div>
+        <div class="item"><svg class="ic"><use href="#i-users"/></svg>Khata</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SALES -->
+  <div class="frame-wrap">
+    <div class="frame-label">Sales Entry — Empty Cart</div>
+    <div class="phone">
+      <div class="statusbar"><span>11:40</span><span>●●●  📶  🔋</span></div>
+      <div class="screen">
+        <div class="topbar"><div class="t">New Sale</div><div class="close"><svg class="ic"><use href="#i-x"/></svg></div></div>
+
+        <div class="field">
+          <label>Customer</label>
+          <div class="box"><svg class="ic"><use href="#i-user"/></svg>Walk-in Customer<span style="margin-left:auto;color:var(--tint-sales-fg);font-weight:700;font-size:11.5px;">Change</span></div>
+        </div>
+
+        <div class="searchbar"><svg class="ic"><use href="#i-search"/></svg>Search products…</div>
+
+        <div class="khata-sec-title">Cart</div>
+        <div class="empty" style="padding:34px 20px 24px;">
+          <div class="ic-wrap"><svg class="ic"><use href="#i-cart"/></svg></div>
+          <div class="t1">No items added yet</div>
+          <div class="t2">Search or tap a product above to start this sale</div>
+        </div>
+
+        <div class="totalcard">
+          <div class="totalrow"><span>Subtotal</span><span>Rs 0</span></div>
+          <div class="totalrow final"><span>Total Amount</span><span>Rs 0</span></div>
+        </div>
+
+        <div class="field">
+          <label>Paid (PKR)</label>
+          <div class="box">0</div>
+        </div>
+        <div class="field">
+          <label>Balance</label>
+          <div class="box calc">Rs 0</div>
+        </div>
+
+        <button class="btn-primary disabled"><svg class="ic"><use href="#i-receipt"/></svg>Save Sale</button>
+      </div>
+      <div class="navbar">
+        <div class="item"><svg class="ic"><use href="#i-grid"/></svg>Dashboard</div>
+        <div class="item active"><svg class="ic"><use href="#i-cart"/></svg>Sales</div>
+        <div class="item"><svg class="ic"><use href="#i-box"/></svg>Inventory</div>
+        <div class="item"><svg class="ic"><use href="#i-users"/></svg>Khata</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVENTORY -->
+  <div class="frame-wrap">
+    <div class="frame-label">Inventory</div>
+    <div class="phone">
+      <div class="statusbar"><span>11:41</span><span>●●●  📶  🔋</span></div>
+      <div class="screen">
+        <div class="topbar"><div class="t">Inventory</div></div>
+        <div class="searchbar"><svg class="ic"><use href="#i-search"/></svg>Search products…</div>
+        <div class="inv-banner"><svg class="ic"><use href="#i-bank"/></svg>Total Inventory Value: Rs 136,500</div>
+        <div class="filter-row">
+          <div class="filter-pill active">All</div>
+          <div class="filter-pill">Low Stock</div>
+        </div>
+
+        <div class="prod-card">
+          <div class="prod-thumb"><svg class="ic"><use href="#i-package"/></svg></div>
+          <div class="prod-info">
+            <div class="name">test</div>
+            <div class="spec">78in × 72in · 6in</div>
+            <div class="stockrow">
+              <span class="stock-ok">7 pcs in stock</span>
+              <span class="price-tag">Rs 19,500/pc</span>
+            </div>
+            <div class="prod-value">Total value <b>Rs 136,500</b></div>
+          </div>
+        </div>
+
+        <div class="prod-card">
+          <div class="prod-thumb"><svg class="ic"><use href="#i-package"/></svg></div>
+          <div class="prod-info">
+            <div class="name">Sofa Cushion Foam</div>
+            <div class="spec">Per sq.ft · Density 32</div>
+            <div class="stockrow">
+              <span class="stock-ok">142.0 sq.ft in stock</span>
+              <span class="price-tag">Rs 65/sq.ft</span>
+            </div>
+            <div class="prod-value">Total value <b>Rs 9,230</b></div>
+          </div>
+        </div>
+
+        <div class="stitch"></div>
+        <div class="empty" style="padding:26px 20px;">
+          <div class="ic-wrap"><svg class="ic"><use href="#i-plus"/></svg></div>
+          <div class="t1">Only 2 products listed</div>
+          <div class="t2">Add your other foam &amp; mattress lines to track stock properly</div>
+        </div>
+      </div>
+      <div class="fab"><svg class="ic"><use href="#i-plus"/></svg></div>
+      <div class="navbar">
+        <div class="item"><svg class="ic"><use href="#i-grid"/></svg>Dashboard</div>
+        <div class="item"><svg class="ic"><use href="#i-cart"/></svg>Sales</div>
+        <div class="item active"><svg class="ic"><use href="#i-box"/></svg>Inventory</div>
+        <div class="item"><svg class="ic"><use href="#i-users"/></svg>Khata</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KHATA (empty state) -->
+  <div class="frame-wrap">
+    <div class="frame-label">Customer Khata</div>
+    <div class="phone">
+      <div class="statusbar"><span>11:41</span><span>●●●  📶  🔋</span></div>
+      <div class="screen">
+        <div class="topbar"><div class="t">Khata</div></div>
+        <div class="searchbar"><svg class="ic"><use href="#i-search"/></svg>Search customers…</div>
+
+        <div class="empty" style="padding:60px 20px 30px;">
+          <div class="ic-wrap"><svg class="ic"><use href="#i-users"/></svg></div>
+          <div class="t1">No customers yet</div>
+          <div class="t2">Add a customer on your next sale to start tracking their baqaya here</div>
+        </div>
+      </div>
+      <div class="fab"><svg class="ic"><use href="#i-plus"/></svg></div>
+      <div class="navbar">
+        <div class="item"><svg class="ic"><use href="#i-grid"/></svg>Dashboard</div>
+        <div class="item"><svg class="ic"><use href="#i-cart"/></svg>Sales</div>
+        <div class="item"><svg class="ic"><use href="#i-box"/></svg>Inventory</div>
+        <div class="item active"><svg class="ic"><use href="#i-users"/></svg>Khata</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KHATA — with balance (reference state) -->
+  <div class="frame-wrap">
+    <div class="frame-label">Customer Khata — With Balance</div>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>●●●  📶  🔋</span></div>
+      <div class="screen">
+        <div class="topbar">
+          <div class="back"><svg class="ic"><use href="#i-arrow-left"/></svg></div>
+          <div class="t">Ali Raza</div>
+        </div>
+        <div class="khata-header">
+          <div class="khata-avatar">AR</div>
+          <div><div class="name">Ali Raza</div><div class="sub">Lahore · 3 sales</div></div>
+        </div>
+
+        <div class="slip">
+          <div class="body" style="background:linear-gradient(135deg, var(--terracotta), #8C3324);">
+            <div class="label"><svg class="ic"><use href="#i-alert"/></svg>Outstanding Baqaya</div>
+            <div class="amount">Rs 8,200</div>
+          </div>
+          <div class="tear"></div>
+          <div class="stub"><span>Customer slip</span><b>Ali Raza</b></div>
+        </div>
+        <button class="collect-btn"><svg class="ic"><use href="#i-credit-card"/></svg>Collect Payment</button>
+
+        <div class="khata-sec-title">History</div>
+        <div class="txn-row"><div class="l"><div class="n">Sale — Diamond Foam</div><div class="d">20 Jul 2026</div></div><div class="r debit">+ Rs 4,000</div></div>
+        <div class="txn-row"><div class="l"><div class="n">Payment Collected</div><div class="d">15 Jul 2026</div></div><div class="r credit">− Rs 2,000</div></div>
+        <div class="txn-row"><div class="l"><div class="n">Sale — Spring Mattress</div><div class="d">12 Jul 2026</div></div><div class="r debit">+ Rs 18,500</div></div>
+      </div>
+      <div class="navbar">
+        <div class="item"><svg class="ic"><use href="#i-grid"/></svg>Dashboard</div>
+        <div class="item"><svg class="ic"><use href="#i-cart"/></svg>Sales</div>
+        <div class="item"><svg class="ic"><use href="#i-box"/></svg>Inventory</div>
+        <div class="item active"><svg class="ic"><use href="#i-users"/></svg>Khata</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCOUNT / SETTINGS -->
+  <div class="frame-wrap">
+    <div class="frame-label">Account / Settings</div>
+    <div class="phone">
+      <div class="statusbar"><span>11:41</span><span>●●●  📶  🔋</span></div>
+      <div class="screen">
+        <div class="topbar"><div class="back"><svg class="ic"><use href="#i-arrow-left"/></svg></div><div class="t">Account / Settings</div></div>
+
+        <div class="acc-card">
+          <div class="pic">MT</div>
+          <div class="nm">Muhammad Taha</div>
+          <div class="em">tahanaeem7372@gmail.com</div>
+        </div>
+
+        <div class="setting-row">
+          <div class="sic"><svg class="ic"><use href="#i-bank"/></svg></div>
+          <div><div class="lbl">Shuru ka Capital</div><div class="val">Rs 0</div></div>
+          <div class="edit"><svg class="ic"><use href="#i-edit"/></svg></div>
+        </div>
+
+        <div class="setting-row">
+          <div class="sic"><svg class="ic"><use href="#i-half"/></svg></div>
+          <div><div class="lbl">Theme</div></div>
+          <div class="theme-seg">
+            <button><svg class="ic"><use href="#i-sun"/></svg></button>
+            <button><svg class="ic"><use href="#i-half"/></svg></button>
+            <button class="on"><svg class="ic"><use href="#i-moon"/></svg></button>
+          </div>
+        </div>
+
+        <div class="setting-row logout-row">
+          <svg class="ic"><use href="#i-logout"/></svg><div class="txt" style="font-weight:700;">Sign Out</div>
+        </div>
+      </div>
+      <div class="navbar">
+        <div class="item"><svg class="ic"><use href="#i-grid"/></svg>Dashboard</div>
+        <div class="item"><svg class="ic"><use href="#i-cart"/></svg>Sales</div>
+        <div class="item"><svg class="ic"><use href="#i-box"/></svg>Inventory</div>
+        <div class="item"><svg class="ic"><use href="#i-users"/></svg>Khata</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MORE MENU (sheet) -->
+  <div class="frame-wrap">
+    <div class="frame-label">More Menu</div>
+    <div class="phone">
+      <div class="statusbar"><span>11:41</span><span>●●●  📶  🔋</span></div>
+      <div class="screen" style="display:flex; flex-direction:column; padding-bottom:0;">
+        <div class="greet"><div><div class="shop">Asif Foam Center</div><div class="date">Menu</div></div><div class="avatar-btn"><svg class="ic"><use href="#i-x"/></svg></div></div>
+        <div style="flex:1;"></div>
+        <div class="sheet">
+          <div class="grabber"></div>
+          <div class="menu-row"><div class="mic"><svg class="ic"><use href="#i-settings"/></svg></div><div class="txt">Account / Settings</div><div class="chev"><svg class="ic"><use href="#i-chev-r"/></svg></div></div>
+          <div class="menu-row"><div class="mic"><svg class="ic"><use href="#i-credit-card"/></svg></div><div class="txt">Billing</div><div class="chev"><svg class="ic"><use href="#i-chev-r"/></svg></div></div>
+          <div class="menu-row"><div class="mic"><svg class="ic"><use href="#i-receipt"/></svg></div><div class="txt">Expenses</div><div class="chev"><svg class="ic"><use href="#i-chev-r"/></svg></div></div>
+          <div class="menu-row"><div class="mic"><svg class="ic"><use href="#i-trend-up"/></svg></div><div class="txt">Recovery</div><div class="chev"><svg class="ic"><use href="#i-chev-r"/></svg></div></div>
+          <div class="menu-row"><div class="mic"><svg class="ic"><use href="#i-truck"/></svg></div><div class="txt">Supplier Khata</div><div class="chev"><svg class="ic"><use href="#i-chev-r"/></svg></div></div>
+          <div class="menu-row"><div class="mic"><svg class="ic"><use href="#i-file-text"/></svg></div><div class="txt">Reports</div><div class="chev"><svg class="ic"><use href="#i-chev-r"/></svg></div></div>
+          <div class="menu-row"><div class="mic"><svg class="ic"><use href="#i-download"/></svg></div><div class="txt">Export Reports</div><div class="chev"><svg class="ic"><use href="#i-chev-r"/></svg></div></div>
+          <div class="menu-divider"></div>
+          <div class="menu-row danger"><div class="mic"><svg class="ic"><use href="#i-logout"/></svg></div><div class="txt">Sign Out</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="note">
+  <h3>Two bugs fixed in this pass</h3>
+  <ul class="fixlist">
+    <li><b>Inventory unit label:</b> a product priced "/pc" now shows "7 pcs in stock" instead of "7.0 sq.ft in stock." The unit shown next to stock now follows the product's own pricing unit — added a second product below priced "/sq.ft" so you can see both rules holding at once.</li>
+    <li><b>Cash-in-hand / Baqaya card:</b> the previous version cut a zigzag directly through the card's content using clip-path, which is what caused those overlapping green bars behind "Net Profit." Rebuilt so the torn edge is a separate strip drawn below the content — it can never overlap live data again — and the stat dividers are now simple border-lines instead of stretched 1px divs.</li>
+  </ul>
+
+  <h3>Signature idea — "the torn register slip"</h3>
+  Every other AI-generated ledger mockup reaches for a flat gradient hero card. Here, <b>Cash in Hand</b> and <b>Khata Baqaya</b> — the two numbers a shop owner actually tears off to hand someone or file away — are rendered as a real torn receipt: a jagged clip-path edge, a paper "stub" underneath with a slip number, drop-shadowed off the page. Regular content (products, transactions) stays on calm, clean cards — the torn edge is reserved for money, so it means something rather than decorating everything.
+
+  <h3>Supporting motifs</h3>
+  Dashed "stitch" dividers (nodding to foam/mattress quilting, not a generic hairline) mark section breaks and the low-stock line under inventory. Every card has a subtle top inner-highlight, like foam catching light at its bevel. The bottom nav is a floating stitched pill with a small amber thread-knot marking the active tab.
+
+  <h3>Icon system</h3>
+  All emoji (💰🧾📉👤 etc.) are replaced with a small custom line-icon set (grid, cart, box, users, wallet, receipt…) defined once as an SVG sprite and reused with &lt;use&gt;. This alone is one of the biggest "looks premium now" jumps — emoji render inconsistently across OS/fonts and read as a prototype, not a product.
+
+  <h3>Empty states</h3>
+  Since your real data only has one test product and no customers yet, Inventory and Khata show proper empty states — an icon, a plain-language explanation, a next action — instead of looking broken or unfinished.
+
+  <h3>Design tokens</h3>
+  <div class="swatches">
+    <div class="sw" style="background:#0F6B64" title="--teal"></div>
+    <div class="sw" style="background:#0A4640" title="--teal-dark"></div>
+    <div class="sw" style="background:#E8A33D" title="--amber (single reserved accent)"></div>
+    <div class="sw" style="background:#B54A38" title="--terracotta"></div>
+    <div class="sw" style="background:#3B8264" title="--sage"></div>
+    <div class="sw" style="background:#F5F2EA;border:1px solid #ddd" title="--bg"></div>
+  </div>
+  Deep teal #0F6B64 primary · amber #E8A33D is the <b>only</b> non-brand accent (CTAs + the one low-stock alert) · Plus Jakarta Sans for headings/amounts, Inter for body/labels · tabular numerals on every currency figure · 16–20px card radius · dashed 2px stitch-lines instead of plain hairlines for section breaks · full dark mode with contrast-checked tokens carried over from v2.
+</div>
+
+<script>
+  function setTheme(mode){
+    document.body.setAttribute('data-theme', mode);
+    document.getElementById('btn-light').classList.toggle('active', mode==='light');
+    document.getElementById('btn-dark').classList.toggle('active', mode==='dark');
+  }
+</script>
+
+</body>
+</html>

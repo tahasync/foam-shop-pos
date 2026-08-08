@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>Foam Shop — Digital Register app icon</title>
+  <desc>A minimalist geometric icon of three stacked rounded bars suggesting a folded foam mattress, in deep teal with one amber accent layer, on a soft off-white rounded-square background.</desc>
+
+  <!-- Background: rounded square, safe for iOS squircle / Android adaptive masking -->
+  <rect x="0" y="0" width="512" height="512" rx="115" ry="115" fill="#F6F4F0"/>
+
+  <!-- Bottom bar: teal -->
+  <rect x="134" y="323" width="280" height="90" rx="45" ry="45" fill="#0F6B64"/>
+
+  <!-- Middle bar: amber accent -->
+  <rect x="106" y="211" width="300" height="90" rx="45" ry="45" fill="#E8A33D"/>
+
+  <!-- Top bar: teal -->
+  <rect x="98" y="99" width="280" height="90" rx="45" ry="45" fill="#0F6B64"/>
+</svg>

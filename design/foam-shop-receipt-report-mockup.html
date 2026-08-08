@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Asif Foam Center — Receipt &amp; Export Report Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#0F6B64; --teal-dark:#0B4E49; --amber:#E8A33D;
+    --ink:#1B1F1E; --ink-soft:#5B6461; --ink-faint:#8A928F;
+    --tint-sales-bg:#EAF3F1; --tint-sales-fg:#0F6B64;
+    --tint-profit-bg:#EAF3EC; --tint-profit-fg:#2E6B4E;
+    --tint-expense-bg:#FBEBE8; --tint-expense-fg:#B54A38;
+    --tint-purchase-bg:#FDF1E4; --tint-purchase-fg:#B4712A;
+    --border:#E7E3DC;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; padding:32px 24px 80px; background:#F6F4F0; font-family:'Inter',sans-serif; color:var(--ink);}
+  h1.page-title{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:24px; margin:0 0 4px; text-align:center;}
+  p.page-sub{ color:var(--ink-soft); margin:0 0 28px; font-size:13px; text-align:center;}
+  .rail{ max-width:1200px; margin:0 auto; display:flex; gap:32px; flex-wrap:wrap; justify-content:center; align-items:flex-start;}
+  .col{ flex:0 0 auto; }
+  .col-label{ font-family:'Plus Jakarta Sans'; font-weight:700; font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:10px; text-align:center;}
+
+  /* RECEIPT */
+  .receipt{ width:340px; background:#fff; border-radius:4px; box-shadow:0 12px 30px rgba(0,0,0,0.12); overflow:hidden;}
+  .r-header{ background:linear-gradient(135deg,var(--teal),var(--teal-dark)); padding:26px 24px 20px; color:#fff; text-align:center; position:relative;}
+  .r-logo{ width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:18px;}
+  .r-shop{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:19px;}
+  .r-tag{ font-size:11px; opacity:.85; margin-top:2px; letter-spacing:.03em;}
+  .r-body{ padding:20px 24px;}
+  .r-meta{ display:flex; justify-content:space-between; font-size:11px; color:var(--ink-soft); padding-bottom:12px; border-bottom:1px dashed var(--border); margin-bottom:12px;}
+  .r-meta div b{ display:block; color:var(--ink); font-size:12px; margin-top:1px;}
+  .r-cust{ font-size:12px; color:var(--ink-soft); margin-bottom:14px;}
+  .r-cust b{ color:var(--ink);}
+  table.r-items{ width:100%; border-collapse:collapse; margin-bottom:14px;}
+  table.r-items thead th{ font-size:9.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); text-align:left; padding-bottom:6px; border-bottom:1.5px solid var(--ink);}
+  table.r-items thead th.r{ text-align:right;}
+  table.r-items tbody td{ font-size:11.5px; padding:7px 0; border-bottom:1px solid var(--border); vertical-align:top;}
+  table.r-items tbody td.r{ text-align:right; font-weight:700;}
+  table.r-items tbody .pname{ font-weight:700;}
+  table.r-items tbody .pspec{ font-size:9.5px; color:var(--ink-faint); margin-top:1px;}
+  .r-totals{ background:var(--tint-sales-bg); border-radius:10px; padding:12px 14px; margin-bottom:16px;}
+  .r-trow{ display:flex; justify-content:space-between; font-size:11.5px; padding:2px 0; color:var(--ink-soft);}
+  .r-trow.grand{ font-weight:800; color:var(--tint-sales-fg); font-size:14px; padding-top:6px; margin-top:4px; border-top:1px solid rgba(15,107,100,0.15);}
+  .r-balance{ display:inline-block; font-size:10.5px; font-weight:800; padding:3px 10px; border-radius:999px; margin-top:6px;}
+  .r-balance.paid{ background:var(--tint-profit-bg); color:var(--tint-profit-fg);}
+  .r-balance.due{ background:var(--tint-expense-bg); color:var(--tint-expense-fg);}
+  .r-footer{ text-align:center; padding-top:8px; border-top:1px dashed var(--border);}
+  .r-thanks{ font-family:'Plus Jakarta Sans'; font-weight:700; font-size:13px; color:var(--teal); margin-bottom:4px;}
+  .r-contact{ font-size:9.5px; color:var(--ink-faint); line-height:1.5;}
+  .r-qr{ width:52px;height:52px;background:repeating-conic-gradient(#1B1F1E 0% 25%, #fff 0% 50%) 0/8px 8px; margin:10px auto 6px; border-radius:4px;}
+
+  /* EXPORT REPORT PAGE */
+  .report{ width:420px; background:#fff; border-radius:6px; box-shadow:0 12px 30px rgba(0,0,0,0.12); overflow:hidden;}
+  .rep-header{ background:var(--teal); color:#fff; padding:22px 26px; display:flex; justify-content:space-between; align-items:center;}
+  .rep-header .left b{ font-family:'Plus Jakarta Sans'; font-size:16px; font-weight:800; display:block;}
+  .rep-header .left span{ font-size:10.5px; opacity:.85;}
+  .rep-header .right{ text-align:right; font-size:10px; opacity:.9;}
+  .rep-body{ padding:22px 26px;}
+  .rep-range{ font-size:11px; color:var(--ink-soft); margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border);}
+  .rep-summary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;}
+  .rep-card{ border-radius:10px; padding:10px 12px;}
+  .rep-card .l{ font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;}
+  .rep-card .v{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:15px; margin-top:2px;}
+  .sales-c{ background:var(--tint-sales-bg); color:var(--tint-sales-fg);}
+  .purchase-c{ background:var(--tint-purchase-bg); color:var(--tint-purchase-fg);}
+  .expense-c{ background:var(--tint-expense-bg); color:var(--tint-expense-fg);}
+  .profit-c{ background:var(--tint-profit-bg); color:var(--tint-profit-fg);}
+  .rep-section-title{ font-family:'Plus Jakarta Sans'; font-weight:800; font-size:12.5px; margin-bottom:8px; color:var(--ink);}
+  table.rep-table{ width:100%; border-collapse:collapse; margin-bottom:16px;}
+  table.rep-table thead th{ background:var(--teal); color:#fff; font-size:9.5px; text-transform:uppercase; letter-spacing:.03em; padding:8px 8px; text-align:left;}
+  table.rep-table thead th.r{ text-align:right;}
+  table.rep-table tbody td{ font-size:10.5px; padding:7px 8px; border-bottom:1px solid var(--border);}
+  table.rep-table tbody td.r{ text-align:right; font-weight:700; font-variant-numeric:tabular-nums;}
+  table.rep-table tbody tr:nth-child(even){ background:#FAF9F6;}
+  .rep-footer{ display:flex; justify-content:space-between; font-size:9.5px; color:var(--ink-faint); padding-top:10px; border-top:1px solid var(--border);}
+
+  .note{ max-width:1200px; margin:32px auto 0; padding:18px 20px; background:#fff; border:1px solid var(--border);
+    border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,.05); font-size:13px; color:var(--ink-soft); line-height:1.6;}
+  .note b{ color:var(--ink);}
+</style>
+</head>
+<body>
+
+<h1 class="page-title">Asif Foam Center</h1>
+<p class="page-sub">Receipt &amp; Export Report redesign reference</p>
+
+<div class="rail">
+
+  <!-- RECEIPT -->
+  <div class="col">
+    <div class="col-label">Billing Receipt (PDF)</div>
+    <div class="receipt">
+      <div class="r-header">
+        <div class="r-logo">🛏️</div>
+        <div class="r-shop">Asif Foam Center</div>
+        <div class="r-tag">Digital Register</div>
+      </div>
+      <div class="r-body">
+        <div class="r-meta">
+          <div>Date<b>22 Jul 2026</b></div>
+          <div>Receipt #<b>INV-0142</b></div>
+        </div>
+        <div class="r-cust">Customer: <b>Walk-in Customer</b></div>
+        <table class="r-items">
+          <thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Total</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="pname">luxury</div><div class="pspec">78in × 72in · 5in</div></td>
+              <td class="r">1.0 sq.ft</td>
+              <td class="r">Rs 25,500</td>
+              <td class="r">Rs 25,500</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="r-totals">
+          <div class="r-trow"><span>Amount</span><span>Rs 25,500</span></div>
+          <div class="r-trow"><span>Paid</span><span>Rs 25,500</span></div>
+          <div class="r-trow grand"><span>Balance</span><span>Rs 0</span></div>
+        </div>
+        <div style="text-align:center;">
+          <span class="r-balance paid">✓ FULLY PAID</span>
+        </div>
+        <div class="r-footer" style="margin-top:16px;">
+          <div class="r-qr"></div>
+          <div class="r-thanks">Thank you for your business!</div>
+          <div class="r-contact">Asif Foam Center · Lahore, Pakistan<br>Scan QR to verify this receipt</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT REPORT -->
+  <div class="col">
+    <div class="col-label">Export Report (PDF)</div>
+    <div class="report">
+      <div class="rep-header">
+        <div class="left"><b>Asif Foam Center</b><span>Monthly Business Report</span></div>
+        <div class="right">Generated<br>22 Jul 2026, 5:34 PM</div>
+      </div>
+      <div class="rep-body">
+        <div class="rep-range">Report period: <b>1 Jul 2026 – 22 Jul 2026</b></div>
+        <div class="rep-summary-grid">
+          <div class="rep-card sales-c"><div class="l">Revenue</div><div class="v">Rs 81,000</div></div>
+          <div class="rep-card purchase-c"><div class="l">COGS</div><div class="v">Rs 65,000</div></div>
+          <div class="rep-card expense-c"><div class="l">Expenses</div><div class="v">Rs 3,200</div></div>
+          <div class="rep-card profit-c"><div class="l">Net Profit</div><div class="v">Rs 12,800</div></div>
+        </div>
+        <div class="rep-section-title">Sales Detail</div>
+        <table class="rep-table">
+          <thead><tr><th>Date</th><th>Customer</th><th class="r">Amount</th><th class="r">Balance</th></tr></thead>
+          <tbody>
+            <tr><td>22 Jul</td><td>Walk-in Customer</td><td class="r">25,500</td><td class="r">0</td></tr>
+            <tr><td>21 Jul</td><td>Rohani Moula</td><td class="r">18,500</td><td class="r">3,500</td></tr>
+            <tr><td>20 Jul</td><td>Maaz</td><td class="r">40,000</td><td class="r">5,000</td></tr>
+          </tbody>
+        </table>
+        <div class="rep-footer">
+          <span>Asif Foam Center — Digital Register</span>
+          <span>Page 1 of 3</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="note">
+  <b>Design notes:</b> Receipt uses a branded teal header block (shop icon + name + tagline) instead of plain black text, a proper itemized table with columns instead of stacked lines, a tinted totals card ending in an emphasized grand-total row, a color-coded status badge (green "Fully Paid" or red "Balance Due" instead of just red text), and an optional QR code + thank-you footer. The Export Report reuses the same header/brand block, adds a Dashboard-style color-coded summary card grid at the top (so the report reads consistently with the in-app Dashboard), a properly styled data table with a solid teal header row and alternating row shading, and a footer with page numbers. The same visual language (colors, table styling, header block) should extend to the Excel export: bold header row with teal fill and white text, currency-formatted number columns, frozen header row, and a Summary sheet mirroring the top card grid before the detailed data sheets.
+</div>
+
+</body>
+</html>
