@@ -87,6 +87,19 @@ jobs:
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
+      - name: Rename APK to friendly versioned name
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION_NAME="${GITHUB_REF_NAME#v}"
+          else
+            # Fall back to the version declared in pubspec.yaml (strip any +build suffix)
+            VERSION_NAME=$(grep -E '^version:' pubspec.yaml | head -1 | sed -E 's/^version:[[:space:]]*//; s/\+.*$//')
+          fi
+          APK_NAME="Foam Shop Pos v${VERSION_NAME}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "$APK_NAME"
+          echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
+          echo "::notice ::APK renamed to: $APK_NAME"
+
       - name: Upload APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -128,7 +141,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: ${{ env.APK_NAME }}
           body_path: changelog.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

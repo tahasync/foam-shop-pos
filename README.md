@@ -30,8 +30,27 @@ Data is live-synced to Firestore — each user sees only their own data (partiti
 - **Subscription gate** — 14-day trial, blocking expired screen, founding account exemption
 - **Notifications** — on-device low-stock alerts and overdue baqaya reminders (local-only, no server cost)
 - **Support / Feedback** — in-app contact form with WhatsApp and Email deep links
-- **Theming** — light + dark mode with floating pill navigation
+- **Theming** — light + dark mode with floating pill navigation. Both themes are driven by a single deep blue / periwinkle / dusty mauve palette (see [Color palette](#color-palette))
 - **Update notifications** — in-app "What's New" dialog showing curated changelog from GitHub Releases
+
+## Color palette
+
+All UI color is defined in one place — the `AppColors` `ThemeExtension` in `lib/theme/app_theme.dart` — which supplies both the `ColorScheme` for standard Material widgets and semantic tokens for the design system. Five core colors drive both themes:
+
+| Token | Hex | Role |
+|---|---|---|
+| Deep Ink | `#0E0D15` | Darkest background, primary text in light mode |
+| Deep Navy | `#182346` | Primary brand color, light-mode buttons and text |
+| Slate Blue | `#3D5387` | Secondary interactive elements, selected states |
+| Muted Periwinkle | `#7C83AD` | Dark-mode primary, supporting surfaces |
+| Dusty Mauve | `#BFA9BA` | Soft accent, highlights, expense/error tones |
+
+**Light theme** — background `#F7F4F2`, surface `#FFFFFF`, primary `#182346`, secondary `#3D5387`, accent `#BFA9BA`.
+**Dark theme** — background `#0E0D15`, with elevated surfaces stepping through `#141A2A` → `#202D4E` → `#2D3B61` for depth, and primary `#7C83AD` for contrast.
+
+Semantic roles (sale, purchase, expense, profit, inventory, khata, cash) keep their meaning but are drawn from this blue/mauve family. `AppTheme` also keeps legacy aliases such as `teal`, `amber`, and `sage` for backward compatibility — the names remain, but the values now come from the current palette.
+
+Theme mode (System / Light / Dark) is user-selectable in Settings and persisted via `SharedPreferences`. Changing a color should be done by editing a token in `app_theme.dart`, not by hardcoding a color in a widget.
 
 ## Profit calculations (important)
 
@@ -89,11 +108,11 @@ The script runs clean → deps → analyze → test → build in sequence. Any f
 
 ## CI/CD
 
-Every push to `main` runs analyze + tests + builds a debug APK. Every `v*` tag builds a signed release APK, generates a changelog from `CHANGELOG.md`, and creates a GitHub Release with the APK attached.
+Every push to `main` runs analyze + tests + builds a debug APK. Every `v*` tag builds a signed release APK, generates a changelog from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam Shop Pos v<version>.apk`, where the version comes from the tag (falls back to the `version:` in `pubspec.yaml` for non-tag builds).
 
 ```bash
-git tag v1.0.4
-git push origin v1.0.4
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 The pipeline uses:

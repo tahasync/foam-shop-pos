@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.0.0 — September 2026
+
+- Changed: **New visual identity.** The entire theme is now built on a deep blue / periwinkle / dusty mauve palette — Deep Ink `#0E0D15`, Deep Navy `#182346`, Slate Blue `#3D5387`, Muted Periwinkle `#7C83AD`, Dusty Mauve `#BFA9BA`. This replaces the previous teal/indigo/coral scheme. Color tokens only — no layout, typography, navigation, or business-logic changes.
+- Changed: Primary, secondary, and accent colors across all Material components (buttons, inputs, chips, dialogs, sheets, navigation, snackbars, tooltips)
+- Changed: Semantic domain colors (Sale, Purchase, Expense, Profit, Inventory, Khata, Cash) recolored into the new blue/mauve family while keeping their meaning distinguishable
+- Improved: Light and dark themes are now both fully defined by the palette, with derived surface layers for clearer depth in dark mode
+- Improved: Hero card, bottom sheets, glass surfaces, navigation indicator, and dialogs now use palette-derived colors instead of hardcoded values
+- Improved: CI release APKs are now named `Foam Shop Pos v<version>.apk` for easier download from the Releases page
+
 ## v1.0.6 — July 2026
 
 - Added: Animation system — TapScale micro-interactions on press, smooth slide-up page transitions app-wide
