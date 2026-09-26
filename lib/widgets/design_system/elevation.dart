@@ -13,8 +13,8 @@ List<BoxShadow> appElevationShadows(BuildContext context) {
     ];
   }
   return const [
-    BoxShadow(color: Color(0x0F1E143C), blurRadius: 2, offset: Offset(0, 1)),
-    BoxShadow(color: Color(0x291E143C), blurRadius: 20, spreadRadius: -10, offset: Offset(0, 8)),
+    BoxShadow(color: Color(0x0F0E0D15), blurRadius: 2, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x290E0D15), blurRadius: 20, spreadRadius: -10, offset: Offset(0, 8)),
   ];
 }
 

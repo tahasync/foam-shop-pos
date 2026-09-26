@@ -12,29 +12,12 @@ class AppAnim {
 }
 
 // ── Reusable page transitions ──
-Route<T> fadeSlideRoute<T>(Widget page) => PageRouteBuilder<T>(
-  pageBuilder: (_, a, __) => FadeTransition(opacity: a, child: page),
-  transitionDuration: AppAnim.normal,
-  reverseTransitionDuration: AppAnim.fast,
-);
-
 Route<T> slideUpRoute<T>(Widget page) => PageRouteBuilder<T>(
   pageBuilder: (_, a, __) => SlideTransition(
     position: Tween<Offset>(
       begin: const Offset(0, 0.06),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: a, curve: AppAnim.spring)),
-    child: FadeTransition(opacity: a, child: page),
-  ),
-  transitionDuration: AppAnim.normal,
-  reverseTransitionDuration: AppAnim.fast,
-);
-
-Route<T> scaleRoute<T>(Widget page) => PageRouteBuilder<T>(
-  pageBuilder: (_, a, __) => ScaleTransition(
-    scale: Tween<double>(begin: 0.95, end: 1).animate(
-      CurvedAnimation(parent: a, curve: AppAnim.spring),
-    ),
     child: FadeTransition(opacity: a, child: page),
   ),
   transitionDuration: AppAnim.normal,
@@ -84,58 +67,11 @@ class _TapScaleState extends State<TapScale> with SingleTickerProviderStateMixin
   }
 }
 
-// ── Staggered list fade-in ──
-class StaggerFadeIn extends StatefulWidget {
-  final int index;
-  final Widget child;
-  const StaggerFadeIn({super.key, required this.index, required this.child});
-
-  @override
-  State<StaggerFadeIn> createState() => _StaggerFadeInState();
-}
-
-class _StaggerFadeInState extends State<StaggerFadeIn> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _opacity, _transY;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      duration: AppAnim.normal,
-      vsync: this,
-    );
-    final delay = (widget.index * 40).clamp(0, 300);
-    Future.delayed(Duration(milliseconds: delay), () { if (mounted) _ctrl.forward(); });
-    _opacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeIn),
-    );
-    _transY = Tween<double>(begin: 12, end: 0).animate(
-      CurvedAnimation(parent: _ctrl, curve: AppAnim.spring),
-    );
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, child) => Opacity(
-        opacity: _opacity.value,
-        child: Transform.translate(offset: Offset(0, _transY.value), child: child),
-      ),
-      child: widget.child,
-    );
-  }
-}
-
 // ── Animated check mark for success states ──
 class AnimatedCheck extends StatefulWidget {
   final double size;
   final Color color;
-  const AnimatedCheck({super.key, this.size = 48, this.color = Colors.green});
+  const AnimatedCheck({super.key, this.size = 48, this.color = const Color(0xFF3D5387)});
 
   @override
   State<AnimatedCheck> createState() => _AnimatedCheckState();

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-/// Floating capsule bottom nav matching the mockup's `.bottom-nav`: a sliding
-/// `primaryContainer` indicator pill behind the active item, spring-eased.
+/// Floating frosted-glass bottom nav (`.nav-bar` in the liquid-glass mockup):
+/// translucent blur, 1px glass edge, teal active state with a soft indicator.
 class CustomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -18,13 +18,20 @@ class CustomNavBar extends StatelessWidget {
   });
 
   static const _itemCount = 4;
-  static const _indicatorInset = 5.0;
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final activeColor = ac.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = ac.brandSolid;
     final inactiveColor = ac.inkFaint;
+
+    final items = <_NavItemData>[
+      _NavItemData(icon: Icons.dashboard_rounded, label: 'Dashboard', showDot: false),
+      _NavItemData(icon: Icons.sell_rounded, label: 'Sales', showDot: false),
+      _NavItemData(icon: Icons.inventory_2_rounded, label: 'Inventory', showDot: showInventoryDot),
+      _NavItemData(icon: Icons.people_rounded, label: 'Khata', showDot: showKhataDot),
+    ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -32,33 +39,36 @@ class CustomNavBar extends StatelessWidget {
         return Stack(
           children: [
             AnimatedPositioned(
-              duration: const Duration(milliseconds: 350),
+              duration: const Duration(milliseconds: 320),
               curve: Curves.easeOutBack,
-              left: currentIndex * itemWidth + _indicatorInset,
-              top: 9,
-              width: itemWidth - _indicatorInset * 2,
-              height: 52,
+              left: currentIndex * itemWidth + 8,
+              top: 7,
+              width: itemWidth - 16,
+              height: constraints.maxHeight - 14,
               child: Container(
                 decoration: BoxDecoration(
-                  color: ac.primaryContainer,
-                  borderRadius: BorderRadius.circular(18),
+                  color: isDark
+                      ? const Color(0x243D5387)
+                      : const Color(0x33DEE3F0),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? const Color(0x333D5387) : const Color(0x993D5387),
+                  ),
                 ),
               ),
             ),
             Row(
               children: [
-                _NavItem(index: 0, icon: Icons.dashboard_rounded, label: 'Dashboard', showDot: false,
-                    isActive: 0 == currentIndex, activeColor: activeColor, inactiveColor: inactiveColor,
-                    onTap: () => onTap(0)),
-                _NavItem(index: 1, icon: Icons.sell_rounded, label: 'Sales', showDot: false,
-                    isActive: 1 == currentIndex, activeColor: activeColor, inactiveColor: inactiveColor,
-                    onTap: () => onTap(1)),
-                _NavItem(index: 2, icon: Icons.inventory_2_rounded, label: 'Inventory', showDot: showInventoryDot,
-                    isActive: 2 == currentIndex, activeColor: activeColor, inactiveColor: inactiveColor,
-                    onTap: () => onTap(2)),
-                _NavItem(index: 3, icon: Icons.people_rounded, label: 'Khata', showDot: showKhataDot,
-                    isActive: 3 == currentIndex, activeColor: activeColor, inactiveColor: inactiveColor,
-                    onTap: () => onTap(3)),
+                for (var i = 0; i < items.length; i++)
+                  _NavItem(
+                    icon: items[i].icon,
+                    label: items[i].label,
+                    showDot: items[i].showDot,
+                    isActive: i == currentIndex,
+                    activeColor: activeColor,
+                    inactiveColor: inactiveColor,
+                    onTap: () => onTap(i),
+                  ),
               ],
             ),
           ],
@@ -68,8 +78,14 @@ class CustomNavBar extends StatelessWidget {
   }
 }
 
+class _NavItemData {
+  final IconData icon;
+  final String label;
+  final bool showDot;
+  const _NavItemData({required this.icon, required this.label, this.showDot = false});
+}
+
 class _NavItem extends StatelessWidget {
-  final int index;
   final IconData icon;
   final String label;
   final bool showDot;
@@ -79,7 +95,6 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NavItem({
-    required this.index,
     required this.icon,
     required this.label,
     required this.showDot,

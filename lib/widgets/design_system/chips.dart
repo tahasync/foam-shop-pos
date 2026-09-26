@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import 'elevation.dart';
+import 'glass_container.dart';
 
-/// A horizontally scrollable row of pills (`.chip-row` / `.chip`).
+/// A horizontally scrollable row of glass pills (`.chip-row` / `.chip`).
 class ChipRow extends StatelessWidget {
   final List<String> values;
   final String selected;
@@ -52,31 +52,57 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fill = active ? (activeColor ?? ac.brandSolid) : null;
+    final fg = active
+        ? (isDark ? ac.ink : Colors.white)
+        : ac.inkSoft;
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? (activeColor ?? ac.primary) : ac.surface,
-          borderRadius: BorderRadius.circular(999),
-          border: active ? Border.all(color: Colors.transparent) : Border.all(color: ac.outline, width: 1.5),
+      child: ActiveGlassPill(label: label, fill: fill, fg: fg),
+    );
+  }
+}
+
+/// Small frosted pill — shared by chip rows and badges.
+class ActiveGlassPill extends StatelessWidget {
+  final String label;
+  final Color? fill; // solid active fill (null → frosted glass)
+  final Color fg;
+  const ActiveGlassPill({
+    super.key,
+    required this.label,
+    this.fill,
+    this.fg = const Color(0xFF9A98A5),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: fill ?? ac.glassBorder,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: active ? Theme.of(context).colorScheme.onPrimary : ac.inkSoft,
-          ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: fill != null ? fg : ac.inkSoft,
         ),
       ),
     );
   }
 }
 
-/// Segmented control (`.segmented`) — a pill of options with a sliding active
-/// segment.
+/// Segmented control (`.segmented`) — a frosted-glass pill of options with a
+/// tinted active segment.
 class SegmentedControl extends StatelessWidget {
   final List<String> options;
   final int selectedIndex;
@@ -92,13 +118,12 @@ class SegmentedControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final cs = Theme.of(context).colorScheme;
-    return Container(
+    return GlassContainer(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: ac.surfaceHigh,
-        borderRadius: BorderRadius.circular(14),
-      ),
+      blur: 12,
+      strong: true,
+      gloss: false,
+      tint: Colors.white.withValues(alpha: 0.1),
       child: Row(
         children: [
           for (var i = 0; i < options.length; i++) ...[
@@ -110,18 +135,18 @@ class SegmentedControl extends StatelessWidget {
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
-                    color: i == selectedIndex ? cs.surfaceContainerLowest : Colors.transparent,
+                    color: i == selectedIndex
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(11),
-                    boxShadow: i == selectedIndex ? appElevationShadows(context) : null,
                   ),
-                  foregroundDecoration: i == selectedIndex ? darkTopEdgeHighlight(context) : null,
                   child: Text(
                     options[i],
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: i == selectedIndex ? ac.primary : ac.inkSoft,
+                      color: i == selectedIndex ? ac.ink : ac.inkSoft,
                     ),
                   ),
                 ),

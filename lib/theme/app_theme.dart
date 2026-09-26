@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// The v3 design-system color roles, mirroring the tokens in the canonical
-/// mockup (`foam-shop-pos-mockup.html`): domain tint/fg pairs, ink scale,
-/// surfaces, outline, primary/accent families, plus the FIXED "solid" tokens.
+/// The liquid-glass design tokens, mirroring the canonical mockup
+/// (`liquid_glass_mockup.html`): domain tint/fg pairs, ink scale, glass
+/// surface tokens, blur radii, orb colors, plus the FIXED "solid" tokens.
 ///
-/// Dark-mode rule (NFR-9 / mockup v3.3): `--primary`/`--expense-fg` and the
-/// other `-fg` tokens are intentionally *lightened* in dark mode for use as
-/// on-dark-surface TEXT. Any card/badge/button that pairs a solid colored
+/// Glass rule (mockup v1): glass surfaces are translucent fills
+/// (`glassFill`) sampled over whatever sits behind them. Semantic tints are
+/// translucent color overlays on the glass. Ink and -fg tokens are *lightened*
+/// in dark mode for use as on-glass TEXT. Any card that pairs a solid colored
 /// fill with fixed white content must source that fill from `brandSolid` /
-/// `brandSolidStrong` / `dangerSolid`, which stay a constant rich color in
-/// both themes.
+/// `brandSolidStrong` / `dangerSolid`.
 class AppColors extends ThemeExtension<AppColors> {
   // ── Domain tint + fg pairs ──
   final Color saleTint;
@@ -59,6 +59,16 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color brandSolidStrong;
   final Color dangerSolid;
 
+  // ── Liquid glass tokens ──
+  final Color orb1; // teal orb
+  final Color orb2; // indigo orb
+  final Color orb3; // coral orb
+  final Color glassFill; // base glass surface fill
+  final Color glassFillStrong; // emphasised glass surface
+  final Color glassBorder; // 1px glass edge
+  final Color glassGloss; // top-edge light refraction line
+  final double glassBlur; // backdrop blur sigma
+
   const AppColors({
     required this.saleTint,
     required this.purchaseTint,
@@ -93,82 +103,108 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.brandSolid,
     required this.brandSolidStrong,
     required this.dangerSolid,
+    required this.orb1,
+    required this.orb2,
+    required this.orb3,
+    required this.glassFill,
+    required this.glassFillStrong,
+    required this.glassBorder,
+    required this.glassGloss,
+    required this.glassBlur,
   });
 
   static const _light = AppColors(
-    saleTint: Color(0xFFDEF3E7),
-    purchaseTint: Color(0xFFFAEDD3),
-    expenseTint: Color(0xFFFBE2DC),
-    profitTint: Color(0xFFE7E3FB),
-    inventoryTint: Color(0xFFF2E4FB),
-    khataTint: Color(0xFFDCF0F4),
-    cashTint: Color(0xFFDBEFE0),
-    saleFg: Color(0xFF1B7A56),
-    purchaseFg: Color(0xFFB07417),
-    expenseFg: Color(0xFFC13F2C),
-    profitFg: Color(0xFF2C2760),
-    inventoryFg: Color(0xFF7C3FB0),
-    khataFg: Color(0xFF0E6E82),
-    cashFg: Color(0xFF166534),
-    ink: Color(0xFF1B1A2A),
-    inkSoft: Color(0xFF5B5A72),
-    inkFaint: Color(0xFF9694AC),
-    surface: Color(0xFFFFFFFF),
-    surface2: Color(0xFFFBFAFF),
-    surfaceHigh: Color(0xFFF1EEFA),
-    surfaceHighest: Color(0xFFE6E2F5),
-    outline: Color(0xFFE4E0F2),
-    outlineStrong: Color(0xFFD3CDEA),
-    primary: Color(0xFF3E3878),
-    primaryStrong: Color(0xFF2C2760),
-    primaryContainer: Color(0xFFE7E3FB),
-    onPrimaryContainer: Color(0xFF2C2760),
-    accent: Color(0xFFC9852B),
-    onAccent: Color(0xFF2A1A00),
-    accentContainer: Color(0xFFFBEBD2),
-    brandSolid: Color(0xFF3E3878),
-    brandSolidStrong: Color(0xFF241F52),
-    dangerSolid: Color(0xFFC13F2C),
+    // Translucent domain tints derived from the reference palette
+    // (slate blue / periwinkle / dusty mauve) so they blend over the glass fill.
+    saleTint: Color(0xCCE0E5F1),
+    purchaseTint: Color(0xCCE8EBF4),
+    expenseTint: Color(0xCCF1E8ED),
+    profitTint: Color(0xCCECECF4),
+    inventoryTint: Color(0xCCE3E7F1),
+    khataTint: Color(0xCCDEE3F0),
+    cashTint: Color(0xCCECECF4),
+    saleFg: Color(0xFF3D5387),
+    purchaseFg: Color(0xFF182346),
+    expenseFg: Color(0xFF7E4A63),
+    profitFg: Color(0xFF4A5C97),
+    inventoryFg: Color(0xFF5B6390),
+    khataFg: Color(0xFF2A3A6B),
+    cashFg: Color(0xFF3F4C7C),
+    ink: Color(0xFF0E0D15),
+    inkSoft: Color(0xFF3D3B45),
+    inkFaint: Color(0xFF777582),
+    surface: Color(0xFFF7F4F2),
+    surface2: Color(0xFFFBF9F8),
+    surfaceHigh: Color(0xFFF1EEF0),
+    surfaceHighest: Color(0xFFE7E2E5),
+    outline: Color(0xFFD9D7DC),
+    outlineStrong: Color(0xFFC2C0C8),
+    primary: Color(0xFF182346),
+    primaryStrong: Color(0xFF0E0D15),
+    primaryContainer: Color(0xFFE3E7F1),
+    onPrimaryContainer: Color(0xFF182346),
+    accent: Color(0xFFBFA9BA),
+    onAccent: Color(0xFF0E0D15),
+    accentContainer: Color(0xFFF1E8ED),
+    brandSolid: Color(0xFF3D5387),
+    brandSolidStrong: Color(0xFF182346),
+    dangerSolid: Color(0xFF7E4A63),
+    orb1: Color(0x667C83AD),
+    orb2: Color(0x4D3D5387),
+    orb3: Color(0x59BFA9BA),
+    glassFill: Color(0xB3FFFFFF), // ~70% frosted white
+    glassFillStrong: Color(0xE8FFFFFF),
+    glassBorder: Color(0xFFFFFFFF),
+    glassGloss: Color(0x66FFFFFF),
+    glassBlur: 24.0,
   );
 
   static const _dark = AppColors(
-    saleTint: Color(0xFF173829),
-    purchaseTint: Color(0xFF3B2E10),
-    expenseTint: Color(0xFF3B2019),
-    profitTint: Color(0xFF312B5C),
-    inventoryTint: Color(0xFF332756),
-    khataTint: Color(0xFF123640),
-    cashTint: Color(0xFF123626),
-    saleFg: Color(0xFF6FE0AE),
-    purchaseFg: Color(0xFFF0C877),
-    expenseFg: Color(0xFFF29483),
-    profitFg: Color(0xFFC7BEFF),
-    inventoryFg: Color(0xFFDBB4F7),
-    khataFg: Color(0xFF7BDCEF),
-    cashFg: Color(0xFF7EE0A8),
-    ink: Color(0xFFEDEBFA),
-    inkSoft: Color(0xFFB7B4D1),
-    inkFaint: Color(0xFF817EA0),
-    surface: Color(0xFF1E1A38),
-    surface2: Color(0xFF231F41),
-    surfaceHigh: Color(0xFF2A2650),
-    surfaceHighest: Color(0xFF332D5E),
-    outline: Color(0xFF332D5E),
-    outlineStrong: Color(0xFF453D77),
-    primary: Color(0xFFB7ADFF),
-    primaryStrong: Color(0xFFCFC7FF),
-    primaryContainer: Color(0xFF3A3372),
-    onPrimaryContainer: Color(0xFFDCD5FF),
-    accent: Color(0xFFF0B95C),
-    onAccent: Color(0xFF3A2600),
-    accentContainer: Color(0xFF4A3714),
-    brandSolid: Color(0xFF3E3878),
-    brandSolidStrong: Color(0xFF241F52),
-    dangerSolid: Color(0xFFC13F2C),
+    saleTint: Color(0x333D5387),
+    purchaseTint: Color(0x3D182346),
+    expenseTint: Color(0x3DBFA9BA),
+    profitTint: Color(0x337C83AD),
+    inventoryTint: Color(0x337C83AD),
+    khataTint: Color(0x33182346),
+    cashTint: Color(0x337C83AD),
+    saleFg: Color(0xFF9AA2D0),
+    purchaseFg: Color(0xFF8E9AD6),
+    expenseFg: Color(0xFFD3AFC0),
+    profitFg: Color(0xFFAEB5E0),
+    inventoryFg: Color(0xFF9AA2D0),
+    khataFg: Color(0xFF8B97D4),
+    cashFg: Color(0xFFAEB5E0),
+    ink: Color(0xFFF5F2F4),
+    inkSoft: Color(0xFFC7C5CF),
+    inkFaint: Color(0xFF9A98A5),
+    surface: Color(0xFF0E0D15),
+    surface2: Color(0xFF141A2A),
+    surfaceHigh: Color(0xFF202D4E),
+    surfaceHighest: Color(0xFF2D3B61),
+    outline: Color(0xFF34405D),
+    outlineStrong: Color(0xFF4A5777),
+    primary: Color(0xFF7C83AD),
+    primaryStrong: Color(0xFFBFA9BA),
+    primaryContainer: Color(0xFF182346),
+    onPrimaryContainer: Color(0xFFF5F2F4),
+    accent: Color(0xFFBFA9BA),
+    onAccent: Color(0xFF0E0D15),
+    accentContainer: Color(0xFF3A3040),
+    brandSolid: Color(0xFF7C83AD),
+    brandSolidStrong: Color(0xFFBFA9BA),
+    dangerSolid: Color(0xFFC8A2B6),
+    orb1: Color(0x593D5387),
+    orb2: Color(0x4D7C83AD),
+    orb3: Color(0x4DBFA9BA),
+    glassFill: Color(0x12FFFFFF),
+    glassFillStrong: Color(0x1FFFFFFF),
+    glassBorder: Color(0x1AFFFFFF),
+    glassGloss: Color(0x1FFFFFFF),
+    glassBlur: 16.0,
   );
 
   static AppColors of(BuildContext context) =>
-      Theme.of(context).extension<AppColors>() ?? _light;
+      Theme.of(context).extension<AppColors>() ?? _dark;
 
   @override
   ThemeExtension<AppColors> copyWith({
@@ -183,6 +219,9 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? onPrimaryContainer,
     Color? accent, Color? onAccent, Color? accentContainer,
     Color? brandSolid, Color? brandSolidStrong, Color? dangerSolid,
+    Color? orb1, Color? orb2, Color? orb3,
+    Color? glassFill, Color? glassFillStrong,
+    Color? glassBorder, Color? glassGloss, double? glassBlur,
   }) => AppColors(
     saleTint: saleTint ?? this.saleTint,
     purchaseTint: purchaseTint ?? this.purchaseTint,
@@ -217,6 +256,14 @@ class AppColors extends ThemeExtension<AppColors> {
     brandSolid: brandSolid ?? this.brandSolid,
     brandSolidStrong: brandSolidStrong ?? this.brandSolidStrong,
     dangerSolid: dangerSolid ?? this.dangerSolid,
+    orb1: orb1 ?? this.orb1,
+    orb2: orb2 ?? this.orb2,
+    orb3: orb3 ?? this.orb3,
+    glassFill: glassFill ?? this.glassFill,
+    glassFillStrong: glassFillStrong ?? this.glassFillStrong,
+    glassBorder: glassBorder ?? this.glassBorder,
+    glassGloss: glassGloss ?? this.glassGloss,
+    glassBlur: glassBlur ?? this.glassBlur,
   );
 
   @override
@@ -224,22 +271,22 @@ class AppColors extends ThemeExtension<AppColors> {
 }
 
 class AppTheme {
-  // Backwards-compatible aliases mapped onto the new v3 palette so existing
-  // screens keep compiling while they are progressively restyled.
-  static const ink = Color(0xFF1B1A2A);
-  static const inkSoft = Color(0xFF5B5A72);
-  static const inkFaint = Color(0xFF9694AC);
-  static const teal = Color(0xFF3E3878); // brand indigo
-  static const tealDark = Color(0xFF241F52); // brand solid strong
-  static const amber = Color(0xFFC9852B);
-  static const terracotta = Color(0xFFC13F2C);
-  static const sage = Color(0xFF1B7A56);
-  static const bgLight = Color(0xFFF1EEFA);
-  static const bgDark = Color(0xFF16132A);
+  // Backwards-compatible aliases mapped onto the new liquid palette so
+  // existing screens keep compiling while they are progressively restyled.
+  static const ink = Color(0xFF0E0D15);
+  static const inkSoft = Color(0xFF3D3B45);
+  static const inkFaint = Color(0xFF777582);
+  static const teal = Color(0xFF3D5387);
+  static const tealDark = Color(0xFF182346);
+  static const amber = Color(0xFF7C83AD);
+  static const terracotta = Color(0xFF7E4A63);
+  static const sage = Color(0xFF4A5C97);
+  static const bgLight = Color(0xFFF7F4F2);
+  static const bgDark = Color(0xFF0E0D15);
   static const surfaceLight = Color(0xFFFFFFFF);
-  static const surface2Light = Color(0xFFFBFAFF);
-  static const surfaceDark = Color(0xFF1E1A38);
-  static const surface2Dark = Color(0xFF231F41);
+  static const surface2Light = Color(0xFFFBF9F8);
+  static const surfaceDark = Color(0xFF141A2A);
+  static const surface2Dark = Color(0xFF0E0D15);
 
   static ThemeData light() {
     final ac = AppColors._light;
@@ -249,22 +296,24 @@ class AppTheme {
       onPrimary: const Color(0xFFFFFFFF),
       primaryContainer: ac.primaryContainer,
       onPrimaryContainer: ac.onPrimaryContainer,
-      secondary: ac.accent,
-      onSecondary: ac.onAccent,
-      secondaryContainer: ac.accentContainer,
-      onSecondaryContainer: const Color(0xFF7A4F0A),
+      secondary: const Color(0xFF3D5387),
+      onSecondary: const Color(0xFFFFFFFF),
+      secondaryContainer: const Color(0xFFE4E8F2),
+      onSecondaryContainer: const Color(0xFF182346),
       error: ac.dangerSolid,
       onError: const Color(0xFFFFFFFF),
-      surface: const Color(0xFFF1EEFA), // --bg
+      tertiary: const Color(0xFF7C83AD),
+      onTertiary: const Color(0xFFFFFFFF),
+      surface: ac.surface,
       onSurface: ac.ink,
-      surfaceContainerLowest: ac.surface,
-      surfaceContainerLow: ac.surface2,
-      surfaceContainerHigh: ac.surfaceHigh,
-      surfaceContainerHighest: ac.surfaceHighest,
+      surfaceContainerLowest: ac.glassFillStrong,
+      surfaceContainerLow: const Color(0xFFFBF9F8),
+      surfaceContainerHigh: const Color(0xFFF1EEF0),
+      surfaceContainerHighest: const Color(0xFFE7E2E5),
       onSurfaceVariant: ac.inkSoft,
       outline: ac.outlineStrong,
       outlineVariant: ac.outline,
-      shadow: const Color(0x1E1E143C),
+      shadow: const Color(0x330E0D15),
     );
     return _base(cs, ac);
   }
@@ -274,18 +323,20 @@ class AppTheme {
     final cs = _scheme(
       brightness: Brightness.dark,
       primary: ac.primary,
-      onPrimary: ac.onPrimaryContainer,
+      onPrimary: const Color(0xFF0E0D15),
       primaryContainer: ac.primaryContainer,
       onPrimaryContainer: ac.onPrimaryContainer,
-      secondary: ac.accent,
-      onSecondary: ac.onAccent,
-      secondaryContainer: ac.accentContainer,
-      onSecondaryContainer: const Color(0xFFF0B95C),
-      error: const Color(0xFFF29483),
-      onError: const Color(0xFF3A1108),
-      surface: const Color(0xFF16132A), // --bg
+      secondary: const Color(0xFF3D5387),
+      onSecondary: const Color(0xFFF5F2F4),
+      secondaryContainer: const Color(0xFF26365F),
+      onSecondaryContainer: const Color(0xFFBFA9BA),
+      error: const Color(0xFFC8A2B6),
+      onError: const Color(0xFF0E0D15),
+      tertiary: const Color(0xFFBFA9BA),
+      onTertiary: const Color(0xFF0E0D15),
+      surface: ac.surface,
       onSurface: ac.ink,
-      surfaceContainerLowest: ac.surface,
+      surfaceContainerLowest: ac.surface2,
       surfaceContainerLow: ac.surface2,
       surfaceContainerHigh: ac.surfaceHigh,
       surfaceContainerHighest: ac.surfaceHighest,
@@ -309,6 +360,8 @@ class AppTheme {
     required Color onSecondaryContainer,
     required Color error,
     required Color onError,
+    Color? tertiary,
+    Color? onTertiary,
     required Color surface,
     required Color onSurface,
     required Color surfaceContainerLowest,
@@ -330,8 +383,8 @@ class AppTheme {
       onSecondary: onSecondary,
       secondaryContainer: secondaryContainer,
       onSecondaryContainer: onSecondaryContainer,
-      tertiary: primary,
-      onTertiary: onPrimary,
+      tertiary: tertiary ?? primary,
+      onTertiary: onTertiary ?? onPrimary,
       error: error,
       onError: onError,
       surface: surface,
@@ -340,6 +393,9 @@ class AppTheme {
       surfaceContainerLow: surfaceContainerLow,
       surfaceContainerHigh: surfaceContainerHigh,
       surfaceContainerHighest: surfaceContainerHighest,
+      surfaceContainer: surfaceContainerHigh,
+      surfaceDim: surface,
+      surfaceBright: surfaceContainerHigh,
       onSurfaceVariant: onSurfaceVariant,
       outline: outline,
       outlineVariant: outlineVariant,
@@ -350,24 +406,23 @@ class AppTheme {
   static ThemeData _base(ColorScheme cs, AppColors appColors) {
     final inter = GoogleFonts.interTextTheme();
     final manrope = GoogleFonts.manropeTextTheme();
-    final fraunces = GoogleFonts.frauncesTextTheme();
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: cs,
       textTheme: inter.copyWith(
-        displayLarge: fraunces.displayLarge?.copyWith(
-            fontFamily: 'Fraunces', fontWeight: FontWeight.w600, letterSpacing: -0.01),
-        displayMedium: fraunces.displayMedium?.copyWith(
-            fontFamily: 'Fraunces', fontWeight: FontWeight.w600, letterSpacing: -0.01),
-        displaySmall: fraunces.displaySmall?.copyWith(
-            fontFamily: 'Fraunces', fontWeight: FontWeight.w600, letterSpacing: -0.01),
-        headlineLarge: fraunces.headlineLarge?.copyWith(
-            fontFamily: 'Fraunces', fontWeight: FontWeight.w600, letterSpacing: -0.01),
-        headlineMedium: fraunces.headlineMedium?.copyWith(
-            fontFamily: 'Fraunces', fontWeight: FontWeight.w600, letterSpacing: -0.01),
-        headlineSmall: fraunces.headlineSmall?.copyWith(
-            fontFamily: 'Fraunces', fontWeight: FontWeight.w600, letterSpacing: -0.01),
+        displayLarge: inter.displayLarge?.copyWith(
+            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
+        displayMedium: inter.displayMedium?.copyWith(
+            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
+        displaySmall: inter.displaySmall?.copyWith(
+            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
+        headlineLarge: inter.headlineLarge?.copyWith(
+            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
+        headlineMedium: inter.headlineMedium?.copyWith(
+            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
+        headlineSmall: inter.headlineSmall?.copyWith(
+            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
         titleLarge: manrope.titleLarge?.copyWith(
             fontFamily: 'Manrope', fontWeight: FontWeight.w700, letterSpacing: -0.01),
         titleMedium: manrope.titleMedium?.copyWith(
@@ -486,25 +541,26 @@ class AppTheme {
     );
   }
 
-  /// Fraunces display style for numerals/headings used across the design
-  /// system (hero amounts, KPI values, big totals).
-  static TextStyle display(BuildContext context, {double size = 21, FontWeight weight = FontWeight.w600, Color? color}) {
+  /// Inter display style for numerals/headings used across the design system
+  /// (herro amounts, KPI values, big totals) — tabular figures by default.
+  static TextStyle display(BuildContext context, {double size = 21, FontWeight weight = FontWeight.w800, Color? color}) {
     final cs = Theme.of(context).colorScheme;
     return TextStyle(
-      fontFamily: 'Fraunces',
-      fontFamilyFallback: const ['serif'],
+      fontFamily: 'Inter',
+      fontFamilyFallback: const ['sans-serif'],
       fontSize: size,
       fontWeight: weight,
       letterSpacing: -0.01,
       color: color ?? cs.onSurface,
+      fontFeatures: const [FontFeature.tabularFigures()],
     );
   }
 
   static const appTitleStyle = TextStyle(
-    fontFamily: 'Fraunces',
-    fontFamilyFallback: ['serif'],
+    fontFamily: 'Inter',
+    fontFamilyFallback: ['sans-serif'],
     fontSize: 15.5,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w800,
     letterSpacing: -0.01,
   );
 }

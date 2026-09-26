@@ -33,7 +33,7 @@ class SuccessSheet extends StatelessWidget {
   }) {
     return showDialog<void>(
       context: context,
-      barrierColor: const Color(0x800A0814),
+      barrierColor: const Color(0x800E0D15),
       barrierDismissible: false,
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
