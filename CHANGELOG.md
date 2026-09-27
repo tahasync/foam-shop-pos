@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.5.2 — September 2026
 
 Two data-integrity bugs that both presented as "the app is broken", plus the
 audit pass that surfaced them.
@@ -114,6 +114,25 @@ audit pass that surfaced them.
 - **Documented why the CI Flutter version is pinned**, and when it is safe to
   bump. The local toolchain being one patch ahead is expected and harmless.
 
+### Update dialog ("What's New")
+
+The in-app update prompt is **unchanged in v1.5.2** — it is documented here so
+the release notes describe what a user actually sees. The dialog itself has
+been in the app since the initial commit; nothing about it was touched in the
+last 24 hours, and no part of it is new in this release.
+
+- On launch, `HomeScreen` compares the installed version from
+  `package_info_plus` against the latest GitHub Release tag. If the remote tag
+  is newer, a centre modal opens showing `v<installed>` → `v<remote>` and the
+  release notes, with **Update Now** (opens the Releases page externally) and
+  **Remind me later** (dismisses without blocking the app).
+- The check is fire-and-forget: any network, parse, or platform error is
+  swallowed, so a user with no connectivity simply never sees the dialog.
+- **Known limitation, not fixed here:** "Remind me later" is not persisted. The
+  check runs on every `HomeScreen` mount, so the dialog reappears on the next
+  app start for as long as a newer release exists. Suppressing it for a period
+  would need a `shared_preferences` key; the dependency is already present.
+
 ## v1.5.1 — September 2026
 
 Sales-screen cart line rebuilt, and a text-encoding bug that the analyzer could not see.
@@ -130,14 +149,12 @@ Sales-screen cart line rebuilt, and a text-encoding bug that the analyzer could 
 - Added a **Clear all** action to the cart heading; the only previous way to empty a cart was one remove tap per line.
 - Google Sign-In falls back to the project's built-in web client id when `google-services.json` omits the `client_type: 3` entry. Without it, that resource is never generated and Sign-In fails with error 10 on every build. An explicit `--dart-define` still takes precedence.
 
-## Unreleased
-
-### Fixed
+### Fixed (receipt save and price entry)
 - **"Save PDF" now actually puts the receipt in the phone's storage.** The receipt was written with `dart:io`'s `File` directly into `/storage/emulated/0/Download`, which Android's scoped storage has sealed since Android 10 — the app showed a success toast and no file ever appeared. `WRITE_EXTERNAL_STORAGE` is also capped at `maxSdkVersion=28` in the manifest, so there was no permission that could have made it work. Saving on Android now goes through `MediaStore` via a new method channel, which needs no runtime permission and makes the PDF visible to Files, Downloads and gallery apps. The write is staged with `IS_PENDING` so a half-written receipt never shows up, and a failed insert is deleted rather than left as an orphan row. Devices below Android 10 keep the direct write, which is still correct there.
 - A save that cannot be verified is no longer reported as a success. The native side returns the resolved `content://` location, an empty or null reply is treated as a failure, and the share sheet remains the fallback so a receipt is never lost.
 - Receipt PDF page height now fits the content instead of reserving A4's 297mm long edge on an 80mm-wide thermal roll. A one-item receipt was ~125mm of content on a 297mm sheet, so the print preview showed a page that was two-thirds blank. Heights are computed from the actual block structure and calibrated so the receipt still lands on a single page from an empty cart up to a 12-item order.
 
-### Changed
+### Changed (receipt and price entry)
 - Receipt rebuilt from scratch against the mockup: the PDF and the on-screen preview now share one typed `ReceiptData`/`ReceiptLine` model, so the two cannot drift. The page is sized with `pw.Widget.measure` instead of a hand-rolled height estimate, which removes the blank-page/second-page failure mode. Receipts that genuinely exceed the 80mm roll fall back to paginated A4.
 - Sales price field is now a 96×48 target with a larger font, up from 68×30 — it was below the app's own 48dp touch minimum and cramped for a 5-6 digit figure.
 - Sales price field no longer loses focus mid-edit. The cart republishes on every keystroke, which rebuilt the field and dropped the caret into the search box after a single character; it now holds a persistent `FocusNode` and reasserts focus after provider updates.

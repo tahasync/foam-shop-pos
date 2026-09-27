@@ -32,7 +32,28 @@ Data is live-synced to Firestore — each user sees only their own data (partiti
 - **Notifications** — on-device low-stock alerts and overdue baqaya reminders (local-only, no server cost)
 - **Support / Feedback** — in-app contact form with WhatsApp and Email deep links
 - **Theming** — light + dark mode with floating pill navigation. Both themes are driven by a single deep blue / periwinkle / dusty mauve palette (see [Color palette](#color-palette))
-- **Update notifications** — in-app "What's New" dialog showing curated changelog from GitHub Releases
+- **Update notifications** — on launch the app compares the installed version against the latest GitHub Release and, if newer, shows a "What's New" dialog with the current → new version, the release notes, **Update Now** (opens Releases) and **Remind me later**. The check is fire-and-forget: with no network it silently shows nothing. See [Update dialog](#update-dialog-whats-new) for the known "Remind me later" limitation.
+
+## Update dialog ("What's New")
+
+`lib/services/update_checker.dart` implements the in-app update prompt; `HomeScreen._checkUpdate()` calls it once on mount.
+
+- Reads the installed version from `package_info_plus` and `GET`s
+  `api.github.com/repos/tahasync/foam-shop-pos/releases/latest`.
+- `isNewerVersion` compares dotted numeric parts and tolerates the `v` prefix
+  and unequal segment counts (`1.5` vs `1.5.0`).
+- `formatChangelog` strips GitHub's `**Full Changelog**` link, any other
+  `github.com` URL, and `**` markers before display.
+- **Update Now** launches the Releases page with `externalApplication`, so the
+  browser handles it rather than an in-app webview.
+- Every failure path — non-200, malformed JSON, no network, platform-channel
+  error — returns `null` and shows nothing. A user offline is never blocked or
+  shown an error.
+
+**Known limitation:** "Remind me later" is not persisted. The check runs on
+every `HomeScreen` mount, so the dialog reappears on the next app start for as
+long as a newer release exists. Suppressing it for a period is a small change
+(`shared_preferences` is already a dependency) but is not implemented.
 
 ## Color palette
 
@@ -94,7 +115,7 @@ flutter run --dart-define-from-file=env/firebase_config.json
 
 ## Release process
 
-**Current version: `1.5.1` (`pubspec.yaml` → `version: 1.5.1+4`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+**Current version: `1.5.2` (`pubspec.yaml` → `version: 1.5.2+5`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 **See [RELEASE.md](RELEASE.md) for the full release workflow.** The supported way to produce a release APK locally is:
 
@@ -131,7 +152,7 @@ The pipeline uses:
 flutter test
 ```
 
-The suite is 4 files / 110 tests. It covers:
+The suite is 6 files / 117 tests. It covers:
 - Accounting calculations: Cash in Hand, Revenue, COGS, Gross/Net Profit, Baqaya aggregation
 - Regression: costPriceAtSale isolation (not affected by later cost price edits)
 - Regression: inventory changes never affect Cash in Hand, Revenue, or Expenses
@@ -139,6 +160,8 @@ The suite is 4 files / 110 tests. It covers:
 - Notification detection logic
 - Subscription trial label behavior
 - Core model instantiation and COGS formula with per-sale negotiated pricing
+- Stock-unit correctness: Pieces vs Per sq.ft, the `2.5 sq.ft` fractional regression, and the Firestore round trip
+- Source-integrity guards (`test/source_integrity_test.dart`) that fail the build if mojibake separators reappear in `lib/`
 - **UI regression (`test/ui_regression_test.dart`, 43 tests)** — palette-drift guards, WCAG contrast in both themes, 48dp touch targets, the shared bottom inset that keeps content clear of the floating nav, the blur budget, and receipt PDF generation
 
 The UI regression file exists because `flutter analyze` will happily pass a layout that *looks* wrong. Those tests assert on behaviour — no overflow, correct inset, real touch target, valid PDF bytes — rather than on pixel values.
@@ -188,5 +211,5 @@ because it builds and installs a debug APK.
 
 **Production-ready Android app — actively maintained.** Used by foam/mattress shops with subscription-based commercial model. The founding account is free forever; new sign-ups get a 14-day free trial.
 
-The automated test suite (4 test files, 110 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, notification detection, and a UI regression suite that pins the committed colour palette, touch-target minimums, glass/blur budgets and receipt PDF output.
+The automated test suite (6 test files, 117 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, notification detection, stock-unit handling, and a UI regression suite that pins the committed colour palette, touch-target minimums, glass/blur budgets and receipt PDF output.
 
