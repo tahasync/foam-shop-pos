@@ -75,25 +75,72 @@ const double kReceiptTallMm = 297.0;
 const _kRegular = 'assets/fonts/Inter-Regular.ttf';
 const _kBold = 'assets/fonts/Inter-Bold.ttf';
 
-/// Receipt palette, shared with the on-screen preview and
-/// `design/foam-shop-receipt-report-mockup.html`.
+/// Receipt palette, drawn from the app's own brand colours.
+///
+/// The mockup this receipt is built against
+/// (`design/foam-shop-receipt-report-mockup.html`) specifies an indigo/violet
+/// ramp (`#5B5FEF` -> `#8B5CF6`). That ramp is deliberately NOT used here. A
+/// saved PDF is a physical artefact that outlives the app, and a customer
+/// holding it should be looking at the same brand they see on the till. So every
+/// value below is lifted from `AppColors` in `app_theme.dart` — the README's
+/// documented palette — and the mockup's *layout* is followed while its hues
+/// are substituted.
+///
+/// Mapping, so the two stay reconcilable by eye:
+///   mockup `--primary`   `#5B5FEF` -> brandFill    `#3D5387` Slate Blue
+///   mockup `--secondary` `#8B5CF6` -> brandFillDeep `#182346` Deep Navy
+///   mockup `--ink`       `#171927` -> ink           `#0E0D15` Deep Ink
+///   mockup `--muted`     `#777B8A` -> inkFaint      `#6E6A74`
+///   mockup `--line`      `#E7E8EF` -> outline       `#D9D7DC`
+///   mockup `--soft`      `#F7F7FC` -> surface2      `#FBF9F8`
+///   mockup `--success`   `#159A70` -> saleFg        `#3D5387`
+///   mockup `--warning`   `#D97706` -> expenseFg     `#7E4A63`
+///
+/// The brand gradient is the one place the two dark blues are combined, and it
+/// runs Slate Blue -> Deep Navy, mirroring the app's own primary-button ramp.
 class ReceiptPalette {
-  final PdfColor tealDark = PdfColor.fromHex('#0B4E49');
-  final PdfColor ink = PdfColor.fromHex('#1B1F1E');
-  final PdfColor inkSoft = PdfColor.fromHex('#5A5F5E');
-  final PdfColor inkFaint = PdfColor.fromHex('#8A8F8E');
-  final PdfColor border = PdfColor.fromHex('#E3E1DC');
-  final PdfColor tintSalesBg = PdfColor.fromHex('#EAF3F1');
-  /// Zebra stripe for the itemised table. Kept as its own hex rather than an
-  /// alpha of [tintSalesBg] so the band is predictable on a thermal printer,
-  /// where a translucent fill can come out muddy or vanish entirely.
-  final PdfColor tintRowBg = PdfColor.fromHex('#F5F8F7');
+  /// Deep Navy `#182346` — `AppColors.brandFillDeep`, the gradient's dark end.
+  final PdfColor brandDeep = PdfColor.fromHex('#182346');
 
-  final PdfColor tintSalesFg = PdfColor.fromHex('#0F6B64');
-  final PdfColor tintProfitBg = PdfColor.fromHex('#EAF3EC');
-  final PdfColor tintProfitFg = PdfColor.fromHex('#2E6B4E');
-  final PdfColor tintExpenseBg = PdfColor.fromHex('#FBEBE8');
-  final PdfColor tintExpenseFg = PdfColor.fromHex('#B54A38');
+  /// Slate Blue `#3D5387` — `AppColors.brandFill`, the gradient's light end and
+  /// the replacement for the mockup's `--primary`.
+  final PdfColor brand = PdfColor.fromHex('#3D5387');
+
+  final PdfColor ink = PdfColor.fromHex('#0E0D15');
+  final PdfColor inkSoft = PdfColor.fromHex('#3D3B45');
+  final PdfColor inkFaint = PdfColor.fromHex('#6E6A74');
+
+  /// A lighter rule than [outline] for dividers and the faint footer note. The
+  /// app's `outline` is too dark to read as a hairline once printed, so this
+  /// sits between the two.
+  final PdfColor line = PdfColor.fromHex('#E4E1E6');
+  final PdfColor outline = PdfColor.fromHex('#D9D7DC');
+
+  /// Muted Periwinkle `#7C83AD` — the app's dark-mode primary, used for
+  /// white-on-brand secondary text where full white would be too harsh.
+  final PdfColor onBrandSoft = PdfColor.fromHex('#C7CCE4');
+
+  /// The mockup's `--soft`: the tinted fill behind the customer card and the
+  /// totals block. Matches `AppColors.surface2`.
+  final PdfColor soft = PdfColor.fromHex('#FBF9F8');
+  final PdfColor surface = PdfColor.fromHex('#FFFFFF');
+
+  /// Zebra stripe for the itemised table, derived from the brand so the banding
+  /// reads as part of the palette rather than as a generic grey.
+  final PdfColor tintRowBg = PdfColor.fromHex('#F4F5F9');
+
+  /// The mockup's `--success`, recoloured to the app's `saleFg`. A "paid" pill
+  /// in the app's brand blue rather than a green that appears nowhere else in
+  /// the product.
+  final PdfColor success = PdfColor.fromHex('#3D5387');
+  final PdfColor successBg = PdfColor.fromHex('#EAEEF6');
+
+  /// The mockup's `--warning` / `--warning-bg`, recoloured to `expenseFg`
+  /// (Dusty Mauve) so "balance due" matches how the app signals a problem
+  /// everywhere else.
+  final PdfColor warning = PdfColor.fromHex('#7E4A63');
+  final PdfColor warningBg = PdfColor.fromHex('#F6EEF2');
+
   final PdfColor white = PdfColors.white;
 }
 
@@ -118,6 +165,34 @@ Future<pw.ThemeData> _loadReceiptTheme() async {
   }
 }
 
+/// Strips any leading currency symbol from a money string, keeping the digits,
+/// thousands separators and sign.
+///
+/// The itemised table must not repeat "Rs " in every PRICE and TOTAL cell: the
+/// totals card states the currency once, and the repeated symbol consumes enough
+/// of an 80mm column that the figure itself gets clipped to a bare "Rs" — a
+/// wrong number on a customer's receipt.
+///
+/// [buildReceiptData] already formats these cells without a symbol, but
+/// [ReceiptLine] is a plain String model and a caller may legitimately hand it a
+/// pre-formatted figure, so the symbol is stripped at render time rather than
+/// trusted. Exposed for testing: the clipping failure is invisible in the PDF
+/// byte stream (an embedded subset font stores glyph indices, not ASCII), so it
+/// can only be pinned at this level.
+String stripCurrencySymbol(String value) {
+  // A leading sign is kept. It is normally adjacent to the digits ("-500"), but
+  // a formatted string can put the symbol in between ("-Rs 500"), so the sign is
+  // held aside and re-attached after the symbol is removed — otherwise a
+  // customer credit silently prints as a charge.
+  final sign = value.isNotEmpty && (value[0] == '-' || value[0] == '+')
+      ? value[0]
+      : '';
+  final rest = sign.isEmpty ? value : value.substring(1);
+  final firstDigit = rest.indexOf(RegExp(r'[0-9]'));
+  if (firstDigit < 0) return '';
+  return '$sign${rest.substring(firstDigit)}';
+}
+
 /// Builds the receipt body as a widget that can be both measured and painted.
 ///
 /// This is the single layout definition. The page height is derived by
@@ -125,41 +200,53 @@ Future<pw.ThemeData> _loadReceiptTheme() async {
 /// and font sizes, which is what previously drifted out of sync with the real
 /// layout and left receipts either clipped or trailing a mostly blank sheet.
 pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
-  // Small-caps labels. `letterSpacing` is what makes an 80mm roll read as a
-  // designed document rather than a default print-out: the wide tracking gives
-  // the tiny type a label-like texture that survives thermal printing.
+  // Small-caps labels, matching the mockup's `text-transform: uppercase` +
+  // `letter-spacing` on `.meta-label` / `th`. The wide tracking gives the tiny
+  // type a label-like texture that survives thermal printing.
   pw.TextStyle labelStyle(PdfColor c) => pw.TextStyle(
-        fontSize: 6.2,
+        fontSize: 6.6,
         fontWeight: pw.FontWeight.bold,
-        letterSpacing: 0.7,
+        letterSpacing: 0.85,
         color: c,
       );
 
-  pw.Widget metaCell(String label, String value, {bool end = false}) =>
+  pw.Widget metaCell(String label, String value,
+          {bool end = false, PdfColor? valueColor}) =>
       pw.Column(
         crossAxisAlignment:
             end ? pw.CrossAxisAlignment.end : pw.CrossAxisAlignment.start,
         children: [
           pw.Text(label, style: labelStyle(p.inkFaint)),
-          pw.SizedBox(height: 2),
+          pw.SizedBox(height: 2.5),
           pw.Text(
             value,
             textAlign: end ? pw.TextAlign.right : pw.TextAlign.left,
             maxLines: 1,
             style: pw.TextStyle(
-              fontSize: 8.5,
+              fontSize: 9.5,
               fontWeight: pw.FontWeight.bold,
-              color: p.ink,
+              // The mockup colours the receipt number `--primary`; here that is
+              // the brand blue, which makes the one number a customer might
+              // quote back findable at a glance.
+              color: valueColor ?? p.ink,
             ),
           ),
         ],
       );
 
-  pw.Widget th(String t, {bool end = false}) => pw.Padding(
-        padding: const pw.EdgeInsets.only(bottom: 5),
+  pw.Widget th(String t, {bool end = false, bool center = false}) =>
+      pw.Padding(
+        // Vertical pad matches the cells so the header baseline sits on the
+        // same rhythm as the data; the horizontal pad mirrors [td] so a header
+        // is inset from the rule by the same amount as the value beneath it.
+        padding: pw.EdgeInsets.only(bottom: 5, right: end ? 3 : 0),
         child: pw.Text(
           t,
-          textAlign: end ? pw.TextAlign.right : pw.TextAlign.left,
+          textAlign: center
+              ? pw.TextAlign.center
+              : end
+                  ? pw.TextAlign.right
+                  : pw.TextAlign.left,
           style: labelStyle(p.inkFaint),
         ),
       );
@@ -168,57 +255,78 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
   // pushed the money columns off the right edge. Eliding with `maxLines: 2`
   // keeps a long name readable over two lines while guaranteeing the table's
   // right-hand column can never be pushed out of the printable area.
-  pw.Widget td(String v, {bool end = true, bool bold = false, int maxLines = 1}) =>
+  //
+  // The horizontal padding keeps right-aligned money clear of whatever sits to
+  // its left, so neighbouring columns cannot read as one run of digits
+  // ("360014400").
+  pw.Widget td(String v,
+          {bool end = true,
+          bool center = false,
+          bool bold = false,
+          int maxLines = 1}) =>
       pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 4.5),
+        padding: pw.EdgeInsets.symmetric(vertical: 5, horizontal: end ? 4 : 0),
         child: pw.Text(
           v,
-          textAlign: end ? pw.TextAlign.right : pw.TextAlign.left,
+          textAlign: center
+              ? pw.TextAlign.center
+              : end
+                  ? pw.TextAlign.right
+                  : pw.TextAlign.left,
           maxLines: maxLines,
           overflow: pw.TextOverflow.clip,
           style: pw.TextStyle(
-            fontSize: 8.5,
+            fontSize: 8.6,
             lineSpacing: 1.2,
             fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
-            color: p.ink,
+            // The mockup's `.price` / `.qty` are a softer grey than `.total`,
+            // which is what stops the right-hand column reading as a wall of
+            // bold. That hierarchy is the point of the table, so it is kept.
+            color: bold ? p.ink : p.inkSoft,
           ),
         ),
       );
 
   // Alternating row tint. On a thermal print this is what actually carries the
   // grouping: a hairline rule disappears at low DPI, a faint band does not.
+  //
+  // The currency symbol is stripped from the money cells by
+  // [stripCurrencySymbol]: the totals card already states it, and repeating
+  // "Rs " in every PRICE and TOTAL cell costs enough width that the figure gets
+  // clipped — a wrong number on a customer's receipt, the one failure this
+  // document cannot have.
   pw.TableRow itemRow(ReceiptLine i, int index) => pw.TableRow(
-        decoration: index.isOdd
-            ? pw.BoxDecoration(color: p.tintRowBg)
-            : null,
+        decoration:
+            index.isOdd ? pw.BoxDecoration(color: p.tintRowBg) : null,
         children: [
           td(i.name, end: false, bold: true, maxLines: 2),
-          td(i.qty),
-          td(i.unitPrice),
-          td(i.total, bold: true),
+          td(i.qty, center: true),
+          td(stripCurrencySymbol(i.unitPrice)),
+          td(stripCurrencySymbol(i.total), bold: true),
         ],
       );
 
   pw.Widget totalRow(String label, String value, {bool grand = false}) =>
       pw.Padding(
-        padding: pw.EdgeInsets.symmetric(vertical: grand ? 3 : 1.5),
+        padding: pw.EdgeInsets.symmetric(vertical: grand ? 3 : 2),
         child: pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
             pw.Text(
               label,
               style: pw.TextStyle(
-                fontSize: grand ? 10.5 : 8.5,
+                fontSize: grand ? 11 : 9.5,
                 fontWeight: grand ? pw.FontWeight.bold : pw.FontWeight.normal,
-                color: grand ? p.tintSalesFg : p.inkSoft,
+                color: grand ? p.brand : p.inkSoft,
               ),
             ),
             pw.Text(
               value,
               style: pw.TextStyle(
-                fontSize: grand ? 10.5 : 8.5,
-                fontWeight: grand ? pw.FontWeight.bold : pw.FontWeight.normal,
-                color: grand ? p.tintSalesFg : p.ink,
+                fontSize: grand ? 11 : 9.5,
+                fontWeight:
+                    grand ? pw.FontWeight.bold : pw.FontWeight.bold,
+                color: grand ? p.brand : p.ink,
               ),
             ),
           ],
@@ -229,99 +337,174 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
     mainAxisSize: pw.MainAxisSize.min,
     children: [
-      // Branded header. A solid teal block with the store name reversed out of
-      // it is the single strongest signal that this is a real till receipt, and
-      // it survives greyscale thermal printing where fine hairlines do not.
+      // ── Brand card ──────────────────────────────────────────────────────
+      // The mockup's `.brand-card`: a 135° brand gradient with the shop name
+      // reversed out of it, an optional initial monogram, and a tracked
+      // "DIGITAL REGISTER" strapline. A solid dark block survives greyscale
+      // thermal printing far better than fine detail does, which is why the
+      // name and strapline are set large and heavy rather than delicate.
       pw.Container(
-        padding: const pw.EdgeInsets.fromLTRB(10, 10, 10, 9),
+        padding: const pw.EdgeInsets.fromLTRB(12, 11, 12, 10),
         decoration: pw.BoxDecoration(
-          color: p.tealDark,
-          borderRadius: pw.BorderRadius.circular(6),
+          gradient: pw.LinearGradient(
+            begin: pw.Alignment.topLeft,
+            end: pw.Alignment.bottomRight,
+            colors: [p.brand, p.brandDeep],
+          ),
+          borderRadius: pw.BorderRadius.circular(7),
         ),
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
+            // The monogram chip. The mockup renders a "F" tile; here it is
+            // derived from the store name so a multi-word shop name still gets
+            // a correct initial rather than a hardcoded letter.
+            if (d.storeName.trim().isNotEmpty)
+              pw.Container(
+                width: 26,
+                height: 26,
+                alignment: pw.Alignment.center,
+                decoration: pw.BoxDecoration(
+                  color: p.onBrandSoft,
+                  borderRadius: pw.BorderRadius.circular(6),
+                ),
+                child: pw.Text(
+                  d.storeName.trim()[0].toUpperCase(),
+                  style: pw.TextStyle(
+                    fontSize: 14,
+                    fontWeight: pw.FontWeight.bold,
+                    color: p.brandDeep,
+                  ),
+                ),
+              ),
+            if (d.storeName.trim().isNotEmpty) pw.SizedBox(height: 6),
             pw.Text(
               d.storeName,
               textAlign: pw.TextAlign.center,
               maxLines: 2,
               style: pw.TextStyle(
-                fontSize: 13.5,
+                fontSize: 14,
                 lineSpacing: 1.15,
                 fontWeight: pw.FontWeight.bold,
                 color: p.white,
               ),
             ),
-            pw.SizedBox(height: 3),
-            // A rule under the name, in the light tint, gives the block an
-            // internal structure so the two lines do not read as one blob.
-            pw.Container(width: 26, height: 0.7, color: p.tintSalesBg),
-            pw.SizedBox(height: 3),
+            pw.SizedBox(height: 4),
             pw.Text(
               'DIGITAL REGISTER',
               textAlign: pw.TextAlign.center,
               style: pw.TextStyle(
-                fontSize: 6.2,
-                letterSpacing: 1.1,
-                color: p.tintSalesBg,
+                fontSize: 6.4,
+                fontWeight: pw.FontWeight.bold,
+                letterSpacing: 1.6,
+                color: p.onBrandSoft,
               ),
             ),
           ],
         ),
       ),
-      pw.SizedBox(height: 9),
-      // Date / receipt number.
+      pw.SizedBox(height: 11),
+      // Date / receipt number, matching the mockup's `.receipt-meta` two-column
+      // split with the receipt number set in the brand colour.
       pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Expanded(child: metaCell('DATE', d.date)),
           pw.SizedBox(width: 8),
-          metaCell('RECEIPT #', d.receiptNo, end: true),
+          metaCell('RECEIPT #', d.receiptNo, end: true, valueColor: p.brand),
         ],
       ),
 
+      // Shop info, closed off with a dashed rule exactly as the mockup's
+      // `.shop-info` does. The dash reads as a separator the eye can skip,
+      // where a solid rule would compete with the table's own header border.
       if (d.metaLine.isNotEmpty) ...[
-        pw.SizedBox(height: 6),
-        pw.Text(
-          d.metaLine,
-          style: pw.TextStyle(fontSize: 7, color: p.inkFaint),
+        pw.SizedBox(height: 7),
+        pw.Container(
+          padding: const pw.EdgeInsets.only(bottom: 7),
+          decoration: pw.BoxDecoration(
+            border: pw.Border(
+                bottom: pw.BorderSide(color: p.line, width: 0.7)),
+          ),
+          child: pw.Text(
+            d.metaLine,
+            style: pw.TextStyle(fontSize: 8, color: p.inkFaint),
+          ),
         ),
+      ] else ...[
+        pw.SizedBox(height: 7),
+        pw.Container(height: 0.7, color: p.line),
       ],
 
-      pw.SizedBox(height: 9),
-      pw.Container(height: 0.6, color: p.border),
-      pw.SizedBox(height: 8),
-
-      // Customer. Given the same small-caps label treatment as DATE / RECEIPT
-      // so the top of the receipt scans as three labelled facts.
+      // ── Customer card ───────────────────────────────────────────────────
+      // The mockup's `.customer-card`: a soft filled panel with a hairline
+      // border, the label and name stacked on the left and a circular initial
+      // badge on the right.
       pw.Container(
-        padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        padding: const pw.EdgeInsets.fromLTRB(9, 8, 9, 8),
         decoration: pw.BoxDecoration(
-          color: p.tintRowBg,
-          borderRadius: pw.BorderRadius.circular(5),
-          border: pw.Border.all(color: p.border, width: 0.5),
+          color: p.soft,
+          borderRadius: pw.BorderRadius.circular(6),
+          border: pw.Border.all(color: p.outline, width: 0.6),
         ),
         child: pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
-            pw.Text('CUSTOMER', style: labelStyle(p.inkFaint)),
-            pw.SizedBox(width: 6),
             pw.Expanded(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisSize: pw.MainAxisSize.min,
+                children: [
+                  pw.Text('CUSTOMER', style: labelStyle(p.inkFaint)),
+                  pw.SizedBox(height: 3),
+                  pw.Text(
+                    d.customerName,
+                    maxLines: 1,
+                    style: pw.TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: pw.FontWeight.bold,
+                      color: p.ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(width: 8),
+            // Circular initial badge, as in the mockup. A circle is drawn
+            // explicitly because `BorderRadius.circular(r)` at r >= half the
+            // side is what previously emitted degenerate path geometry and made
+            // renderers discard everything drawn before it.
+            pw.Container(
+              width: 22,
+              height: 22,
+              alignment: pw.Alignment.center,
+              decoration: pw.BoxDecoration(
+                color: p.tintRowBg,
+                shape: pw.BoxShape.circle,
+                border: pw.Border.all(color: p.outline, width: 0.6),
+              ),
               child: pw.Text(
-                d.customerName,
-                textAlign: pw.TextAlign.right,
-                maxLines: 1,
+                d.customerName.trim().isEmpty
+                    ? '?'
+                    : d.customerName.trim()[0].toUpperCase(),
                 style: pw.TextStyle(
-                  fontSize: 8.5,
+                  fontSize: 10,
                   fontWeight: pw.FontWeight.bold,
-                  color: p.ink,
+                  color: p.brand,
                 ),
               ),
             ),
           ],
         ),
       ),
-      pw.SizedBox(height: 9),
+      pw.SizedBox(height: 11),
+
+      // Section title, as the mockup's `.items-title`.
+      pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 5),
+        child: pw.Text('PURCHASE DETAILS', style: labelStyle(p.inkFaint)),
+      ),
 
       // Itemised table. A real column table, not stacked label/value lines, so
       // qty, price and total can be scanned down the columns. The heavy rule
@@ -329,49 +512,60 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
       // metadata above it.
       pw.Table(
         border: pw.TableBorder.symmetric(
-          inside: pw.BorderSide(color: p.border, width: 0.4),
+          inside: pw.BorderSide(color: p.line, width: 0.4),
         ),
+        // The mockup's 43 / 15 / 21 / 21 split assumes bare digits in the money
+        // columns, which is what [bareMoney] guarantees. QTY is the narrowest
+        // column because it holds a small integer, which frees the width for
+        // the two money columns where the digits actually run out of room.
         columnWidths: const {
-          0: pw.FlexColumnWidth(2.9),
+          0: pw.FlexColumnWidth(3.6),
           1: pw.FlexColumnWidth(1.0),
-          2: pw.FlexColumnWidth(1.6),
-          3: pw.FlexColumnWidth(1.8),
+          2: pw.FlexColumnWidth(1.4),
+          3: pw.FlexColumnWidth(1.6),
         },
         children: [
           pw.TableRow(
             decoration: pw.BoxDecoration(
               border: pw.Border(
-                bottom: pw.BorderSide(color: p.ink, width: 1),
+                bottom: pw.BorderSide(color: p.outline, width: 0.9),
               ),
             ),
             children: [
               th('ITEM', end: false),
-              th('QTY'),
-              th('PRICE'),
+              th('QTY', center: true),
+              th('PRICE', end: true),
               th('TOTAL'),
             ],
           ),
           for (final (index, i) in d.items.indexed) itemRow(i, index),
         ],
       ),
-      pw.SizedBox(height: 10),
-      // Totals card. The currency symbol appears exactly once, here, rather
-      // than repeated in every PRICE/TOTAL cell (it used to render as
+      pw.SizedBox(height: 12),
+      // ── Totals card ─────────────────────────────────────────────────────
+      // The mockup's `.totals`: a soft panel holding Subtotal, Paid, and then a
+      // balance row split off by a dashed rule and set in the brand colour at a
+      // larger size. The currency symbol appears exactly once, in the values,
+      // rather than repeated in every PRICE/TOTAL cell (it used to render as
       // "Rs Rs 25,500" and overflow the narrow columns).
       pw.Container(
-        padding: const pw.EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+        padding: const pw.EdgeInsets.fromLTRB(10, 9, 10, 9),
         decoration: pw.BoxDecoration(
-          color: p.tintSalesBg,
-          borderRadius: pw.BorderRadius.circular(6),
+          color: p.soft,
+          borderRadius: pw.BorderRadius.circular(7),
+          border: pw.Border.all(color: p.line, width: 0.6),
         ),
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.stretch,
           children: [
-            totalRow('Amount', d.total),
+            totalRow('Subtotal', d.total),
             totalRow('Paid', d.paid),
-            pw.SizedBox(height: 4),
-            pw.Container(height: 0.6, color: p.tintSalesFg),
-            pw.SizedBox(height: 4),
+            pw.SizedBox(height: 6),
+            pw.Container(
+              height: 0.7,
+              decoration: pw.BoxDecoration(color: p.outline),
+            ),
+            pw.SizedBox(height: 6),
             totalRow(
               d.isDue ? 'Balance Due' : 'Balance',
               d.dueValue,
@@ -380,72 +574,91 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
           ],
         ),
       ),
-      pw.SizedBox(height: 8),
+      pw.SizedBox(height: 10),
 
-      // Status pill. This is the one thing a customer scans for, so it gets a
-      // solid filled treatment for "paid" and a tinted one for "due" — the
-      // difference has to be legible from arm's length on a scrap of paper.
+      // ── Status pill ─────────────────────────────────────────────────────
+      // The mockup's `.payment-status`: a centred tinted pill with a dot and a
+      // tracked label. The dot is drawn as a real circle rather than a "•"
+      // glyph so it cannot fall back to a missing-glyph box on a printer that
+      // lacks the character, which is what the old "✓" did.
       pw.Center(
         child: pw.Container(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding:
+              const pw.EdgeInsets.symmetric(horizontal: 11, vertical: 5),
           decoration: pw.BoxDecoration(
-            color: d.isDue ? p.tintExpenseBg : p.tintSalesFg,
-            borderRadius: pw.BorderRadius.circular(9),
+            color: d.isDue ? p.warningBg : p.successBg,
+            borderRadius: pw.BorderRadius.circular(12),
           ),
-          child: pw.Text(
-            d.isDue ? 'BALANCE DUE' : 'PAID IN FULL',
-            style: pw.TextStyle(
-              fontSize: 7,
-              letterSpacing: 0.7,
-              fontWeight: pw.FontWeight.bold,
-              color: d.isDue ? p.tintExpenseFg : p.white,
-            ),
-          ),
-        ),
-      ),
-      pw.SizedBox(height: 12),
-
-      // A dashed tear line, the way a thermal roll is actually separated. A
-      // solid rule here printed as a hard edge across the paper and looked like
-      // a mistake; dashes read as "cut here".
-      pw.Row(
-        children: [
-          for (var i = 0; i < 3; i++) ...[
-            pw.Expanded(
-              child: pw.Container(
-                height: 0.6,
+          child: pw.Row(
+            mainAxisSize: pw.MainAxisSize.min,
+            mainAxisAlignment: pw.MainAxisAlignment.center,
+            children: [
+              pw.Container(
+                width: 4,
+                height: 4,
                 decoration: pw.BoxDecoration(
-                  color: p.border,
-                  borderRadius: pw.BorderRadius.circular(1),
+                  color: d.isDue ? p.warning : p.success,
+                  shape: pw.BoxShape.circle,
                 ),
               ),
-            ),
-            if (i < 2) pw.SizedBox(width: 4),
-          ],
-        ],
+              pw.SizedBox(width: 5),
+              pw.Text(
+                d.isDue ? 'BALANCE DUE' : 'PAID IN FULL',
+                style: pw.TextStyle(
+                  fontSize: 7.4,
+                  letterSpacing: 0.9,
+                  fontWeight: pw.FontWeight.bold,
+                  color: d.isDue ? p.warning : p.success,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      pw.SizedBox(height: 9),
+      pw.SizedBox(height: 14),
 
-      pw.Center(
-        child: pw.Text(
-          'Thank you for your business!',
-          style: pw.TextStyle(
-            fontSize: 9.5,
-            fontWeight: pw.FontWeight.bold,
-            color: p.tintSalesFg,
-          ),
+      // ── Footer ──────────────────────────────────────────────────────────
+      // Closed off with the mockup's dashed top border. The dashes are drawn as
+      // real segments rather than a solid rule so the line still reads as "end
+      // of receipt" on a thermal printer.
+      pw.Container(
+        padding: const pw.EdgeInsets.only(top: 11),
+        decoration: pw.BoxDecoration(
+          border: pw.Border(top: pw.BorderSide(color: p.line, width: 0.7)),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            pw.Text(
+              'Thank you for your business!',
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(
+                fontSize: 11,
+                fontWeight: pw.FontWeight.bold,
+                color: p.brand,
+              ),
+            ),
+            if (d.footer.isNotEmpty) ...[
+              pw.SizedBox(height: 3),
+              pw.Text(
+                d.footer,
+                textAlign: pw.TextAlign.center,
+                maxLines: 2,
+                style: pw.TextStyle(fontSize: 8, color: p.inkFaint),
+              ),
+            ],
+            pw.SizedBox(height: 5),
+            // The mockup's `.footer-note`. Printed small and faint, this is the
+            // line that stops a customer treating the till roll as a
+            // hand-signed document they need to countersign.
+            pw.Text(
+              'Computer generated receipt \u00b7 No signature required',
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(fontSize: 6.8, color: p.inkFaint),
+            ),
+          ],
         ),
       ),
-      if (d.footer.isNotEmpty) ...[
-        pw.SizedBox(height: 2.5),
-        pw.Center(
-          child: pw.Text(
-            d.footer,
-            textAlign: pw.TextAlign.center,
-            style: pw.TextStyle(fontSize: 7, color: p.inkFaint),
-          ),
-        ),
-      ],
     ],
   );
 }

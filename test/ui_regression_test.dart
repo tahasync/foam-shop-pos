@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:archive/archive.dart' show ZLibDecoder;
 import 'package:flutter/material.dart';
@@ -29,7 +29,7 @@ Widget _wrap(Widget child, {Brightness brightness = Brightness.light}) {
 }
 
 void main() {
-  group('Palette integrity â€” colours must not drift', () {
+  group('Palette integrity Ã¢â‚¬â€ colours must not drift', () {
     test('light and dark both define every glass-engine token', () {
       for (final theme in [AppTheme.light(), AppTheme.dark()]) {
         final ac = theme.extension<AppColors>()!;
@@ -47,7 +47,7 @@ void main() {
     });
 
     test('light and dark hairlines are opposites (visible in both themes)', () {
-      // A dark hairline is invisible on dark glass â€” this is the trap that made
+      // A dark hairline is invisible on dark glass Ã¢â‚¬â€ this is the trap that made
       // cards lose their edges in dark mode.
       final light = AppTheme.light().extension<AppColors>()!;
       final dark = AppTheme.dark().extension<AppColors>()!;
@@ -108,7 +108,7 @@ void main() {
     });
 
     test('cards are clearly lighter than the page in both themes', () {
-      // Dark cards used to be #141A2A on a #0E0D15 page â€” almost no separation,
+      // Dark cards used to be #141A2A on a #0E0D15 page Ã¢â‚¬â€ almost no separation,
       // so the layout read as one flat mass.
       //
       // Judged by WCAG *ratio*, not absolute luma: near-blacks all have tiny
@@ -154,7 +154,7 @@ void main() {
       // `inkFaint` sits under every secondary label in the app.
       //
       // WCAG contrast is (lighter + 0.05) / (darker + 0.05). It has to be
-      // computed with the ordering resolved, not ink-over-card literally â€”
+      // computed with the ordering resolved, not ink-over-card literally Ã¢â‚¬â€
       // light mode has dark ink on a light card, dark mode the exact inverse.
       double ratio(Color a, Color b) {
         final la = a.computeLuminance();
@@ -187,7 +187,7 @@ void main() {
     });
 
     test('the dark page is dark but not pure black', () {
-      // The page was briefly #0D0D11 â€” 5% grey, which on an OLED panel reads
+      // The page was briefly #0D0D11 Ã¢â‚¬â€ 5% grey, which on an OLED panel reads
       // as "screen off". Cards sank into it and the layout lost its depth. It
       // has to stay a *dark theme*, not a black void.
       //
@@ -217,7 +217,7 @@ void main() {
     });
   });
 
-  group('Input fix â€” no opaque slab inside the glass search pill', () {
+  group('Input fix Ã¢â‚¬â€ no opaque slab inside the glass search pill', () {
     testWidgets('AppSearchField paints no opaque inner fill', (tester) async {
       await tester.pumpWidget(_wrap(
         const Padding(
@@ -260,7 +260,7 @@ void main() {
     });
   });
 
-  group('Layout fix â€” content is never hidden behind the floating nav', () {
+  group('Layout fix Ã¢â‚¬â€ content is never hidden behind the floating nav', () {
     testWidgets('the shared inset clears the nav pill and the safe area',
         (tester) async {
       // The four tabs used to disagree (120 vs 100 vs 80), so the last row of a
@@ -308,7 +308,7 @@ void main() {
     });
   });
 
-  group('KPI row â€” tiles share one height', () {
+  group('KPI row Ã¢â‚¬â€ tiles share one height', () {
     testWidgets('AppKpiRow renders both tiles at equal height', (tester) async {
       await tester.pumpWidget(_wrap(
         const Padding(
@@ -455,7 +455,7 @@ void main() {
     });
   });
 
-  group('Glass budget â€” blur is rationed to the floating nav only', () {
+  group('Glass budget Ã¢â‚¬â€ blur is rationed to the floating nav only', () {
     // Regression guard for the "minimal 2027" restyle. The old design put a
     // `BackdropFilter` on every card, chip and search field; each one forces a
     // separate offscreen render pass, which is what made scrolling stutter on
@@ -511,7 +511,7 @@ void main() {
         (tester) async {
       // The old background ran three infinite `AnimationController`s driving
       // large radial-gradient orbs, repainting the full screen forever. If one
-      // came back, `pumpAndSettle` below would never return â€” an infinite
+      // came back, `pumpAndSettle` below would never return Ã¢â‚¬â€ an infinite
       // animation keeps scheduling frames.
       await tester.pumpWidget(_wrap(
         const GlassBackground(child: SizedBox.expand()),
@@ -541,7 +541,7 @@ void main() {
     // background as a `GlassContainer(child: SizedBox.expand())`. Inside a
     // `Stack(fit: StackFit.expand)` in a `Row`, that child reported *infinite*
     // width, so an inline (`fullWidth: false`) button claimed the whole row and
-    // squeezed the sibling `Expanded` to zero â€” the customer card rendered as a
+    // squeezed the sibling `Expanded` to zero Ã¢â‚¬â€ the customer card rendered as a
     // one-character-wide column.
     testWidgets('an inline button leaves room for its sibling', (tester) async {
       const key = ValueKey('sibling');
@@ -947,7 +947,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // The price box was 68x30 — under the app's own 48dp touch minimum, and
+    // The price box was 68x30 â€” under the app's own 48dp touch minimum, and
     // cramped for a 5-6 digit figure. It is the most-typed value on the screen.
     testWidgets('is a full-size, legible target', (tester) async {
       await _pumpPriceField(tester);
@@ -966,7 +966,7 @@ void main() {
 
     // The bug: the field had no FocusNode, and the cart republishes on every
     // keystroke, so the TextField's element was rebuilt, focus was dropped, and
-    // the platform handed it to the next focusable widget — the search field.
+    // the platform handed it to the next focusable widget â€” the search field.
     // The symptom was "I can type one character, then the caret jumps to
     // Search products".
     testWidgets('keeps focus across a price edit', (tester) async {
@@ -1036,14 +1036,14 @@ void main() {
     // around a "\u2715" glyph, and both quantity steppers were 24x24 inside a
     // 32-tall track. On a phone held one-handed at a counter those are the
     // hardest controls on the screen to hit, and the steppers in particular sit
-    // next to each other — a miss on "+" lands on "\u2212" and quietly changes
+    // next to each other â€” a miss on "+" lands on "\u2212" and quietly changes
     // the quantity of a real sale.
     testWidgets('cart remove and stepper controls meet the touch minimum',
         (tester) async {
       await _pumpPriceField(tester);
 
       // Measure the tappable target, not the glyph. The icons are intentionally
-      // 17px, so `find.byIcon(...)` finds the Icon itself and reports 17 — the
+      // 17px, so `find.byIcon(...)` finds the Icon itself and reports 17 â€” the
       // thing being asserted here is the hit area wrapped around it. Each target
       // is the enclosing `InkWell` of the icon, which is exactly what receives
       // the tap.
@@ -1112,7 +1112,7 @@ void main() {
     // The bug: "Save PDF" reported success but no file ever appeared in the
     // phone's storage. The Dart side wrote with `dart:io`'s `File` into
     // getDownloadsDirectory(), which Android 10+ scoped storage turns into a
-    // no-op — and WRITE_EXTERNAL_STORAGE is capped at maxSdkVersion=28, so no
+    // no-op â€” and WRITE_EXTERNAL_STORAGE is capped at maxSdkVersion=28, so no
     // permission could ever have rescued it.
     //
     // The fix routes Android through MediaStore. These tests pin the contract
@@ -1164,7 +1164,7 @@ void main() {
         () async {
       // The native side can reject the insert (no writable volume, a full
       // disk). That must propagate so the caller can fall back to the share
-      // sheet — swallowing it would repeat the "saved but nowhere" bug.
+      // sheet â€” swallowing it would repeat the "saved but nowhere" bug.
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
         throw PlatformException(code: 'save_failed', message: 'disk full');
@@ -1329,7 +1329,7 @@ void main() {
     test('every section survives into the drawable content stream', () async {
       // The bug this guards: the status pill used `BorderRadius.circular(999)`.
       // A radius far larger than the box emits degenerate path geometry, and
-      // renderers then drop everything drawn before it — the shop header, the
+      // renderers then drop everything drawn before it â€” the shop header, the
       // item table and the totals block simply vanished, and the customer got a
       // near-blank receipt. Byte length and the `%PDF-` header both stayed
       // perfectly valid, so every other test in this group still passed.
@@ -1364,7 +1364,7 @@ void main() {
     });
 
     test('embeds a Unicode-capable font so the tick and dot render', () async {
-      // The built-in Helvetica is WinAnsi only, so "✓ FULLY PAID" printed as a
+      // The built-in Helvetica is WinAnsi only, so "âœ“ FULLY PAID" printed as a
       // blank box. Inter ships in assets/fonts/ and is what the preview uses.
       final bytes = await generateReceiptPdfBytes(
         storeName: 'Asif Foam Center',
@@ -1393,11 +1393,66 @@ void main() {
       );
     });
 
+    test('money cells drop the currency symbol so figures cannot clip', () {
+      // The bug this guards: the per-row PRICE and TOTAL cells repeated the
+      // currency symbol ("Rs 1,200"). On an 80mm roll that did not fit, and
+      // `maxLines: 1` + `TextOverflow.clip` truncated the figure to a bare "Rs" -
+      // a *wrong number* on a customer's receipt, the one failure this document
+      // cannot have.
+      //
+      // It cannot be asserted against the PDF itself: the receipt embeds a
+      // subsetted Inter, so the content stream stores glyph indices rather than
+      // ASCII and no text search finds the figure. The `%PDF-` header, the byte
+      // length and the page count all stayed valid, which is exactly why the bug
+      // survived. So the invariant is pinned where it is actually decided.
+      for (final (input, expected) in [
+        ('Rs 1,200', '1,200'),
+        ('Rs 15,625,000', '15,625,000'),
+        ('PKR 500', '500'),
+        (r'$1,200.50', '1,200.50'),
+        ('1,200', '1,200'),
+        // A sign must survive: dropping it would turn a credit into a charge.
+        ('-Rs 500', '-500'),
+        ('+Rs 500', '+500'),
+        ('', ''),
+      ]) {
+        expect(
+          stripCurrencySymbol(input),
+          expected,
+          reason: 'stripping "$input" must yield "$expected"',
+        );
+      }
+    });
+
+    test('a receipt with the widest realistic figure still fits one page',
+        () async {
+      // Confirms the width reclaimed by stripping the symbol was not paid for
+      // with a taller page, on the largest figure the app can realistically hold.
+      final bytes = await generateReceiptPdfBytes(
+        storeName: 'Asif Foam Center',
+        receiptId: 'INV-BIG',
+        date: '27/9/2026',
+        customerName: 'Customer With A Long Ledger Name',
+        items: [
+          {
+            'name': 'High-Density Gold Reflex Foam 10mm Sheet',
+            'qty': '2.0',
+            'price': 15625000,
+            'total': 15625000,
+          },
+        ],
+        totalAmount: 15625000,
+        paidAmount: 0,
+        remainingBalance: 15625000,
+      );
+      expect(_pageCount(bytes), 1);
+    });
+
     test('a typical receipt fits on a single page', () async {
       // The failure mode this guards is subtle and bad: if the page is sized a
       // little too short, `MultiPage` does not clip, it paginates. The customer
       // then gets sheet one of the receipt with the totals and footer pushed
-      // onto a near-blank sheet two — the same symptom the old 297mm page had,
+      // onto a near-blank sheet two â€” the same symptom the old 297mm page had,
       // just inverted.
       //
       // This is the exact receipt from the print-preview bug report.
@@ -1460,7 +1515,7 @@ void main() {
     });
 
     test('sizes the page to the content instead of A4 height', () async {
-      // The bug: the page was 80mm wide but 297mm tall — A4's long edge, left
+      // The bug: the page was 80mm wide but 297mm tall â€” A4's long edge, left
       // over from the old A4 format. A one-item receipt is only ~125mm of
       // content, so the print preview showed a sheet that was two-thirds blank.
       //
@@ -1562,7 +1617,7 @@ int _pageCount(List<int> bytes) =>
 /// Returns the width and height in millimetres of the first page's /MediaBox.
 ///
 /// PDF user units are 1/72 inch, so `value / 72 * 25.4` converts to millimetres.
-/// This is the geometry the print spooler reads — the same numbers the preview
+/// This is the geometry the print spooler reads â€” the same numbers the preview
 /// uses to size the sheet.
 (double, double) _firstPageSizeMm(List<int> bytes) {
   final m = RegExp(
