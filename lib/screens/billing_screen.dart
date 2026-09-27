@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import '../models/sale.dart';
 import '../providers/sale_provider.dart';
@@ -13,9 +11,9 @@ import '../providers/shop_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../services/receipt_pdf.dart';
+import '../services/receipt_saver.dart';
 import '../theme/app_theme.dart';
 import '../utils/animations.dart';
-import '../utils/currency.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
 
@@ -60,7 +58,9 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
       title: 'Billing / Receipts',
       child: salesAsync.when(
         loading: () => const _LoadingBox(),
-        error: (e, _) => _ErrorBox(message: sanitizeErrorMessage(e, fallback: 'Could not load billing data')),
+        error: (e, _) => _ErrorBox(
+            message: sanitizeErrorMessage(e,
+                fallback: 'Could not load billing data')),
         data: (sales) {
           if (sales.isEmpty) {
             return EmptyState(
@@ -70,31 +70,36 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             );
           }
           final filtered = _applyFilter(sales);
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            SegmentedControl(
-              options: _filters,
-              selectedIndex: _filterIndex,
-              onChanged: (i) => setState(() => _filterIndex = i),
-            ),
-            if (filtered.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 40),
-                child: NoResults(title: 'No matching receipts', subtitle: 'Try a different status filter'),
-              )
-            else ...[
-              const SizedBox(height: 14),
-              FoamCard(
-                foam: true,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Column(children: [
-                  for (var i = 0; i < filtered.length; i++) ...[
-                    if (i > 0) Divider(height: 1, color: ac.outline),
-                    _buildRow(context, ref, cs, ac, csym, fmt, filtered[i]),
-                  ],
-                ]),
-              ),
-            ],
-          ]);
+          return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SegmentedControl(
+                  options: _filters,
+                  selectedIndex: _filterIndex,
+                  onChanged: (i) => setState(() => _filterIndex = i),
+                ),
+                if (filtered.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: NoResults(
+                        title: 'No matching receipts',
+                        subtitle: 'Try a different status filter'),
+                  )
+                else ...[
+                  const SizedBox(height: 14),
+                  FoamCard(
+                    foam: true,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Column(children: [
+                      for (var i = 0; i < filtered.length; i++) ...[
+                        if (i > 0) Divider(height: 1, color: ac.outline),
+                        _buildRow(context, ref, cs, ac, csym, fmt, filtered[i]),
+                      ],
+                    ]),
+                  ),
+                ],
+              ]);
         },
       ),
     );
@@ -136,7 +141,9 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     } else if (sale.balance <= 0) {
       trailing = StatusBadge.paid('Paid');
     } else {
-      trailing = Text('Due', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ac.expenseFg));
+      trailing = Text('Due',
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w800, color: ac.expenseFg));
     }
 
     return Padding(
@@ -149,24 +156,31 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             Container(
               width: 38,
               height: 38,
-              decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(12)),
-              child: Icon(Icons.receipt_rounded, size: 17, color: cs.onPrimaryContainer),
+              decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.receipt_rounded,
+                  size: 17, color: cs.onPrimaryContainer),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('$csym ${fmt.format(sale.amount.toInt())}',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
-                        fontFeatures: const [FontFeature.tabularFigures()])),
-                const SizedBox(height: 1),
-                Text(sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('$csym ${fmt.format(sale.amount.toInt())}',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurface,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures()
+                            ])),
+                    const SizedBox(height: 1),
+                    Text(sub,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
+                  ]),
             ),
             const SizedBox(width: 8),
             trailing,
@@ -176,7 +190,8 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     );
   }
 
-  Future<void> _openReceiptOptions(BuildContext context, WidgetRef ref, Sale sale) async {
+  Future<void> _openReceiptOptions(
+      BuildContext context, WidgetRef ref, Sale sale) async {
     final csym = ref.read(currencySymbolProvider);
     final fmt = NumberFormat('#,##0');
     final action = await showAppSheet<_ReceiptAction>(
@@ -184,19 +199,32 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
       builder: (ctx) => AppSheetContent(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Receipt options',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface)),
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(height: 2),
-          Text('$csym ${fmt.format(sale.amount.toInt())} \u00b7 ${DateFormat('d MMM y').format(sale.date)}',
-              style: TextStyle(fontSize: 11, color: AppColors.of(context).inkFaint)),
+          Text(
+              '$csym ${fmt.format(sale.amount.toInt())} \u00b7 ${DateFormat('d MMM y').format(sale.date)}',
+              style: TextStyle(
+                  fontSize: 11, color: AppColors.of(context).inkFaint)),
           const SizedBox(height: 8),
           SheetOption(
-              icon: Icons.print_rounded, title: 'Print receipt', onTap: () => Navigator.pop(ctx, _ReceiptAction.print)),
+              icon: Icons.print_rounded,
+              title: 'Print receipt',
+              onTap: () => Navigator.pop(ctx, _ReceiptAction.print)),
           SheetOption(
-              icon: Icons.save_alt_rounded, title: 'Save PDF', onTap: () => Navigator.pop(ctx, _ReceiptAction.save)),
+              icon: Icons.save_alt_rounded,
+              title: 'Save PDF',
+              onTap: () => Navigator.pop(ctx, _ReceiptAction.save)),
           SheetOption(
-              icon: Icons.share_rounded, title: 'Share PDF', onTap: () => Navigator.pop(ctx, _ReceiptAction.share)),
+              icon: Icons.share_rounded,
+              title: 'Share PDF',
+              onTap: () => Navigator.pop(ctx, _ReceiptAction.share)),
           SheetOption(
-              icon: Icons.visibility_rounded, title: 'Receipt preview', onTap: () => Navigator.pop(ctx, _ReceiptAction.preview)),
+              icon: Icons.visibility_rounded,
+              title: 'Receipt preview',
+              onTap: () => Navigator.pop(ctx, _ReceiptAction.preview)),
           if (!sale.isVoided)
             SheetOption(
                 icon: Icons.close_rounded,
@@ -210,7 +238,8 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     switch (action) {
       case _ReceiptAction.print:
         final bytes = await _buildPdfBytes(context, ref, sale);
-        if (bytes != null && context.mounted) await Printing.layoutPdf(onLayout: (_) => bytes);
+        if (bytes != null && context.mounted)
+          await Printing.layoutPdf(onLayout: (_) => bytes);
         break;
       case _ReceiptAction.save:
         final bytes = await _buildPdfBytes(context, ref, sale);
@@ -221,7 +250,8 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
       case _ReceiptAction.share:
         final bytes = await _buildPdfBytes(context, ref, sale);
         if (bytes != null && context.mounted) {
-          await Printing.sharePdf(bytes: bytes, filename: _receiptFileName(sale));
+          await Printing.sharePdf(
+              bytes: bytes, filename: _receiptFileName(sale));
         }
         break;
       case _ReceiptAction.preview:
@@ -233,7 +263,8 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     }
   }
 
-  Future<void> _confirmVoid(BuildContext context, WidgetRef ref, Sale sale) async {
+  Future<void> _confirmVoid(
+      BuildContext context, WidgetRef ref, Sale sale) async {
     final ac = AppColors.of(context);
     final proceed = await showAppSheet<bool>(
       context: context,
@@ -242,19 +273,26 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(color: ac.expenseTint, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+                color: ac.expenseTint, borderRadius: BorderRadius.circular(12)),
             child: Icon(Icons.close_rounded, size: 20, color: ac.expenseFg),
           ),
           const SizedBox(height: 12),
           Text('Void this sale?', style: AppTheme.display(context, size: 19)),
           const SizedBox(height: 8),
-          Text('This cannot be undone. Stock will be returned and the sale removed from your totals.',
-              style: TextStyle(fontSize: 12, color: AppColors.of(context).inkSoft, height: 1.5)),
+          Text(
+              'This cannot be undone. Stock will be returned and the sale removed from your totals.',
+              style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.of(context).inkSoft,
+                  height: 1.5)),
           const SizedBox(height: 16),
           Row(children: [
             Expanded(
               child: AppButton(
-                  label: 'Cancel', variant: AppButtonVariant.ghost, onTap: () => Navigator.pop(ctx, false)),
+                  label: 'Cancel',
+                  variant: AppButtonVariant.ghost,
+                  onTap: () => Navigator.pop(ctx, false)),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -280,47 +318,59 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     } catch (e, st) {
       logSecureError(e, st, tag: 'void_sale');
       if (context.mounted) {
-        showAppToast(context, sanitizeErrorMessage(e, fallback: 'Could not void sale'));
+        showAppToast(
+            context, sanitizeErrorMessage(e, fallback: 'Could not void sale'));
       }
     }
   }
 }
 
-Future<Uint8List?> _buildPdfBytes(BuildContext context, WidgetRef ref, Sale sale) async {
+Future<Uint8List?> _buildPdfBytes(
+    BuildContext context, WidgetRef ref, Sale sale) async {
   try {
     final products = ref.read(productsStreamProvider).asData?.value ?? [];
     final customers = ref.read(customersStreamProvider).asData?.value ?? [];
-    final customer = customers.where((c) => c.id == sale.customerId).firstOrNull;
+    final customer =
+        customers.where((c) => c.id == sale.customerId).firstOrNull;
     final profile = ref.read(shopProfileProvider).asData?.value;
     final storeName = profile?.shopName ?? 'Digital Register';
     final location = profile?.location ?? '';
     final phone = profile?.phone ?? '';
-    final currencyCode = profile?.currency ?? 'PKR';
-    return await generateReceiptPdfBytes(
+    final fmt = NumberFormat('#,##0');
+    final lines = sale.lineItems.map((li) {
+      final prod = products.where((p) => p.id == li.productId).firstOrNull;
+      return ReceiptLine(
+        name: prod?.name ?? li.name ?? li.productId,
+        // Whole numbers lose the trailing ".0" — "1" reads better on a receipt
+        // than "1.0" for a single unit, but a cut area of 12.5 must keep it.
+        qty: li.qtyOrArea == li.qtyOrArea.roundToDouble()
+            ? li.qtyOrArea.toInt().toString()
+            : li.qtyOrArea.toStringAsFixed(1),
+        unitPrice: fmt.format(li.salePrice.toInt()),
+        total: fmt.format(li.lineTotal.toInt()),
+      );
+    }).toList();
+    final data = buildReceiptData(
       storeName: storeName,
       location: location,
       phone: phone,
-      currencyCode: currencyCode,
+      currencyCode: profile?.currency ?? 'PKR',
       receiptId: _receiptNumber(sale),
       date: '${sale.date.day}/${sale.date.month}/${sale.date.year}',
       customerName: customer?.name ?? sale.customerName ?? sale.customerId,
-      items: sale.lineItems.map((li) {
-        final prod = products.where((p) => p.id == li.productId).firstOrNull;
-        return {
-          'name': prod?.name ?? li.productId,
-          'qty': li.qtyOrArea.toStringAsFixed(1),
-          'price': li.salePrice,
-          'total': li.lineTotal,
-        };
-      }).toList(),
+      items: lines,
       totalAmount: sale.amount,
       paidAmount: sale.paid,
       remainingBalance: sale.balance,
     );
+    return await generateReceiptPdf(data);
   } catch (e, st) {
     logSecureError(e, st, tag: 'receipt_pdf');
     if (context.mounted) {
-      showAppToast(context, sanitizeErrorMessage(e, fallback: 'Could not generate PDF. Please try again.'));
+      showAppToast(
+          context,
+          sanitizeErrorMessage(e,
+              fallback: 'Could not generate PDF. Please try again.'));
     }
     return null;
   }
@@ -328,37 +378,38 @@ Future<Uint8List?> _buildPdfBytes(BuildContext context, WidgetRef ref, Sale sale
 
 enum _ReceiptAction { print, save, share, preview, voidSale }
 
-/// Writes the receipt into the device's Downloads folder and reports where it
-/// landed.
+/// Writes the receipt into the device's public Downloads folder and reports
+/// where it landed.
 ///
 /// There was no save path at all before: the only options were print and share,
 /// so keeping a copy of a receipt meant photographing the screen.
+///
+/// The first implementation wrote the bytes with `dart:io`'s `File` straight
+/// into `getDownloadsDirectory()`. That path is covered by Android's scoped
+/// storage from Android 10 onward, and `WRITE_EXTERNAL_STORAGE` is capped at
+/// `maxSdkVersion=28` in the manifest, so there is no permission to ask for. The
+/// write silently accomplished nothing: the toast said the receipt was saved and
+/// nothing ever appeared in the phone's storage.
+///
+/// The save now goes through MediaStore on the native side, which needs no
+/// runtime permission and publishes the file to Files, Downloads and the gallery.
 Future<void> _savePdf(BuildContext context, Uint8List bytes, Sale sale) async {
   final name = _receiptFileName(sale);
   try {
-    final dir = await _downloadsDirectory();
-    final file = File('${dir.path}/$name');
-    await file.writeAsBytes(bytes, flush: true);
+    final where = await ReceiptSaver.instance.save(bytes, name);
     if (!context.mounted) return;
-    showAppToast(context, 'Saved to ${dir.path}/$name');
+    showAppToast(context, 'Saved to Downloads/$name');
+    // Surfacing the resolved location keeps this debuggable: a wrong path is
+    // otherwise invisible, which is exactly how the scoped-storage bug hid.
+    logSecureError('receipt saved to $where', StackTrace.current,
+        tag: 'receipt_save');
   } catch (e, st) {
-    // A device with no writable Downloads folder (or no storage permission)
-    // must not lose the receipt: fall back to the share sheet, where the user
-    // can still send it somewhere.
+    // A device that still refuses the write must not lose the receipt: fall
+    // back to the share sheet, where the user can send it somewhere.
     logSecureError(e, st, tag: 'receipt_save');
     if (!context.mounted) return;
     await Printing.sharePdf(bytes: bytes, filename: name);
   }
-}
-
-/// Android exposes a real Downloads directory; iOS sandboxes everything, so the
-/// app's own documents directory is the closest equivalent.
-Future<Directory> _downloadsDirectory() async {
-  if (Platform.isAndroid) {
-    final dir = await getDownloadsDirectory();
-    if (dir != null) return dir;
-  }
-  return getApplicationDocumentsDirectory();
 }
 
 class ReceiptPreviewScreen extends ConsumerWidget {
@@ -373,51 +424,44 @@ class ReceiptPreviewScreen extends ConsumerWidget {
     final storeName = profile?.shopName ?? 'Digital Register';
     final location = profile?.location ?? '';
     final phone = profile?.phone ?? '';
-    final csym = profile != null ? currencySymbolFromCode(profile.currency) : ref.read(currencySymbolProvider);
 
-    final paperItems = sale.lineItems.map((li) {
-      final prod = products.where((p) => p.id == li.productId).firstOrNull;
-      final name = prod?.name ?? li.name ?? li.productId;
-      // Whole numbers lose the trailing ".0" — "1" reads better on a receipt
-      // than "1.0" for a single unit, but a cut area of 12.5 must keep it.
-      final qty = li.qtyOrArea == li.qtyOrArea.roundToDouble()
-          ? li.qtyOrArea.toInt().toString()
-          : li.qtyOrArea.toStringAsFixed(1);
-      return _PaperItem(
-        name: name,
-        qty: qty,
-        unitPrice: fmt.format(li.salePrice.toInt()),
-        total: fmt.format(li.lineTotal.toInt()),
-      );
-    }).toList();
-
-    final metaParts = [
-      if (location.isNotEmpty) location,
-      if (phone.isNotEmpty) phone,
-    ];
-    final dateLine = DateFormat('d MMM y · h:mm a').format(sale.date);
-    final receiptNo = _receiptNumber(sale);
-    final footer =
-        location.isNotEmpty ? '$storeName · $location' : storeName;
-
-    final isDue = sale.balance > 0;
+    // The preview renders the same [ReceiptData] the PDF is built from, so the
+    // two cannot drift. Only the date format differs: the screen has room for
+    // "22 Jul 2026 · 6:53 pm", the 80mm roll needs the compact "22/7/2026".
+    final data = buildReceiptData(
+      storeName: storeName,
+      receiptId: _receiptNumber(sale),
+      date: DateFormat('d MMM y \u00b7 h:mm a').format(sale.date),
+      customerName: sale.customerName ?? sale.customerId,
+      items: [
+        for (final li in sale.lineItems)
+          ReceiptLine(
+            name:
+                products.where((p) => p.id == li.productId).firstOrNull?.name ??
+                    li.name ??
+                    li.productId,
+            // Whole numbers lose the trailing ".0" — "1" reads better on a
+            // receipt than "1.0" for a single unit, but a cut area of 12.5 must
+            // keep it.
+            qty: li.qtyOrArea == li.qtyOrArea.roundToDouble()
+                ? li.qtyOrArea.toInt().toString()
+                : li.qtyOrArea.toStringAsFixed(1),
+            unitPrice: fmt.format(li.salePrice.toInt()),
+            total: fmt.format(li.lineTotal.toInt()),
+          ),
+      ],
+      totalAmount: sale.amount,
+      paidAmount: sale.paid,
+      remainingBalance: sale.balance,
+      location: location,
+      phone: phone,
+      currencyCode: profile?.currency ?? 'PKR',
+    );
 
     return FullScreenOverlay(
       title: 'Receipt Preview',
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _ReceiptPaper(
-          storeName: storeName,
-          date: dateLine,
-          receiptNo: receiptNo,
-          metaLine: metaParts.join(' · '),
-          customerName: sale.customerName ?? sale.customerId,
-          items: paperItems,
-          total: '$csym ${fmt.format(sale.amount.toInt())}',
-          paid: '$csym ${fmt.format(sale.paid.toInt())}',
-          isDue: isDue,
-          dueValue: '$csym ${fmt.format(sale.balance.toInt())}',
-          footer: footer,
-        ),
+        _ReceiptPaper(data: data),
         const SizedBox(height: 18),
         Row(children: [
           Expanded(
@@ -427,7 +471,8 @@ class ReceiptPreviewScreen extends ConsumerWidget {
               variant: AppButtonVariant.outline,
               onTap: () async {
                 final bytes = await _buildPdfBytes(context, ref, sale);
-                if (bytes != null && context.mounted) await Printing.layoutPdf(onLayout: (_) => bytes);
+                if (bytes != null && context.mounted)
+                  await Printing.layoutPdf(onLayout: (_) => bytes);
               },
             ),
           ),
@@ -453,7 +498,8 @@ class ReceiptPreviewScreen extends ConsumerWidget {
               onTap: () async {
                 final bytes = await _buildPdfBytes(context, ref, sale);
                 if (bytes != null && context.mounted) {
-                  await Printing.sharePdf(bytes: bytes, filename: _receiptFileName(sale));
+                  await Printing.sharePdf(
+                      bytes: bytes, filename: _receiptFileName(sale));
                 }
               },
             ),
@@ -462,19 +508,6 @@ class ReceiptPreviewScreen extends ConsumerWidget {
       ]),
     );
   }
-}
-
-class _PaperItem {
-  final String name;
-  final String qty;
-  final String unitPrice;
-  final String total;
-  const _PaperItem({
-    required this.name,
-    required this.qty,
-    required this.unitPrice,
-    required this.total,
-  });
 }
 
 /// The on-screen receipt.
@@ -494,37 +527,17 @@ class _PaperItem {
 ///  * The barcode was a hardcoded pseudo-random pattern carrying no data — it
 ///    looked scannable and verified nothing.
 class _ReceiptPaper extends StatelessWidget {
-  final String storeName;
-  final String date;
-  final String receiptNo;
-  final String metaLine;
-  final String customerName;
-  final List<_PaperItem> items;
-  final String total;
-  final String paid;
-  final bool isDue;
-  final String dueValue;
-  final String footer;
-
-  const _ReceiptPaper({
-    required this.storeName,
-    required this.date,
-    required this.receiptNo,
-    required this.metaLine,
-    required this.customerName,
-    required this.items,
-    required this.total,
-    required this.paid,
-    required this.isDue,
-    required this.dueValue,
-    required this.footer,
-  });
+  /// The shared model. Rendering this — rather than a private set of fields —
+  /// is what guarantees the preview and the printed PDF describe the same sale.
+  final ReceiptData data;
+  const _ReceiptPaper({required this.data});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
     final tnum = const [FontFeature.tabularFigures()];
+    final d = data;
 
     return Container(
       decoration: BoxDecoration(
@@ -542,7 +555,7 @@ class _ReceiptPaper extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ReceiptHeader(storeName: storeName),
+          _ReceiptHeader(storeName: d.storeName),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
             child: Column(
@@ -552,20 +565,20 @@ class _ReceiptPaper extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: _MetaCell(label: 'DATE', value: date)),
+                    Expanded(child: _MetaCell(label: 'DATE', value: d.date)),
                     const SizedBox(width: 12),
                     Flexible(
                       child: _MetaCell(
                         label: 'RECEIPT #',
-                        value: receiptNo,
+                        value: d.receiptNo,
                         alignEnd: true,
                       ),
                     ),
                   ],
                 ),
-                if (metaLine.isNotEmpty) ...[
+                if (d.metaLine.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  Text(metaLine,
+                  Text(d.metaLine,
                       style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
                 ],
                 const SizedBox(height: 14),
@@ -576,7 +589,7 @@ class _ReceiptPaper extends StatelessWidget {
                       style: TextStyle(fontSize: 12, color: ac.inkSoft),
                     ),
                     TextSpan(
-                      text: customerName,
+                      text: d.customerName,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -586,17 +599,17 @@ class _ReceiptPaper extends StatelessWidget {
                   ]),
                 ),
                 const SizedBox(height: 14),
-                _ItemTable(items: items, tnum: tnum),
+                _ItemTable(items: d.items, tnum: tnum),
                 const SizedBox(height: 14),
                 _TotalsCard(
-                  total: total,
-                  paid: paid,
-                  isDue: isDue,
-                  dueValue: dueValue,
+                  total: d.total,
+                  paid: d.paid,
+                  isDue: d.isDue,
+                  dueValue: d.dueValue,
                   tnum: tnum,
                 ),
                 const SizedBox(height: 12),
-                _StatusBadge(isDue: isDue),
+                _StatusBadge(isDue: d.isDue),
                 const SizedBox(height: 16),
                 Container(height: 1, color: ac.outline),
                 const SizedBox(height: 14),
@@ -609,10 +622,10 @@ class _ReceiptPaper extends StatelessWidget {
                     color: ac.saleFg,
                   ),
                 ),
-                if (footer.isNotEmpty) ...[
+                if (d.footer.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
-                    footer,
+                    d.footer,
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 10, color: ac.inkFaint),
                   ),
@@ -718,7 +731,7 @@ class _MetaCell extends StatelessWidget {
 /// The itemised table: real columns with a header rule, so qty/price/total can
 /// be scanned vertically instead of read as stacked label/value pairs.
 class _ItemTable extends StatelessWidget {
-  final List<_PaperItem> items;
+  final List<ReceiptLine> items;
   final List<FontFeature> tnum;
 
   const _ItemTable({required this.items, required this.tnum});
@@ -931,7 +944,8 @@ class _LoadingBox extends StatelessWidget {
   const _LoadingBox();
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(height: 260, child: Center(child: CircularProgressIndicator()));
+    return const SizedBox(
+        height: 260, child: Center(child: CircularProgressIndicator()));
   }
 }
 
@@ -943,7 +957,8 @@ class _ErrorBox extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Center(
-        child: Text(message, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        child: Text(message,
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
       ),
     );
   }

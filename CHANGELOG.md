@@ -3,7 +3,14 @@
 ## Unreleased
 
 ### Fixed
+- **"Save PDF" now actually puts the receipt in the phone's storage.** The receipt was written with `dart:io`'s `File` directly into `/storage/emulated/0/Download`, which Android's scoped storage has sealed since Android 10 — the app showed a success toast and no file ever appeared. `WRITE_EXTERNAL_STORAGE` is also capped at `maxSdkVersion=28` in the manifest, so there was no permission that could have made it work. Saving on Android now goes through `MediaStore` via a new method channel, which needs no runtime permission and makes the PDF visible to Files, Downloads and gallery apps. The write is staged with `IS_PENDING` so a half-written receipt never shows up, and a failed insert is deleted rather than left as an orphan row. Devices below Android 10 keep the direct write, which is still correct there.
+- A save that cannot be verified is no longer reported as a success. The native side returns the resolved `content://` location, an empty or null reply is treated as a failure, and the share sheet remains the fallback so a receipt is never lost.
 - Receipt PDF page height now fits the content instead of reserving A4's 297mm long edge on an 80mm-wide thermal roll. A one-item receipt was ~125mm of content on a 297mm sheet, so the print preview showed a page that was two-thirds blank. Heights are computed from the actual block structure and calibrated so the receipt still lands on a single page from an empty cart up to a 12-item order.
+
+### Changed
+- Receipt rebuilt from scratch against the mockup: the PDF and the on-screen preview now share one typed `ReceiptData`/`ReceiptLine` model, so the two cannot drift. The page is sized with `pw.Widget.measure` instead of a hand-rolled height estimate, which removes the blank-page/second-page failure mode. Receipts that genuinely exceed the 80mm roll fall back to paginated A4.
+- Sales price field is now a 96×48 target with a larger font, up from 68×30 — it was below the app's own 48dp touch minimum and cramped for a 5-6 digit figure.
+- Sales price field no longer loses focus mid-edit. The cart republishes on every keystroke, which rebuilt the field and dropped the caret into the search box after a single character; it now holds a persistent `FocusNode` and reasserts focus after provider updates.
 
 ## v1.5.0 — September 2026
 

@@ -1,9 +1,18 @@
-﻿import 'package:archive/archive.dart' show ZLibDecoder;
+import 'dart:io';
+
+import 'package:archive/archive.dart' show ZLibDecoder;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:foam_shop_register/models/product.dart';
+import 'package:foam_shop_register/providers/sales_provider.dart';
+import 'package:foam_shop_register/screens/sales_entry_screen.dart';
 import 'package:foam_shop_register/theme/app_theme.dart';
 import 'package:foam_shop_register/screens/home_screen.dart';
 import 'package:foam_shop_register/services/receipt_pdf.dart';
+import 'package:foam_shop_register/services/receipt_saver.dart';
 import 'package:foam_shop_register/widgets/design_system/design_system.dart';
 
 /// Regression tests for the 2027 liquid-glass UI fixes.
@@ -26,10 +35,13 @@ void main() {
         final ac = theme.extension<AppColors>()!;
         // If any of these were dropped, the glass engine would silently fall
         // back to transparent and every surface would lose its edge.
-        expect(ac.glassHairline.a, greaterThan(0), reason: 'hairline must be visible');
-        expect(ac.glassElevated.a, greaterThan(0.5), reason: 'raised glass must be dense');
+        expect(ac.glassHairline.a, greaterThan(0),
+            reason: 'hairline must be visible');
+        expect(ac.glassElevated.a, greaterThan(0.5),
+            reason: 'raised glass must be dense');
         expect(ac.glassScrim.a, greaterThan(0.2), reason: 'scrim must dim');
-        expect(ac.glassNested.a, greaterThan(0), reason: 'nested slot must be visible');
+        expect(ac.glassNested.a, greaterThan(0),
+            reason: 'nested slot must be visible');
         expect(ac.glassBlur, greaterThan(0));
       }
     });
@@ -55,7 +67,8 @@ void main() {
           final ratio =
               (a > b ? a + 0.05 : b + 0.05) / (a > b ? b + 0.05 : a + 0.05);
           expect(ratio, greaterThan(1.5),
-              reason: 'controlBorder is invisible (${ratio.toStringAsFixed(2)}:1) '
+              reason:
+                  'controlBorder is invisible (${ratio.toStringAsFixed(2)}:1) '
                   'on this surface in ${theme.brightness}');
         }
       }
@@ -109,8 +122,10 @@ void main() {
       final darkLift = lift(AppTheme.dark().extension<AppColors>()!);
       final lightLift = lift(AppTheme.light().extension<AppColors>()!);
 
-      expect(darkLift, greaterThan(1.08), reason: 'dark card must lift off the page');
-      expect(lightLift, greaterThan(1.08), reason: 'light card must lift off the page');
+      expect(darkLift, greaterThan(1.08),
+          reason: 'dark card must lift off the page');
+      expect(lightLift, greaterThan(1.08),
+          reason: 'light card must lift off the page');
       // Parity: dark separation must be within 10% of light.
       expect(
         (darkLift - lightLift).abs() / lightLift,
@@ -130,8 +145,7 @@ void main() {
         dark.surfaceHigh,
         dark.surfaceHighest,
       ]) {
-        final spread =
-            c.computeLuminance().abs() + (c.r - c.b).abs() / 255;
+        final spread = c.computeLuminance().abs() + (c.r - c.b).abs() / 255;
         expect(spread, lessThan(0.25), reason: 'neutral $c is too blue');
       }
     });
@@ -183,7 +197,8 @@ void main() {
       final dark = AppTheme.dark().extension<AppColors>()!;
       // `Color.r/g` are normalised 0..1, so scale to 8-bit for readability.
       int ch8(double c) => (c * 255).round();
-      expect(ch8(dark.surface.r), greaterThanOrEqualTo(18), reason: 'page too black');
+      expect(ch8(dark.surface.r), greaterThanOrEqualTo(18),
+          reason: 'page too black');
       expect(ch8(dark.surface.g), greaterThanOrEqualTo(18));
       // Still unmistakably a dark theme.
       expect(ch8(dark.surface.r), lessThan(60));
@@ -234,7 +249,8 @@ void main() {
       await tester.pumpWidget(_wrap(
         const Padding(
           padding: EdgeInsets.all(16),
-          child: AppField(label: 'Amount', hintText: '0', errorText: 'Required'),
+          child:
+              AppField(label: 'Amount', hintText: '0', errorText: 'Required'),
         ),
       ));
       // Placeholder-only labelling is a pro-rules violation; the label must be
@@ -491,7 +507,8 @@ void main() {
       }
     });
 
-    testWidgets('the app background paints no ambient animation', (tester) async {
+    testWidgets('the app background paints no ambient animation',
+        (tester) async {
       // The old background ran three infinite `AnimationController`s driving
       // large radial-gradient orbs, repainting the full screen forever. If one
       // came back, `pumpAndSettle` below would never return â€” an infinite
@@ -631,8 +648,8 @@ void main() {
       }
     });
 
-
-    testWidgets('an inline button respects custom horizontal padding', (tester) async {
+    testWidgets('an inline button respects custom horizontal padding',
+        (tester) async {
       // "Change" needed more room than the 16dp default, which was sized for
       // full-width buttons; on a short label the word ended up touching the
       // rounded edge.
@@ -704,8 +721,8 @@ void main() {
           reason: 'the gradient must share a box with the radius');
       // A non-zero radius is what rounds the fill; the old child-based fill had
       // none, which is exactly why it painted square corners.
-      expect((decoration.borderRadius! as BorderRadius).topLeft.x,
-          greaterThan(0));
+      expect(
+          (decoration.borderRadius! as BorderRadius).topLeft.x, greaterThan(0));
     });
 
     testWidgets('filled buttons cast no brand-coloured glow', (tester) async {
@@ -753,9 +770,8 @@ void main() {
       Brightness brightness,
     ) async {
       await tester.pumpWidget(MaterialApp(
-        theme: brightness == Brightness.dark
-            ? AppTheme.dark()
-            : AppTheme.light(),
+        theme:
+            brightness == Brightness.dark ? AppTheme.dark() : AppTheme.light(),
         home: Scaffold(
           body: Center(
             child: AppButton(
@@ -772,8 +788,7 @@ void main() {
     testWidgets('outline fill is a translucent wash, never a surface colour',
         (tester) async {
       for (final brightness in [Brightness.light, Brightness.dark]) {
-        await pumpVariant(
-            tester, AppButtonVariant.outline, brightness);
+        await pumpVariant(tester, AppButtonVariant.outline, brightness);
         final fill = decorationOf(tester).color!;
         final ac = AppColors.of(tester.element(find.byType(AppButton)));
 
@@ -792,8 +807,7 @@ void main() {
     testWidgets('outline border is visible against every surface it lands on',
         (tester) async {
       for (final brightness in [Brightness.light, Brightness.dark]) {
-        await pumpVariant(
-            tester, AppButtonVariant.outline, brightness);
+        await pumpVariant(tester, AppButtonVariant.outline, brightness);
         final decoration = decorationOf(tester);
         final border = decoration.border;
         expect(border, isNotNull, reason: 'an outlined control needs an edge');
@@ -809,8 +823,8 @@ void main() {
           // is the darker of the two and the naive ratio collapses below 1.
           final a = borderColour.computeLuminance();
           final b = surface.computeLuminance();
-          final ratio = (a > b ? a + 0.05 : b + 0.05) /
-              (a > b ? b + 0.05 : a + 0.05);
+          final ratio =
+              (a > b ? a + 0.05 : b + 0.05) / (a > b ? b + 0.05 : a + 0.05);
           expect(ratio, greaterThan(1.5),
               reason: 'outline border is effectively invisible '
                   '(${ratio.toStringAsFixed(2)}:1) on this surface');
@@ -896,9 +910,219 @@ void main() {
     });
   });
 
+  group('Sale price field', () {
+    Product _product() => Product(
+          id: 'p1',
+          name: 'luxury',
+          type: 'foam',
+          sizeLength: 78,
+          sizeWidth: 72,
+          thickness: 6,
+          density: 1.2,
+          unitType: 'sq.ft',
+          unitPrice: 20500,
+          costPrice: 1000,
+          currentStock: 10,
+          lowStockThreshold: 2,
+        );
+
+    Future<void> _pumpPriceField(WidgetTester tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              salesProvider.overrideWith(() => SalesNotifier()),
+            ],
+            child: MaterialApp(
+              home: Scaffold(
+                body: CartWidget(
+                  item: CartItem(
+                      product: _product(), quantity: 1, salePrice: 20500),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    // The price box was 68x30 — under the app's own 48dp touch minimum, and
+    // cramped for a 5-6 digit figure. It is the most-typed value on the screen.
+    testWidgets('is a full-size, legible target', (tester) async {
+      await _pumpPriceField(tester);
+
+      final box = tester.getSize(find.byType(TextField).first);
+      expect(box.height, greaterThanOrEqualTo(48),
+          reason: 'the price field must meet the 48dp touch minimum');
+      expect(box.width, greaterThanOrEqualTo(90),
+          reason: '68px was too narrow to read a 5-6 digit price');
+
+      final style =
+          tester.widget<TextField>(find.byType(TextField).first).style!;
+      expect(style.fontSize, greaterThanOrEqualTo(14));
+      expect(tester.takeException(), isNull);
+    });
+
+    // The bug: the field had no FocusNode, and the cart republishes on every
+    // keystroke, so the TextField's element was rebuilt, focus was dropped, and
+    // the platform handed it to the next focusable widget — the search field.
+    // The symptom was "I can type one character, then the caret jumps to
+    // Search products".
+    testWidgets('keeps focus across a price edit', (tester) async {
+      await _pumpPriceField(tester);
+
+      final field = find.byType(TextField).first;
+      await tester.tap(field);
+      await tester.pumpAndSettle();
+
+      // Simulate the user clearing the field and typing a new price: the
+      // onChanged path republishes the cart and rebuilds this row.
+      await tester.enterText(field, '5');
+      await tester.pumpAndSettle();
+      await tester.enterText(field, '55');
+      await tester.pumpAndSettle();
+
+      // The field must still own focus after all those rebuilds.
+      expect(
+        FocusManager.instance.primaryFocus,
+        tester.widget<TextField>(field).focusNode,
+        reason: 'the price field must keep focus after a cart rebuild',
+      );
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('Receipt saving', () {
+    // The bug: "Save PDF" reported success but no file ever appeared in the
+    // phone's storage. The Dart side wrote with `dart:io`'s `File` into
+    // getDownloadsDirectory(), which Android 10+ scoped storage turns into a
+    // no-op — and WRITE_EXTERNAL_STORAGE is capped at maxSdkVersion=28, so no
+    // permission could ever have rescued it.
+    //
+    // The fix routes Android through MediaStore. These tests pin the contract
+    // with the native side so the route cannot silently regress to a direct
+    // filesystem write.
+
+    TestWidgetsFlutterBinding.ensureInitialized();
+    const channel = MethodChannel('com.asif.foamshop/receipts');
+    final log = <MethodCall>[];
+
+    setUp(() {
+      log.clear();
+      ReceiptSaver.instance.isAndroid = () => true;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        log.add(call);
+        if (call.method == 'savePdf') {
+          return 'content://media/external/downloads/42';
+        }
+        return null;
+      });
+    });
+
+    tearDown(() {
+      ReceiptSaver.instance.isAndroid = () => Platform.isAndroid;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    test('routes the save through MediaStore, not the filesystem', () async {
+      final bytes = Uint8List.fromList([0x25, 0x50, 0x44, 0x46]);
+      final where = await ReceiptSaver.instance.save(bytes, 'receipt-1.pdf');
+
+      // A `dart:io` write would have produced a filesystem path such as
+      // /storage/emulated/0/Download/receipt-1.pdf. Anything that is not a
+      // content:// URI means the scoped-storage bug is back.
+      expect(log.map((c) => c.method), contains('savePdf'));
+      expect(where, startsWith('content://'),
+          reason: 'Android must save via MediaStore; a bare path is invisible '
+              'to the user under scoped storage');
+
+      final args = log.firstWhere((c) => c.method == 'savePdf').arguments
+          as Map<Object?, Object?>;
+      expect(args['name'], 'receipt-1.pdf');
+      expect(args['bytes'], isA<Uint8List>());
+    });
+
+    test('surfaces a platform failure instead of reporting a false success',
+        () async {
+      // The native side can reject the insert (no writable volume, a full
+      // disk). That must propagate so the caller can fall back to the share
+      // sheet — swallowing it would repeat the "saved but nowhere" bug.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        throw PlatformException(code: 'save_failed', message: 'disk full');
+      });
+
+      await expectLater(
+        ReceiptSaver.instance.save(Uint8List.fromList([1]), 'r.pdf'),
+        throwsA(isA<PlatformException>()),
+      );
+    });
+
+    test('rejects an empty location rather than claiming success', () async {
+      // A null/empty reply from the platform means the file is not verifiably
+      // saved. Treating that as success is exactly the failure mode being
+      // fixed, so it is treated as an error.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async => null);
+
+      await expectLater(
+        ReceiptSaver.instance.save(Uint8List.fromList([1]), 'r.pdf'),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
+
   group('Receipt PDF', () {
     // The receipt is the one artefact a customer physically takes away, so a
     // regression here is a business bug, not a cosmetic one.
+
+    /// Adapter from the old loose-map call shape to the shared [ReceiptData].
+    ///
+    /// The service now takes a typed model so the preview and the PDF cannot
+    /// drift; these tests still describe the sale in the old map form, so this
+    /// keeps them readable while still exercising the real render path.
+    Future<Uint8List> generateReceiptPdfBytes({
+      required String storeName,
+      required String receiptId,
+      required String date,
+      required String customerName,
+      required List<Map<String, dynamic>> items,
+      required double totalAmount,
+      required double paidAmount,
+      required double remainingBalance,
+      String location = '',
+      String phone = '',
+      String currencyCode = 'PKR',
+    }) {
+      final fmt = NumberFormat('#,##0');
+      return generateReceiptPdf(
+        buildReceiptData(
+          storeName: storeName,
+          receiptId: receiptId,
+          date: date,
+          customerName: customerName,
+          items: [
+            for (final i in items)
+              ReceiptLine(
+                name: i['name'].toString(),
+                qty: i['qty'].toString(),
+                unitPrice: fmt.format(((i['price'] as num?) ?? 0).toInt()),
+                total: fmt.format(((i['total'] as num?) ?? 0).toInt()),
+              ),
+          ],
+          totalAmount: totalAmount,
+          paidAmount: paidAmount,
+          remainingBalance: remainingBalance,
+          location: location,
+          phone: phone,
+          currencyCode: currencyCode,
+        ),
+      );
+    }
+
     test('generates a valid PDF for a paid sale', () async {
       final bytes = await generateReceiptPdfBytes(
         storeName: 'Asif Foam Center',
@@ -945,7 +1169,8 @@ void main() {
         customerName: 'Customer With An Extremely Long Ledger Name',
         items: [
           {
-            'name': 'Premium High Density Memory Foam Roll Full Size Extra Long',
+            'name':
+                'Premium High Density Memory Foam Roll Full Size Extra Long',
             'qty': '12.5',
             'price': 1250000,
             'total': 15625000,
@@ -1077,7 +1302,8 @@ void main() {
       expect(_pageCount(bytes), 1);
     });
 
-    test('receipts stay on one page from empty up to a 12-item order', () async {
+    test('receipts stay on one page from empty up to a 12-item order',
+        () async {
       // Calibration data, measured by binary-searching the smallest height
       // that keeps each of these on one page. The estimator over-reserves by
       // 4-11% across the range, which is the safe direction.
@@ -1094,7 +1320,8 @@ void main() {
           item('Premium High Density Memory Foam Roll Full Size Extra Long'),
         ],
         'three items': [item('luxury'), item('cotton'), item('silicon')],
-        'twelve items': List.generate(12, (i) => item('Memory Foam Roll ${i + 1}')),
+        'twelve items':
+            List.generate(12, (i) => item('Memory Foam Roll ${i + 1}')),
       };
 
       for (final e in cases.entries) {
@@ -1192,7 +1419,8 @@ void main() {
         customerName: 'Walk-in Customer',
         items: [
           {
-            'name': 'Premium High Density Memory Foam Roll Full Size Extra Long',
+            'name':
+                'Premium High Density Memory Foam Roll Full Size Extra Long',
             'qty': '1.0',
             'price': 100,
             'total': 100,
@@ -1202,7 +1430,8 @@ void main() {
         paidAmount: 100,
         remainingBalance: 0,
       );
-      expect(_firstPageSizeMm(long).$2, greaterThan(_firstPageSizeMm(short).$2));
+      expect(
+          _firstPageSizeMm(long).$2, greaterThan(_firstPageSizeMm(short).$2));
     });
   });
 }
@@ -1237,7 +1466,8 @@ int _pageCount(List<int> bytes) =>
 /// both of which stay valid while the drawn content is being thrown away.
 String _inflateContent(List<int> bytes) {
   final out = StringBuffer();
-  for (final m in RegExp(r'stream\r?\n').allMatches(String.fromCharCodes(bytes))) {
+  for (final m
+      in RegExp(r'stream\r?\n').allMatches(String.fromCharCodes(bytes))) {
     final start = m.end;
     final endMarker = String.fromCharCodes(bytes).indexOf('endstream', start);
     if (endMarker < 0) continue;
