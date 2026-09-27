@@ -1053,6 +1053,70 @@ void main() {
       );
     });
 
+    test('a typical receipt fits on a single page', () async {
+      // The failure mode this guards is subtle and bad: if the page is sized a
+      // little too short, `MultiPage` does not clip, it paginates. The customer
+      // then gets sheet one of the receipt with the totals and footer pushed
+      // onto a near-blank sheet two — the same symptom the old 297mm page had,
+      // just inverted.
+      //
+      // This is the exact receipt from the print-preview bug report.
+      final bytes = await generateReceiptPdfBytes(
+        storeName: 'Asif Foam Center',
+        location: 'Opposite Meezan Bank GT Road Kot Addu - 03467302964',
+        receiptId: 'INV-QOEJ',
+        date: '27/9/2026',
+        customerName: 'Walk-in Customer',
+        items: [
+          {'name': 'luxury', 'qty': '2.0', 'price': 26000, 'total': 52000},
+        ],
+        totalAmount: 52000,
+        paidAmount: 53000,
+        remainingBalance: 0,
+      );
+      expect(_pageCount(bytes), 1);
+    });
+
+    test('receipts stay on one page from empty up to a 12-item order', () async {
+      // Calibration data, measured by binary-searching the smallest height
+      // that keeps each of these on one page. The estimator over-reserves by
+      // 4-11% across the range, which is the safe direction.
+      //
+      // 0 items -> 131.5mm, 1 -> 138.9mm, 1 long-wrapping -> 150.4mm,
+      // 3 -> 153.6mm, 12 -> 266.0mm required.
+      Map<String, dynamic> item(String n) =>
+          {'name': n, 'qty': '2.0', 'price': 26000, 'total': 52000};
+
+      final cases = <String, List<Map<String, dynamic>>>{
+        'empty': [],
+        'single short': [item('luxury')],
+        'single long (wraps)': [
+          item('Premium High Density Memory Foam Roll Full Size Extra Long'),
+        ],
+        'three items': [item('luxury'), item('cotton'), item('silicon')],
+        'twelve items': List.generate(12, (i) => item('Memory Foam Roll ${i + 1}')),
+      };
+
+      for (final e in cases.entries) {
+        final bytes = await generateReceiptPdfBytes(
+          storeName: 'Asif Foam Center',
+          location: 'Opposite Meezan Bank GT Road Kot Addu - 03467302964',
+          receiptId: 'INV-QOEJ',
+          date: '27/9/2026',
+          customerName: 'Walk-in Customer',
+          items: e.value,
+          totalAmount: 52000,
+          paidAmount: 53000,
+          remainingBalance: 0,
+        );
+        expect(
+          _pageCount(bytes),
+          1,
+          reason: 'a receipt with ${e.key} must not spill onto a second sheet',
+        );
+      }
+    });
+
     test('sizes the page to the content instead of A4 height', () async {
       // The bug: the page was 80mm wide but 297mm tall — A4's long edge, left
       // over from the old A4 format. A one-item receipt is only ~125mm of
@@ -1142,6 +1206,14 @@ void main() {
     });
   });
 }
+
+/// Number of pages the generated PDF contains.
+///
+/// `/Type /Page` entries are pages; `/Type /Pages` is the page-tree node and is
+/// excluded by the `[^s]` guard. Overcounting would fail a one-page assertion
+/// spuriously, which is why the guard matters.
+int _pageCount(List<int> bytes) =>
+    RegExp(r'/Type\s*/Page[^s]').allMatches(String.fromCharCodes(bytes)).length;
 
 /// Returns the width and height in millimetres of the first page's /MediaBox.
 ///

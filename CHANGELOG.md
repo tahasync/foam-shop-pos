@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Receipt PDF page height now fits the content instead of reserving A4's 297mm long edge on an 80mm-wide thermal roll. A one-item receipt was ~125mm of content on a 297mm sheet, so the print preview showed a page that was two-thirds blank. Heights are computed from the actual block structure and calibrated so the receipt still lands on a single page from an empty cart up to a 12-item order.
+
 ## v1.5.0 — September 2026
 
 UI correctness and performance pass. **Colour tokens are unchanged from the withdrawn v2.0.0 line** — the deep blue / periwinkle / dusty mauve palette is identical, and v1.5.0 is the release that ships it. Every new glass token is an alpha derivation of an existing colour, so no hue shifted.

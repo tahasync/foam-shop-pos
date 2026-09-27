@@ -22,6 +22,8 @@ const double _kPageMarginMm = 6.0;
 
 /// Estimated height, in millimetres, of the receipt content for [items].
 ///
+/// Visible for tests, which calibrate it against a measured binary search.
+///
 /// The page is 80mm wide but its *height* used to be a hardcoded 297mm — the
 /// long edge of the A4 page this receipt printed on before. A three-line
 /// receipt is roughly 125mm tall, so the other ~170mm was blank tail, and the
@@ -37,7 +39,7 @@ const double _kPageMarginMm = 6.0;
 /// This stays an *estimate*, so the document is still built with `MultiPage`:
 /// if a name wraps further than predicted the receipt spills onto a second
 /// page rather than silently dropping rows.
-double _receiptHeightMm({
+double receiptHeightMm({
   required List<Map<String, dynamic>> items,
   required bool hasContactLine,
 }) {
@@ -76,6 +78,20 @@ double _receiptHeightMm({
     final lines = ((name.length * charWidthMm) / nameColumnMm).ceil().clamp(1, 12);
     h += 10 + (9 * 1.2) * lines + 0.5;
   }
+
+  // Safety pad.
+  //
+  // The block arithmetic above systematically lands ~20mm short of the real
+  // layout, measured by binary-searching the smallest single-page height
+  // (see the calibration test). The shortfall comes from spacing the
+  // `pdf` package inserts that is not visible in the widget tree — table
+  // border spacing, divider line widths and font-metric padding.
+  //
+  // Under-estimating is the dangerous direction: `MultiPage` then pushes the
+  // footer onto a second sheet and the customer gets a receipt with a blank
+  // first page. So pad generously. This is still far tighter than the 297mm
+  // the page used to reserve.
+  h += (25 + (1.5 * items.length)) * pt;
 
   // A stub receipt still needs room for the header, totals and footer, and a
   // thermal roll cannot be infinitely long.
@@ -191,7 +207,7 @@ Future<Uint8List> generateReceiptPdfBytes({
         pageWidthMm * PdfPageFormat.mm,
         // Height fitted to the content rather than A4's 297mm long edge, which
         // left a mostly blank sheet in the print preview.
-        _receiptHeightMm(
+        receiptHeightMm(
           items: items,
           hasContactLine: location.isNotEmpty || phone.isNotEmpty,
         ) *
