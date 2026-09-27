@@ -52,8 +52,13 @@ class SubscriptionScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            child: Stack(
-              children: [
+            // See the note in `account_settings_screen.dart`: `Stack.clipBehavior`
+            // defaults to `Clip.hardEdge`, which cut these negatively-offset orbs
+            // off along the Stack's rectangular bounds and left a hard-edged pale
+            // rectangle on the card. Overflow, then clip to the card's radius.
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Stack(clipBehavior: Clip.none, children: [
                 Positioned(
                   top: -70,
                   right: -50,
@@ -110,7 +115,7 @@ class SubscriptionScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ],
+              ]),
             ),
           ),
           SectionLabel(title: 'Plan'),

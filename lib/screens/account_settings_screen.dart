@@ -71,8 +71,16 @@ class AccountSettingsScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            child: Stack(
-              children: [
+            // The two orb children are positioned with negative offsets so they
+            // bleed past the card edge. `Stack.clipBehavior` defaults to
+            // `Clip.hardEdge`, which sliced them off along the Stack's
+            // rectangular bounds and painted a hard-edged pale rectangle over
+            // the right-hand side of the card. Let the Stack overflow, then clip
+            // the whole card to its own radius so the orbs end in smooth arcs
+            // along the rounded edge instead of a straight seam.
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Stack(clipBehavior: Clip.none, children: [
                 Positioned(
                   top: -70,
                   right: -50,
@@ -166,7 +174,7 @@ class AccountSettingsScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ],
+              ]),
             ),
           ),
           SectionLabel(title: 'Shop'),
