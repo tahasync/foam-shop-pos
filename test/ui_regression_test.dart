@@ -1052,7 +1052,111 @@ void main() {
         reason: 'an embedded font must decompress to real font data',
       );
     });
+
+    test('sizes the page to the content instead of A4 height', () async {
+      // The bug: the page was 80mm wide but 297mm tall — A4's long edge, left
+      // over from the old A4 format. A one-item receipt is only ~125mm of
+      // content, so the print preview showed a sheet that was two-thirds blank.
+      //
+      // This reads the real /MediaBox out of the generated PDF, so it pins the
+      // geometry the printer actually receives rather than the intent.
+      final oneItem = await generateReceiptPdfBytes(
+        storeName: 'Asif Foam Center',
+        location: 'Sahiwal',
+        phone: '0300-1234567',
+        receiptId: 'INV-0142',
+        date: '22/7/2026',
+        customerName: 'Walk-in Customer',
+        items: [
+          {'name': 'luxury', 'qty': '1.0', 'price': 25500, 'total': 25500},
+        ],
+        totalAmount: 25500,
+        paidAmount: 25500,
+        remainingBalance: 0,
+      );
+      final (wMm, hMm) = _firstPageSizeMm(oneItem);
+
+      // Still 80mm thermal-roll width.
+      expect(wMm, closeTo(80, 0.5));
+      // Tall enough for the header, one row, totals, badge and footer, but
+      // nowhere near a full A4 sheet.
+      expect(hMm, greaterThan(90));
+      expect(hMm, lessThan(200),
+          reason: 'a 1-item receipt should not reserve 297mm of blank paper');
+
+      // More line items must mean a taller page, or the layout would clip.
+      final manyItems = await generateReceiptPdfBytes(
+        storeName: 'Asif Foam Center',
+        receiptId: 'INV-BULK',
+        date: '22/7/2026',
+        customerName: 'Walk-in Customer',
+        items: List.generate(
+          12,
+          (i) => {
+            'name': 'Memory Foam Roll ${i + 1}',
+            'qty': '2.0',
+            'price': 25500,
+            'total': 51000,
+          },
+        ),
+        totalAmount: 612000,
+        paidAmount: 612000,
+        remainingBalance: 0,
+      );
+      expect(_firstPageSizeMm(manyItems).$2, greaterThan(hMm));
+    });
+
+    test('long product names grow the page so rows are not clipped', () async {
+      // A name that wraps must be budgeted for, otherwise the table runs off a
+      // page that was sized for a single line and the receipt paginates early.
+      final short = await generateReceiptPdfBytes(
+        storeName: 'Asif Foam Center',
+        receiptId: 'INV-S',
+        date: '22/7/2026',
+        customerName: 'Walk-in Customer',
+        items: [
+          {'name': 'foam', 'qty': '1.0', 'price': 100, 'total': 100},
+        ],
+        totalAmount: 100,
+        paidAmount: 100,
+        remainingBalance: 0,
+      );
+      final long = await generateReceiptPdfBytes(
+        storeName: 'Asif Foam Center',
+        receiptId: 'INV-L',
+        date: '22/7/2026',
+        customerName: 'Walk-in Customer',
+        items: [
+          {
+            'name': 'Premium High Density Memory Foam Roll Full Size Extra Long',
+            'qty': '1.0',
+            'price': 100,
+            'total': 100,
+          },
+        ],
+        totalAmount: 100,
+        paidAmount: 100,
+        remainingBalance: 0,
+      );
+      expect(_firstPageSizeMm(long).$2, greaterThan(_firstPageSizeMm(short).$2));
+    });
   });
+}
+
+/// Returns the width and height in millimetres of the first page's /MediaBox.
+///
+/// PDF user units are 1/72 inch, so `value / 72 * 25.4` converts to millimetres.
+/// This is the geometry the print spooler reads — the same numbers the preview
+/// uses to size the sheet.
+(double, double) _firstPageSizeMm(List<int> bytes) {
+  final m = RegExp(
+    r'/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)',
+  ).firstMatch(String.fromCharCodes(bytes));
+  if (m == null) {
+    fail('PDF has no /MediaBox, so the page size cannot be verified');
+  }
+  double toMm(String s) => double.parse(s) / 72 * 25.4;
+  return (toMm(m.group(1)!), toMm(m.group(2)!));
 }
 
 /// Inflates every Flate stream in [bytes] and returns the concatenated bytes.

@@ -16,6 +16,72 @@ import '../utils/currency.dart';
 const _kRegular = 'assets/fonts/Inter-Regular.ttf';
 const _kBold = 'assets/fonts/Inter-Bold.ttf';
 
+/// 80mm thermal-roll width, the format a real shop printer expects.
+const double _kPageWidthMm = 80.0;
+const double _kPageMarginMm = 6.0;
+
+/// Estimated height, in millimetres, of the receipt content for [items].
+///
+/// The page is 80mm wide but its *height* used to be a hardcoded 297mm — the
+/// long edge of the A4 page this receipt printed on before. A three-line
+/// receipt is roughly 125mm tall, so the other ~170mm was blank tail, and the
+/// print preview showed a mostly empty sheet.
+///
+/// `pdf` has no auto-height page, so the height has to be chosen before the
+/// content is laid out. This walks the same block structure that `build()`
+/// below emits, accumulating each block's height.
+///
+/// The `pdf` package lays a text line out at ~1.2x its font size, which is
+/// where the 1.2 factors below come from.
+///
+/// This stays an *estimate*, so the document is still built with `MultiPage`:
+/// if a name wraps further than predicted the receipt spills onto a second
+/// page rather than silently dropping rows.
+double _receiptHeightMm({
+  required List<Map<String, dynamic>> items,
+  required bool hasContactLine,
+}) {
+  const pt = 72 / 25.4; // points per millimetre
+
+  var h = 0.0;
+  h += _kPageMarginMm * 2;                        // top + bottom page margin
+  h += 14 + 14 + (15 * 1.2) + 2 + (8.5 * 1.2);    // branded header band
+  h += 12;                                         // gap below the header
+  h += (7.5 * 1.2) + 1 + (9 * 1.2);                // date / receipt # row
+  h += 8 + 0.7 + 8;                                // rule below it
+  if (hasContactLine) h += (8.5 * 1.2) + 6;        // location / phone
+  h += 9 * 1.2;                                    // customer line
+  h += 10;
+  h += 4 + (7.5 * 1.2) + 1.2;                      // table header row
+  h += 12;                                         // gap below the table
+  // Totals card: padding + two rows + rule + balance row.
+  h += 20 + 2 * (1.5 + 1.5 + (9 * 1.2)) + 5 + 0.7 + 5 + (11 * 1.2);
+  h += 10;
+  h += 4 + 4 + (8.5 * 1.2);                        // status badge
+  h += 14;
+  h += 0.7 + 10;                                   // rule above the footer
+  h += 10 * 1.2;                                   // "Thank you for your business!"
+  h += 3 + (7.5 * 1.2);                            // store / location footer
+
+  // Item rows: 5pt of padding above and below, one 9pt line, and the table's
+  // inside border. A long product name wraps, so count the wrapped lines
+  // instead of assuming one line per item.
+  //
+  // The ITEM column is FlexColumnWidth(3.2) of 3.2 + 1.0 + 1.5 + 1.7 = 7.4,
+  // of the 80mm page less 6mm margins each side, less the cell's own padding.
+  final nameColumnMm = (80 - (_kPageMarginMm * 2)) * (3.2 / 7.4) - 3.5;
+  final charWidthMm = (9 * 0.5) / pt; // ~0.5em average glyph at 9pt
+  for (final item in items) {
+    final name = item['name'].toString();
+    final lines = ((name.length * charWidthMm) / nameColumnMm).ceil().clamp(1, 12);
+    h += 10 + (9 * 1.2) * lines + 0.5;
+  }
+
+  // A stub receipt still needs room for the header, totals and footer, and a
+  // thermal roll cannot be infinitely long.
+  return (h / pt).clamp(60.0, 1000.0).toDouble();
+}
+
 Future<pw.ThemeData> _loadReceiptTheme() async {
   pw.ThemeData make(pw.Font base, pw.Font bold) => pw.ThemeData.withFont(
         base: base,
@@ -71,10 +137,8 @@ Future<Uint8List> generateReceiptPdfBytes({
   String _num(double v) => fmt.format(v.toInt());
   String _fmt(double v) => '$csym ${fmt.format(v.toInt())}';
 
-  // 80mm thermal-roll width, the format a real shop printer expects. The old
-  // A4 page produced a full sheet that was mostly whitespace for a 3-line
-  // receipt.
-  const pageWidthMm = 80.0;
+  // The page is 80mm wide (thermal roll) and only as tall as the content needs.
+  const pageWidthMm = _kPageWidthMm;
   final settled = paidAmount >= totalAmount;
   final badgeBg = remainingBalance <= 0 ? tintProfitBg : tintExpenseBg;
   final badgeFg = remainingBalance <= 0 ? tintProfitFg : tintExpenseFg;
@@ -125,8 +189,14 @@ Future<Uint8List> generateReceiptPdfBytes({
     pw.MultiPage(
       pageFormat: PdfPageFormat(
         pageWidthMm * PdfPageFormat.mm,
-        297 * PdfPageFormat.mm,
-        marginAll: 6 * PdfPageFormat.mm,
+        // Height fitted to the content rather than A4's 297mm long edge, which
+        // left a mostly blank sheet in the print preview.
+        _receiptHeightMm(
+          items: items,
+          hasContactLine: location.isNotEmpty || phone.isNotEmpty,
+        ) *
+            PdfPageFormat.mm,
+        marginAll: _kPageMarginMm * PdfPageFormat.mm,
       ),
       // Keep the full-width bands (header, totals, badge) edge to edge exactly
       // as the single `Column` did.

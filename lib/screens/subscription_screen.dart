@@ -27,15 +27,11 @@ class SubscriptionScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Shadow wrapper → ClipRRect → painted card. See the note in
+          // `account_settings_screen.dart` for why the clip has to sit outside
+          // the padding, and why the shadow needs its own box.
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [ac.brandFill, ac.brandFillDeep],
-              ),
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 // Neutral, not `brandFill` — see the note in
@@ -52,70 +48,83 @@ class SubscriptionScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            // See the note in `account_settings_screen.dart`: `Stack.clipBehavior`
-            // defaults to `Clip.hardEdge`, which cut these negatively-offset orbs
-            // off along the Stack's rectangular bounds and left a hard-edged pale
-            // rectangle on the card. Overflow, then clip to the card's radius.
             child: ClipRRect(
               borderRadius: BorderRadius.circular(22),
-              child: Stack(clipBehavior: Clip.none, children: [
-                Positioned(
-                  top: -70,
-                  right: -50,
-                  child: Container(
-                    width: 160,
-                    height: 160,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [ac.brandFill, ac.brandFillDeep],
                   ),
                 ),
-                Positioned(
-                  bottom: -55,
-                  right: 40,
-                  child: Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.06),
-                    ),
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                // The orbs are negatively positioned to bleed off the card edge.
+                // `Stack.clipBehavior` defaults to `Clip.hardEdge`, which cut
+                // them off along the Stack's rectangular bounds and left a
+                // hard-edged pale rectangle on the card. The Stack must not
+                // clip; the ClipRRect above trims the overflow on the card's
+                // own rounded border instead.
+                child: Stack(clipBehavior: Clip.none, children: [
+                  Positioned(
+                    top: -70,
+                    right: -50,
+                    child: Container(
+                      width: 160,
+                      height: 160,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(999),
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.08),
                       ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.schedule_rounded, size: 10, color: Colors.white),
-                        const SizedBox(width: 5),
-                        Text(
-                          isTrial ? trialChipLabel(subLabel) : 'Active',
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -55,
+                    right: 40,
+                    child: Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.06),
+                      ),
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(999),
                         ),
-                      ]),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      isTrial ? 'Free Trial' : 'Digital Register',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 19),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isTrial
-                          ? 'Full access to every feature until your trial ends'
-                          : 'Your shop is fully active on the Digital Register plan.',
-                      style: const TextStyle(color: Colors.white70, fontSize: 11.5, height: 1.4),
-                    ),
-                  ],
-                ),
-              ]),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.schedule_rounded, size: 10, color: Colors.white),
+                          const SizedBox(width: 5),
+                          Text(
+                            isTrial ? trialChipLabel(subLabel) : 'Active',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                          ),
+                        ]),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isTrial ? 'Free Trial' : 'Digital Register',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 19),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isTrial
+                            ? 'Full access to every feature until your trial ends'
+                            : 'Your shop is fully active on the Digital Register plan.',
+                        style: const TextStyle(color: Colors.white70, fontSize: 11.5, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ]),
+              ),
             ),
           ),
           SectionLabel(title: 'Plan'),

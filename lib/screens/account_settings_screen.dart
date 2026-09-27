@@ -41,17 +41,13 @@ class AccountSettingsScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Three nested boxes, each doing exactly one job:
+          //   1. a wrapper whose only decoration is the shadow, so the blur is
+          //      never trimmed by the clip in step 2,
+          //   2. a ClipRRect at the card's own radius,
+          //   3. the painted card (gradient + padding) that holds the orbs.
           Container(
-            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.of(context).brandFill,
-                  AppColors.of(context).brandFillDeep,
-                ],
-              ),
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 // Neutral, not `brandFill`.
@@ -71,110 +67,124 @@ class AccountSettingsScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            // The two orb children are positioned with negative offsets so they
-            // bleed past the card edge. `Stack.clipBehavior` defaults to
-            // `Clip.hardEdge`, which sliced them off along the Stack's
-            // rectangular bounds and painted a hard-edged pale rectangle over
-            // the right-hand side of the card. Let the Stack overflow, then clip
-            // the whole card to its own radius so the orbs end in smooth arcs
-            // along the rounded edge instead of a straight seam.
             child: ClipRRect(
               borderRadius: BorderRadius.circular(22),
-              child: Stack(clipBehavior: Clip.none, children: [
-                Positioned(
-                  top: -70,
-                  right: -50,
-                  child: Container(
-                    width: 160,
-                    height: 160,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.of(context).brandFill,
+                      AppColors.of(context).brandFillDeep,
+                    ],
                   ),
                 ),
-                Positioned(
-                  bottom: -55,
-                  right: 40,
-                  child: Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.06),
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
+                // The orbs below are positioned with negative offsets so they
+                // bleed past the card edge. `Stack.clipBehavior` defaults to
+                // `Clip.hardEdge`, which sliced them off along the Stack's
+                // rectangular bounds and painted a hard-edged pale rectangle
+                // over the right of the card. So the Stack must not clip, and
+                // the overflow has to be trimmed by the ClipRRect in step 2 —
+                // which sits *outside* this padding, so each orb ends in a
+                // smooth arc along the card's rounded border, not a seam.
+                child: Stack(clipBehavior: Clip.none, children: [
+                  Positioned(
+                    top: -70,
+                    right: -50,
+                    child: Container(
+                      width: 160,
+                      height: 160,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.08),
                       ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        initials,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -55,
+                    right: 40,
+                    child: Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.06),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            user?.displayName ?? shopName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15.5,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$shopName \u00b7 Owner',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white70, fontSize: 11.5),
-                          ),
-                          if (subLabel != null) ...[
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(999),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user?.displayName ?? shopName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15.5,
                               ),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                const Icon(Icons.schedule_rounded, size: 10, color: Colors.white),
-                                const SizedBox(width: 5),
-                                Text(
-                                  trialChipLabel(subLabel),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ]),
                             ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$shopName \u00b7 Owner',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                            ),
+                            if (subLabel != null) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  const Icon(Icons.schedule_rounded, size: 10, color: Colors.white),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    trialChipLabel(subLabel),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ]),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ]),
+                    ],
+                  ),
+                ]),
+              ),
             ),
           ),
           SectionLabel(title: 'Shop'),
