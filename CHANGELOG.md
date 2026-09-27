@@ -1,5 +1,54 @@
 # Changelog
 
+## v1.5.3 — September 2026
+
+Two accounting bugs that misstated a shop's money, plus the CI gate that keeps
+source formatting from drifting again.
+
+### Fixed
+- **Overpayment was banked as revenue and sat in the till.** When a customer hands
+  over more than the total, the surplus was added to the amount received, so the
+  change owed back was counted as cash the shop had kept *and* was added to
+  revenue. On a Rs 39,000 sale paid with Rs 40,000, Cash in Hand read
+  **Rs 62,500** instead of **Rs 61,500** — the till was overstated by exactly the
+  Rs 1,000 in the shopkeeper's pocket as change, and daily revenue was inflated by
+  the same amount. Every figure that reads the gross `paid` now reads
+  `netCashReceived`, and overpayment is surfaced separately as `changeDue` in
+  `Sale`. Change is deliberately **excluded** from Cash in Hand and from Revenue:
+  it is the customer's money on its way out, not the shop's. The change figure
+  now propagates to every surface that shows a sale — the receipt, the billing
+  subtitles, the quick-payment chips, and the status badge, which reads
+  **CHANGE** rather than Paid.
+- **Voiding a sale failed on real Firestore and never restored stock.** The void
+  transaction performed its product reads *after* its first write. Firestore
+  rejects any read that follows a write inside a transaction, so the transaction
+  aborted with `FAILED_PRECONDITION` every time — the dialog opened, the user
+  confirmed, and nothing happened, leaving stock permanently deducted. All
+  product reads now happen before any write. Voiding a cart containing the same
+  product on two separate lines also had to aggregate them into a single stock
+  adjustment, since Firestore cannot read a document twice in one transaction;
+  without that, a duplicated line restored the wrong quantity.
+
+### Changed
+- **`lib/` and `test/` reformatted to the Dart 3.12 tall style** (94 files).
+  Formatting-only — no behavioural change.
+
+### Added
+- **CI now fails the build on an unformatted file.** A formatting slip would
+  otherwise land silently and reformat the whole tree in a later commit, burying
+  real changes in noise. `.github/workflows/build.yml` runs
+  `dart format --output=none --set-exit-if-changed lib test`.
+- **31 regression tests** pinning both bugs: `test/change_due_regression_test.dart`
+  (25) covers overpayment across the dashboard, receipt, billing and badge paths,
+  and `test/void_reversal_regression_test.dart` (6) covers the void reversal
+  including the duplicate-product-line case. Suite is now **151 tests**.
+
+### Verified
+Both fixes were confirmed end-to-end on a Pixel 4 AVD against live Firestore, not
+only in unit tests: a Rs 39,000 sale paid with Rs 40,000 showed Cash in Hand at
+Rs 61,500, and voiding it returned the till to Rs 22,500 and restored stock to 5
+pieces.
+
 ## v1.5.2 — September 2026
 
 Two data-integrity bugs that both presented as "the app is broken", plus the

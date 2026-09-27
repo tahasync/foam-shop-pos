@@ -115,7 +115,7 @@ flutter run --dart-define-from-file=env/firebase_config.json
 
 ## Release process
 
-**Current version: `1.5.2` (`pubspec.yaml` → `version: 1.5.2+5`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+**Current version: `1.5.3` (`pubspec.yaml` → `version: 1.5.3+6`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 **See [RELEASE.md](RELEASE.md) for the full release workflow.** The supported way to produce a release APK locally is:
 
@@ -132,7 +132,7 @@ The script runs clean → deps → analyze → test → build in sequence. Any f
 
 ## CI/CD
 
-Every push to `main` runs analyze + tests + builds a debug APK. Every `v*` tag builds a signed release APK, generates a changelog from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam-Shop-Pos-v<version>.apk`, where the version comes from the tag (falls back to the `version:` in `pubspec.yaml` for non-tag builds).
+Every push to `main` runs analyze + tests + builds a debug APK. A `dart format` check runs alongside them, so an unformatted file fails CI rather than landing silently. Every `v*` tag builds a signed release APK, generates a changelog from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam-Shop-Pos-v<version>.apk`, where the version comes from the tag (falls back to the `version:` in `pubspec.yaml` for non-tag builds).
 
 ```bash
 git tag v1.5.0
@@ -152,7 +152,7 @@ The pipeline uses:
 flutter test
 ```
 
-The suite is 6 files / 117 tests. It covers:
+The suite is 8 files / 151 tests. It covers:
 - Accounting calculations: Cash in Hand, Revenue, COGS, Gross/Net Profit, Baqaya aggregation
 - Regression: costPriceAtSale isolation (not affected by later cost price edits)
 - Regression: inventory changes never affect Cash in Hand, Revenue, or Expenses
@@ -163,6 +163,8 @@ The suite is 6 files / 117 tests. It covers:
 - Stock-unit correctness: Pieces vs Per sq.ft, the `2.5 sq.ft` fractional regression, and the Firestore round trip
 - Source-integrity guards (`test/source_integrity_test.dart`) that fail the build if mojibake separators reappear in `lib/`
 - **UI regression (`test/ui_regression_test.dart`, 43 tests)** — palette-drift guards, WCAG contrast in both themes, 48dp touch targets, the shared bottom inset that keeps content clear of the floating nav, the blur budget, and receipt PDF generation
+- **Change-due regression (`test/change_due_regression_test.dart`, 25 tests)** — overpayment across the dashboard, receipt, billing and status-badge paths, locking in that change is excluded from Cash in Hand and Revenue
+- **Void-reversal regression (`test/void_reversal_regression_test.dart`, 6 tests)** — voiding reverses revenue and restores stock, including a cart with the same product on two lines
 
 The UI regression file exists because `flutter analyze` will happily pass a layout that *looks* wrong. Those tests assert on behaviour — no overflow, correct inset, real touch target, valid PDF bytes — rather than on pixel values.
 
@@ -211,5 +213,5 @@ because it builds and installs a debug APK.
 
 **Production-ready Android app — actively maintained.** Used by foam/mattress shops with subscription-based commercial model. The founding account is free forever; new sign-ups get a 14-day free trial.
 
-The automated test suite (6 test files, 117 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, notification detection, stock-unit handling, and a UI regression suite that pins the committed colour palette, touch-target minimums, glass/blur budgets and receipt PDF output.
+The automated test suite (8 test files, 151 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, notification detection, stock-unit handling, change-due/overpayment accounting, sale-void reversal, and a UI regression suite that pins the committed colour palette, touch-target minimums, glass/blur budgets and receipt PDF output.
 
