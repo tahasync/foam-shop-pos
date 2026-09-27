@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.5.1 — September 2026
+
+Sales-screen cart line rebuilt, and a text-encoding bug that the analyzer could not see.
+
+### Fixed
+- **The revenue trend callout rendered as `Peak Sep `·` Rs 172,000`.** A `·` (U+00B7) had been UTF-8 encoded, then decoded as Latin-1 and re-encoded, leaving the two-character sequence `U+00C2 U+00B7` in the source. It is valid Dart, so `flutter analyze` was silent and no widget test failed — the bad glyph only appeared on screen. The character is now written as a `\u00b7` escape, which is encoding-independent, and the same corruption was repaired in three comments in `app_button.dart` and two elsewhere.
+- **The quantity steppers measured 46×46, not 48×48.** `Container` reserves a 1px layout padding for a border declared in `decoration`, which silently shrank both hit areas below the app's own `AppHit.min` — the exact minimum the track exists to honour, and the reason a miss on `+` could land on `−`. The hairline moved to `foregroundDecoration`, which paints the same line without affecting layout.
+- The cart heading read `CART · 1 ITEMS` on every single-item sale, which is the most common sale there is. Correctly pluralised.
+
+### Changed
+- The cart line no longer crams the product name, the price field, the running total and the remove button onto a single 40px row — four competing elements in a strip that cannot grow, so the `PER UNIT` label wrapped away from its field and the line total was pushed off the right edge on a narrow phone. It is now four bands: identity (name, plus cost and stock on a sub-line, so the cost that decides whether a price is safe is visible *before* a mistake is made), controls (price and quantity on one baseline, the field `Expanded` rather than a fixed 96dp so a 6-digit price cannot clip), summary (a status pill and the line total at display weight), and a below-cost notice.
+- `MARGIN -832%` is replaced by a named state. The percentage was arithmetically correct and practically useless: a margin that far negative only means "well below cost", which the new notice states directly as a rupee shortfall, with a one-tap **Use cost** shortcut. A deliberate discount is still one tap away.
+- A below-cost cart line no longer washes the entire card in 25% red. The wash drops to 5% and the loss state is carried by a hairline and the notice, so the thing that reads as the warning is the notice.
+- Added a **Clear all** action to the cart heading; the only previous way to empty a cart was one remove tap per line.
+- Google Sign-In falls back to the project's built-in web client id when `google-services.json` omits the `client_type: 3` entry. Without it, that resource is never generated and Sign-In fails with error 10 on every build. An explicit `--dart-define` still takes precedence.
+
 ## Unreleased
 
 ### Fixed
