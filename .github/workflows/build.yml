@@ -71,6 +71,13 @@ jobs:
             exit 1
           fi
 
+      - name: Check formatting
+        run: |
+          # Dart 3.7 switched the formatter to the "tall" style, so a file
+          # edited without `dart format` run on it fails this check. Run
+          # `dart format lib test` locally before pushing.
+          dart format --output=none --set-exit-if-changed lib test
+
       - name: Run Tests
         run: |
           flutter test
