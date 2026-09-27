@@ -1,4 +1,3 @@
-import 'dart:developer' as developer;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
@@ -101,11 +100,7 @@ class LocalNotificationService {
     required List<Payment> payments,
   }) async {
     final settings = await NotificationSettings.load();
-    developer.log('[Notif] checkAndNotify: lowStock=${settings.lowStockEnabled}, '
-        'overdueBaqaya=${settings.overdueBaqayaEnabled}, '
-        'products=${products.length}', name: 'notif');
     if (!settings.lowStockEnabled && !settings.overdueBaqayaEnabled) {
-      developer.log('[Notif] Both toggles off, skipping', name: 'notif');
       return;
     }
 
@@ -113,14 +108,13 @@ class LocalNotificationService {
 
     if (settings.lowStockEnabled) {
       final lowStock = products.where((p) => p.isLowStock).toList();
-      developer.log('[Notif] Low stock check: ${lowStock.length} low out of ${products.length} products',
-          name: 'notif');
-      for (final p in lowStock) {
-        developer.log('[Notif]   Low: ${p.name} (stock=${p.currentStock}, threshold=${p.lowStockThreshold})',
-            name: 'notif');
-      }
       if (lowStock.isNotEmpty) {
-        final names = lowStock.take(3).map((p) => p.name).join(', ');
+        // Only the first few names are ever shown, so only the first few are
+        // worth reading. This previously logged one line per low-stock product
+        // on every check, which for a shop with 40 low items meant 40 log lines
+        // describing a notification the user never sees in detail.
+        final names =
+            lowStock.take(3).map((p) => p.name).join(', ');
         messages.add('Low stock: ${lowStock.length} item${lowStock.length == 1 ? '' : 's'} '
             '(${lowStock.length > 3 ? '$names +${lowStock.length - 3} more' : names})');
       }

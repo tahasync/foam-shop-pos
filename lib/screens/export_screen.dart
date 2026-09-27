@@ -9,6 +9,7 @@ import '../models/payment.dart';
 import '../models/supplier_payment.dart';
 import '../models/opening_balance.dart';
 import '../services/accounting_service.dart';
+import '../utils/safe_error_handler.dart';
 import '../providers/sale_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/product_provider.dart';
@@ -169,8 +170,17 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       }
     } catch (e, st) {
       if (!mounted) return;
-      print('[Export Error] $e\n$st');
-      setState(() { _loading = false; _error = '$e'; });
+      // The raw exception was both printed to the console and assigned to
+      // `_error`, which is rendered to the user. A failed export can surface a
+      // file path, a Firestore message, or a `FormatException` stack fragment —
+      // none of which mean anything to a shop owner. Log the detail for
+      // Crashlytics and show the sanitised message.
+      logSecureError(e, st, tag: 'export');
+      setState(() {
+        _loading = false;
+        _error = sanitizeErrorMessage(e,
+            fallback: 'Could not generate the report. Please try again.');
+      });
     }
   }
 

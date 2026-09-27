@@ -42,6 +42,47 @@ Set the required environment variables:
 
 > **⚠️ CRITICAL:** Back up the keystore file and its password securely. Losing them means all future updates will require users to uninstall and reinstall, losing their local data. The keystore is excluded from git by `.gitignore`.
 
+### The signing identity is NOT in this repository
+
+This is the single most important thing to know before publishing anything,
+and it cannot be verified from the source tree alone.
+
+`.gitignore` excludes `*.keystore`, `*.jks` and `key.properties`, which is
+correct — a signing key must never be committed. The consequence is that **the
+release signing identity cannot be recovered from a clone of this repo.** A
+`release.keystore` sitting in your working directory is *your* key, not a
+canonical one carried by the project, and nothing in the repository proves it
+matches the key that signed the APKs users already have.
+
+There are two independent signing identities in play:
+
+| Where | Keystore comes from | Notes |
+|---|---|---|
+| **CI** (`v*` tags) | `RELEASE_KEYSTORE_BASE64` GitHub secret | This is what produced the published APKs |
+| **Local** (`scripts/release_build.*`) | `release.keystore` in your working directory | Only a key you generated or were given |
+
+If they differ, a locally built APK cannot be installed as an update over the
+CI-published one — Android rejects the signature mismatch, and the user has to
+uninstall first, which deletes their local data. Before a first local release,
+confirm the key matches the CI secret.
+
+To verify which key an existing APK was signed with:
+
+```bash
+# Prints the certificate SHA-256 the APK is signed with
+keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk
+```
+
+Compare that fingerprint against the CI keystore and against your local
+`release.keystore`. If you do not have the CI key, use CI for releases rather
+than shipping from a machine that cannot reproduce the published signature.
+
+### Regenerating a keystore
+
+Only do this for a brand-new app that has never been published. Once users have
+installed the app, a new key is a new app as far as Android is concerned, and
+every update becomes a reinstall.
+
 ## Tagging a Release
 
 1. Update `CHANGELOG.md` with the new version's user-facing notes

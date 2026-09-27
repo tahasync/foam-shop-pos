@@ -133,34 +133,52 @@ class DashboardScreen extends ConsumerWidget {
 
           final today = DateTime.now();
           final dateStr = DateFormat('EEE, d MMM').format(today);
-          final location = profile?.location ?? '';
-          final subLabel =
-              location.trim().isEmpty ? dateStr : '$dateStr \u00b7 $location';
+          final location = (profile?.location ?? '').trim();
           final shopName = profile?.shopName ?? 'Digital Register';
 
           return Column(
               children: [
                 AppBarRow(
                   title: shopName,
-                  subtitle: subLabel,
+                  // The date and the address used to be joined into one
+                  // `maxLines: 1` string, and the address is always the longer
+                  // of the two \u2014 so it is the address that got cut. Flutter
+                  // breaks an ellipsis mid-word, which rendered "Opposite
+                  // Meezan Ba\u2026": a clipped word reads as a bug, not as a
+                  // deliberate trim, and on this shop the address is the one
+                  // detail the header exists to show.
+                  subtitleWidget: ShopHeaderSubtitle(
+                    dateLabel: dateStr,
+                    location: location,
+                  ),
                   trailing: [
                     AppIconButton(
                       icon: Icons.notifications_none_rounded,
-                        semanticLabel: 'Notification settings',
+                      semanticLabel: 'Notification settings',
                       onTap: () => _push(context, const NotificationSettingsScreen()),
                       badge: d.lowStockCount > 0
+                          // The ring separates the dot from the bell glyph, so it
+                          // has to be the colour *behind* the button. It was
+                          // hardcoded to `colorScheme.surface`, which is a
+                          // guess at the page colour: the header sits directly
+                          // on the page, not on a surface, so the ring showed as
+                          // a pale halo in dark mode instead of a cut-out.
                           ? Container(
-                              width: 9,
-                              height: 9,
+                              width: 10,
+                              height: 10,
                               decoration: BoxDecoration(
                                 color: ac.accent,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
+                                border: Border.all(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surface,
+                                    width: 2),
                               ),
                             )
                           : null,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     AppIconButton(
                         semanticLabel: 'Account settings',
                       icon: Icons.person_rounded,
@@ -448,3 +466,102 @@ class _ActivityRow extends StatelessWidget {
 
 void _push(BuildContext context, Widget screen) =>
     Navigator.push(context, slideUpRoute(screen));
+
+/// The dashboard header's sub-line: today's date, and the shop's address.
+///
+/// The two used to be concatenated into one `maxLines: 1` string, which meant the
+/// address — always the longer of the pair — was the part that got cut, and
+/// Flutter's ellipsis breaks mid-word. "Opposite Meezan Ba…" looks like a
+/// rendering fault rather than a deliberate trim.
+///
+/// Two lines, ranked by how often the shopkeeper actually needs each:
+///  * the address sits directly under the shop name, where it is read as a
+///    continuation of the identity rather than as metadata, and gets two lines
+///    to wrap onto before it is trimmed;
+///  * the date is a quiet trailing detail. It changes on its own, needs no
+///    attention, and is already implicit in every figure on the page.
+///
+/// When there is no address, the date is promoted to the first line so the
+/// header does not carry an empty row.
+class ShopHeaderSubtitle extends StatelessWidget {
+  const ShopHeaderSubtitle({
+    super.key,
+    required this.dateLabel,
+    required this.location,
+  });
+
+  final String dateLabel;
+  final String location;
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    final hasLocation = location.isNotEmpty;
+
+    final date = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // A glyph rather than another "\u00b7"-joined string, so the date is
+        // separable from the address at a glance instead of reading as one
+        // run-on sentence.
+        Icon(Icons.calendar_today_rounded, size: 11, color: ac.inkFaint),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            dateLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: ac.inkFaint,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (!hasLocation) return date;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.place_rounded, size: 11, color: ac.inkFaint),
+            const SizedBox(width: 5),
+            // `Flexible` inside a `Row`, not a bare `Text`: an address with no
+            // spaces, or one long enough to still overflow after wrapping, must
+            // ellipsise rather than throw a layout overflow in the header.
+            Flexible(
+              child: Text(
+                location,
+                // Two lines is what actually fixes the mid-word clip. Most shop
+                // addresses in this market ("Opposite Meezan Bazaar, ... ") fit
+                // once given a full line each.
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  // Slightly stronger than the date: this is the identifying
+                  // detail, the date is a footnote.
+                  color: ac.inkSoft,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        // Aligned under the text, not under the pin, so it reads as belonging
+        // to the address rather than to the icon column.
+        Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: date,
+        ),
+      ],
+    );
+  }
+}

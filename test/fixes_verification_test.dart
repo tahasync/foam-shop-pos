@@ -83,22 +83,11 @@ void main() {
     });
   });
 
-  // ── Fix 4: SupportFeedbackScreen exists and builds ──
-  group('Fix 4 — Support screen reachable', () {
-    test('SupportFeedbackScreen class exists and has send method', () {
-      // Class should exist at this import path - just verify we can name it
-      // (This is a compile-time check — if the file wasn't importable, the test
-      // would fail at import time.)
-      expect(true, isTrue); // Placeholder — the real verification is compile-time
-    });
-  });
-
-  // ── Fix 2: Cart widget uses theme-aware colors ──
-  group('Fix 2 — No hardcoded light-only colors in cart widget', () {
-    test('sales_entry_screen.dart has no Colors.white or Colors.grey.shade hardcodes in CartWidget build', () {
-      // Compile-time verification: the file was successfully imported above
-      // The actual fix replaced hardcoded values with theme-aware tokens
-      expect(true, isTrue);
-    });
-  });
+  // ── Fix 4 / Fix 2 ──
+  //
+  // These two groups used to be `expect(true, isTrue)` with a comment explaining
+  // that "the real verification is compile-time". They asserted nothing: the
+  // file importing cleanly already proves the screen exists, and re-stating
+  // that as a test only inflates the count. They have been removed rather than
+  // dressed up — there is no behaviour here to verify.
 }

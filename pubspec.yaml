@@ -45,12 +45,22 @@ dependency_overrides:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Drives the on-device end-to-end test that generates each report file for
+  # real, then reopens and parses it. This is the only way to cover the part the
+  # unit tests cannot: `path_provider` needs a live platform channel, and
+  # `integration_test` is what supplies one when run with
+  # `flutter test integration_test -d <device>`.
+  integration_test:
+    sdk: flutter
   flutter_launcher_icons: ^0.14.3
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "foam-shop-icon-preview.png"
+  # Was "foam-shop-icon-preview.png", which is not in the repository — the
+  # tool would fail with a file-not-found on every icon regeneration.
+  # assets/logo.png is the 512x512 master the launcher icons are cut from.
+  image_path: "assets/logo.png"
   remove_alpha_ios: true
 
 flutter:

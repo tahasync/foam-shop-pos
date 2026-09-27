@@ -29,6 +29,7 @@ class AppTopBar extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.subtitleWidget,
     this.leading,
     this.actions = const [],
     this.showBrand = false,
@@ -37,6 +38,20 @@ class AppTopBar extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+
+  /// A structured replacement for [subtitle], for headers whose sub-line carries
+  /// more than one fact.
+  ///
+  /// A single `maxLines: 1` string cannot hold a date *and* an address: the
+  /// address is the longer of the two, so it is the one that gets cut, and
+  /// Flutter's `ellipsis` breaks mid-word. "Opposite Meezan Ba…" reads as a
+  /// rendering fault rather than as a deliberate truncation. Passing a widget
+  /// lets the caller decide how many facts the sub-line holds and give the
+  /// important one room to wrap.
+  ///
+  /// Ignored when [subtitle] is also set.
+  final Widget? subtitleWidget;
+
   final Widget? leading;
   final List<Widget> actions;
 
@@ -50,6 +65,19 @@ class AppTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final topInset = MediaQuery.paddingOf(context).top;
+    final sub = subtitleWidget ??
+        (subtitle == null
+            ? null
+            : Text(
+                subtitle!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: ac.inkFaint,
+                ),
+              ));
 
     final titleBlock = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,22 +90,16 @@ class AppTopBar extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTheme.appTitleStyle.copyWith(
-            fontSize: subtitle == null ? 19 : 20,
+            // Slightly smaller when a sub-line is present. At 20 the shop name
+            // out-shouted the two lines beneath it, and a long name could not
+            // shrink because the line was already at its ceiling.
+            fontSize: sub == null ? 19 : 18.5,
             color: ac.ink,
           ),
         ),
-        if (subtitle != null) ...[
-          const SizedBox(height: 2),
-          Text(
-            subtitle!,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: ac.inkFaint,
-            ),
-          ),
+        if (sub != null) ...[
+          const SizedBox(height: 3),
+          sub,
         ],
       ],
     );
@@ -226,6 +248,7 @@ class AppBarRow extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.subtitleWidget,
     this.leading,
     this.trailing,
     this.showBrand = true,
@@ -233,6 +256,7 @@ class AppBarRow extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+  final Widget? subtitleWidget;
   final Widget? leading;
   final List<Widget>? trailing;
   final bool showBrand;
@@ -242,6 +266,7 @@ class AppBarRow extends StatelessWidget {
     return AppTopBar(
       title: title,
       subtitle: subtitle,
+      subtitleWidget: subtitleWidget,
       leading: leading,
       actions: trailing ?? const [],
       showBrand: showBrand,

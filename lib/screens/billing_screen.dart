@@ -398,7 +398,11 @@ Future<void> _savePdf(BuildContext context, Uint8List bytes, Sale sale) async {
   try {
     final where = await ReceiptSaver.instance.save(bytes, name);
     if (!context.mounted) return;
-    showAppToast(context, 'Saved to Downloads/$name');
+    // Report where the file actually went. [ReceiptSaver.save] returns the
+    // app's documents directory on iOS, so the previous hardcoded
+    // "Saved to Downloads/..." pointed the user at a folder that does not exist
+    // for them on every non-Android device.
+    showAppToast(context, 'Saved to $where');
     // Surfacing the resolved location keeps this debuggable: a wrong path is
     // otherwise invisible, which is exactly how the scoped-storage bug hid.
     logSecureError('receipt saved to $where', StackTrace.current,

@@ -110,5 +110,23 @@ class Product {
 
   bool get isLowStock => currentStock <= lowStockThreshold;
 
-  String get stockLabel => '${currentStock.toInt()} pcs';
+  /// Stock count with its unit.
+  ///
+  /// This used to hardcode `'${currentStock.toInt()} pcs'`, so a product sold
+  /// per square foot was labelled "pcs" in the inventory list and the product
+  /// search results while the restock sheet — a few taps away, showing the same
+  /// product — used [unitLabel] and said "sq.ft". Two different units for one
+  /// number reads as a data error. Delegate to [unitLabel] so there is one
+  /// answer.
+  ///
+  /// The count itself is not rounded: stock is a `double` precisely because
+  /// foam is tracked in fractional square feet, and `.toInt()` silently
+  /// truncated 2.5 sq.ft to "2". Whole values are unaffected.
+  String get stockLabel {
+    final stock = currentStock;
+    final text = stock == stock.roundToDouble()
+        ? stock.toInt().toString()
+        : stock.toStringAsFixed(2);
+    return '$text ${unitLabel}';
+  }
 }

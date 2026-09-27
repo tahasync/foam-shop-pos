@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_tokens.dart';
 import '../scale_button.dart' show ScaleButton;
@@ -22,7 +22,7 @@ class AppButton extends StatelessWidget {
   /// Horizontal padding inside the button.
   ///
   /// Defaults to 16. Exposed because a compact inline button ("Change" on the
-  /// Sales card) needs more breathing room than its 38â€“48dp height suggests:
+  /// Sales card) needs more breathing room than its 38—48dp height suggests:
   /// the label ends up touching the rounded edge, because the padding was
   /// sized for full-width buttons rather than short ones.
   final double? horizontalPadding;
@@ -52,7 +52,7 @@ class AppButton extends StatelessWidget {
     // `DecoratedBox`/`GlassContainer` dropped into a `Stack` as
     // `Positioned.fill`, and the clipping came from the parent `Container`'s
     // `clipBehavior: Clip.antiAlias`. But `Container.clipBehavior` clips to a
-    // plain RECTANGLE using the decoration's shape â€” it does NOT respect
+    // plain RECTANGLE using the decoration's shape — it does NOT respect
     // `borderRadius` for the clip path, because the gradient child was a
     // separate box with no radius of its own. The result was a square-cornered
     // gradient bleeding out past the rounded button on every filled control in
@@ -81,7 +81,7 @@ class AppButton extends StatelessWidget {
         //
         // This fill used to be `ac.surface` (the *page* colour) so the button
         // would read as inset on a card. But buttons also live on bottom
-        // sheets, which are lighter than the page â€” so the same value became a
+        // sheets, which are lighter than the page — so the same value became a
         // dark hole punched in the sheet ("+ Add Customer" in the Select
         // Customer sheet). A fill baked from one specific surface can never be
         // right on all three; a low-alpha wash derived from the palette is
@@ -150,7 +150,7 @@ class AppButton extends StatelessWidget {
         // (`fullWidth: false`) sits in a `Row`, where the incoming width is
         // unbounded. A flex child under an unbounded main axis resolves to
         // zero, so the button sized itself to just its padding and the label
-        // spilled outside the rounded rect â€” the "Change" button on the Sales
+        // spilled outside the rounded rect — the "Change" button on the Sales
         // screen was rendering as text floating on top of a tiny box.
         if (fullWidth) Flexible(child: labelText) else labelText,
       ],
@@ -355,7 +355,7 @@ class AppFab extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              // `brandFill`/`brandFillDeep` â€” NOT `brandSolid`/`brandSolidStrong`.
+              // `brandFill`/`brandFillDeep` — NOT `brandSolid`/`brandSolidStrong`.
               // In dark mode those are *lightened* foreground colours and
               // `brandSolidStrong` is the mauve `#BFA9BA`, so the FAB rendered
               // as a blue-to-**pink** capsule with a white glyph on the pale
@@ -368,7 +368,7 @@ class AppFab extends StatelessWidget {
             // This was `blurRadius: 24, offset (0,12), alpha 0.42` of the brand
             // colour. Spread that far from a 60dp shape it stops reading as the
             // button lifting off the page and becomes a hazy brand-coloured
-            // smear around it â€” the "blurry FAB" look. Short, low-alpha and
+            // smear around it — the "blurry FAB" look. Short, low-alpha and
             // anchored close to the shape separates it without fogging.
             boxShadow: [
               // Neutral, matching the buttons. A brand-tinted shadow under a

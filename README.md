@@ -94,7 +94,7 @@ flutter run --dart-define-from-file=env/firebase_config.json
 
 ## Release process
 
-**Current version: `1.5.0` (`pubspec.yaml` → `version: 1.5.0+3`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+**Current version: `1.5.1` (`pubspec.yaml` → `version: 1.5.1+4`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 **See [RELEASE.md](RELEASE.md) for the full release workflow.** The supported way to produce a release APK locally is:
 
@@ -131,7 +131,7 @@ The pipeline uses:
 flutter test
 ```
 
-The suite is 4 files / 64 tests. It covers:
+The suite is 4 files / 110 tests. It covers:
 - Accounting calculations: Cash in Hand, Revenue, COGS, Gross/Net Profit, Baqaya aggregation
 - Regression: costPriceAtSale isolation (not affected by later cost price edits)
 - Regression: inventory changes never affect Cash in Hand, Revenue, or Expenses
@@ -143,9 +143,50 @@ The suite is 4 files / 64 tests. It covers:
 
 The UI regression file exists because `flutter analyze` will happily pass a layout that *looks* wrong. Those tests assert on behaviour — no overflow, correct inset, real touch target, valid PDF bytes — rather than on pixel values.
 
+### On-device end-to-end tests
+
+The suite above runs on the host. It cannot cover one thing: whether a report
+file is *actually written to a real device filesystem*. `path_provider` needs a
+live platform channel, and on the host the plugin is stubbed out and returns a
+path that does not exist — so a broken export looks fine in CI and only fails in
+a shop's hands.
+
+`integration_test/` covers that half. It runs on physical hardware, generates
+each report through the same public API the Export screen calls, then reopens
+the file from disk and parses it back:
+
+```bash
+flutter test integration_test/export_e2e_test.dart -d <device-id>
+# e.g. -d 48270DLAQ00950   (Pixel 9, Android 17)
+```
+
+Per format it asserts: the file exists and is non-empty; CSV re-parses into rows
+with the real figures; XLSX begins with the ZIP magic bytes and its cells read
+back as numbers; PDF carries its `%PDF-`/`%%EOF` markers and a correct page
+count.
+
+**Receipts, in full.** The receipt embeds a subsetted Inter, so its content
+stream stores glyph ids rather than ASCII. The `pdf` package writes a
+`/ToUnicode` CMap beside each subset, so the test decodes those and reads the
+*actual printed text* back out of the file — asserting `60,000` and `120,000`
+appear whole, and that a clipped `120,00` does not appear anywhere. This closes
+the loop on the original truncation bug at the level a customer would see it,
+not just on the layout arithmetic.
+
+**Receipt save, end to end.** The `Save receipt` path is exercised through the
+real `MethodChannel` against the real `MainActivity` — no stubbing — and the
+returned location must be a `content://media/external/downloads/...` URI, which
+is what proves the file was registered with MediaStore rather than written to a
+scoped-storage path that silently goes nowhere. A blank file name must be
+rejected by the native side instead of producing a nameless row.
+
+It is excluded from the plain `flutter test` run on purpose: it needs a device
+attached, and the CI pipeline has none. It takes several minutes on first run
+because it builds and installs a debug APK.
+
 ## Status
 
 **Production-ready Android app — actively maintained.** Used by foam/mattress shops with subscription-based commercial model. The founding account is free forever; new sign-ups get a 14-day free trial.
 
-The automated test suite (4 test files, 64 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, notification detection, and a UI regression suite that pins the committed colour palette, touch-target minimums, glass/blur budgets and receipt PDF output.
+The automated test suite (4 test files, 110 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, notification detection, and a UI regression suite that pins the committed colour palette, touch-target minimums, glass/blur budgets and receipt PDF output.
 

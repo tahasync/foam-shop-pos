@@ -1,4 +1,4 @@
-﻿import 'dart:convert' show LineSplitter;
+import 'dart:convert' show LineSplitter;
 import 'dart:io';
 
 import 'package:archive/archive.dart' show ZLibDecoder;
@@ -7,9 +7,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:foam_shop_register/models/product.dart';
+import 'package:foam_shop_register/models/sale.dart';
+import 'package:foam_shop_register/services/accounting_service.dart';
+import 'package:foam_shop_register/services/export_service.dart';
+import 'package:foam_shop_register/utils/safe_error_handler.dart';
 import 'package:foam_shop_register/providers/sales_provider.dart';
 import 'package:foam_shop_register/screens/sales_entry_screen.dart';
+import 'package:foam_shop_register/screens/dashboard_screen.dart';
 import 'package:foam_shop_register/theme/app_theme.dart';
 import 'package:foam_shop_register/screens/home_screen.dart';
 import 'package:foam_shop_register/services/receipt_pdf.dart';
@@ -453,7 +460,176 @@ void main() {
     });
   });
 
+  group('Dashboard header \u2014 the address is never clipped mid-word', () {
+    // The date and the address were concatenated into one `maxLines: 1` string.
+    // The address is the longer of the pair, so it is the address that got cut,
+    // and Flutter's ellipsis breaks mid-word: "Opposite Meezan Ba\u2026". A
+    // half-rendered word reads as a layout fault, and the address is the one
+    // detail this header exists to show.
+    testWidgets('shows the full address on the small phone the checklist requires',
+        (tester) async {
+      tester.view.physicalSize = const Size(375, 667);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      const address = 'Opposite Meezan Bazaar, Gulberg III, Lahore';
+      await tester.pumpWidget(_wrap(
+        const AppBarRow(
+          title: 'Asif Foam Center',
+          subtitleWidget: ShopHeaderSubtitle(
+            dateLabel: 'Sun, 27 Sep',
+            location: address,
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      // The full string must be present in the tree, not a truncated prefix.
+      // `find.text` matches the widget's data, so this fails loudly if the
+      // widget is ever handed a pre-clipped string again.
+      expect(find.text(address), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a very long address wraps and never overflows', (tester) async {
+      tester.view.physicalSize = const Size(375, 667);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_wrap(
+        const AppBarRow(
+          title: 'Asif Foam Center',
+          subtitleWidget: ShopHeaderSubtitle(
+            dateLabel: 'Sun, 27 Sep',
+            // One unbroken token: no space to wrap at, so this is the case
+            // that would throw a RenderFlex overflow if the text were not
+            // inside a `Flexible`.
+            location: 'SupercalifragilisticexpialidociousAddressBlockNumberFortyTwo',
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull,
+          reason: 'an unbreakable address must ellipsise, not overflow');
+      // The date stays visible even when the address is at its worst.
+      expect(find.text('Sun, 27 Sep'), findsOneWidget);
+    });
+
+    testWidgets('a shop with no address shows the date, not an empty row',
+        (tester) async {
+      await tester.pumpWidget(_wrap(
+        const AppBarRow(
+          title: 'Asif Foam Center',
+          subtitleWidget: ShopHeaderSubtitle(
+            dateLabel: 'Sun, 27 Sep',
+            location: '',
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sun, 27 Sep'), findsOneWidget);
+      // No dangling icon-only row.
+      expect(find.byIcon(Icons.place_rounded), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('Rendering stability', () {
+    // A real-device sweep rather than a single "small phone" case.
+    //
+    // The layout fixes in this app were all found by looking at one screen on
+    // one width, which is how a header that wrapped "Opposite Meezan Ba…" got
+    // missed. Asserting across the width range the shop actually sells into —
+    // a cheap Android phone through to a large phone and a tablet — catches the
+    // class of defect where a fixed px budget, radius or column stops fitting.
+    //
+    // This cannot replace a look at a real device: it proves no widget overflows
+    // its box at these sizes, and nothing more. Thermal behaviour, actual
+    // Firestore latency and text scaling driven by OS accessibility settings are
+    // outside what a widget test can observe.
+    const deviceMatrix = <String, Size>{
+      'small Android (360x640)': Size(360, 640),
+      'iPhone SE (375x667)': Size(375, 667),
+      'typical Android (412x915)': Size(412, 915),
+      'large phone (480x1000)': Size(480, 1000),
+      'tablet (800x1280)': Size(800, 1280),
+    };
+
+    for (final entry in deviceMatrix.entries) {
+      testWidgets('the app bar row fits on a ${entry.key}', (tester) async {
+        tester.view.physicalSize = entry.value;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        await tester.pumpWidget(_wrap(
+          Column(
+            children: [
+              // The longest realistic header: a long shop name plus an address.
+              AppBarRow(
+                title: 'Asif Foam & Furniture Centre',
+                subtitle: 'Opposite Meezan Bank, GT Road, Kot Addu',
+                trailing: const [],
+              ),
+              // The widest control row on the sales screen.
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: AppButton(
+                  label: 'Save Sale',
+                  onTap: () {},
+                ),
+              ),
+              AppButton(
+                label: 'View Receipt',
+                variant: AppButtonVariant.outline,
+                onTap: () {},
+              ),
+            ],
+          ),
+        ));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull,
+            reason: 'nothing may overflow on ${entry.key}');
+      });
+
+      testWidgets('KPI tiles stay equal height on a ${entry.key}',
+          (tester) async {
+        tester.view.physicalSize = entry.value;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        await tester.pumpWidget(_wrap(
+          const Padding(
+            padding: EdgeInsets.all(AppSpacing.lg),
+            child: AppKpiRow(tiles: [
+              KpiTile(
+                label: 'REVENUE',
+                value: 'Rs 1,250,000',
+                sub: 'today',
+                icon: Icons.trending_up_rounded,
+                tint: Color(0xCCE8EBF4),
+                iconColor: Color(0xFF182346),
+              ),
+              KpiTile(
+                label: 'NET PROFIT',
+                value: 'Rs 340,500',
+                sub: '27.2% margin',
+                icon: Icons.savings_rounded,
+                tint: Color(0xCCE3E7F1),
+                iconColor: Color(0xFF5B6390),
+              ),
+            ]),
+          ),
+        ));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull,
+            reason: 'KPI row must not overflow on ${entry.key}');
+      });
+    }
+
     testWidgets('GlassCard list renders with no overflow on a small phone',
         (tester) async {
       // 375x667 is the smallest screen the pre-delivery checklist requires.
@@ -985,7 +1161,70 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // The price box was 68x30 \u2014 under the app's own 48dp touch minimum, and
+    // `unitType` is hardcoded to 'per_sqft' on product creation and
+    // `Product.fromMap` defaults to it when the field is absent, so `unitLabel`
+    // resolved to "sq.ft" for every product in the app. The caption therefore
+    // read "PRICE PER SQ.FT" directly above a stock count reading "15 pcs" —
+    // a caption that states the unit basis, and states it wrongly.
+    testWidgets('price caption does not claim a square-foot basis', (tester) async {
+      await _pumpPriceField(tester);
+
+      expect(find.text('PRICE PER UNIT'), findsOneWidget,
+          reason: 'the field must be captioned in the unit the shop sells by');
+      expect(find.textContaining('SQ.FT'), findsNothing,
+          reason: 'nothing in the UI sets unitType to per-piece, so asserting '
+              'sq.ft is asserting a basis the shop does not use');
+      expect(tester.takeException(), isNull);
+    });
+
+    // The primary button was `flex: 2` and its label grew with the total
+    // ("Save Sale · Rs 0" -> "Save Sale · Rs 118,500"), so the secondary's share
+    // shrank as the sale got bigger and "Save as Quote" clipped to "Save as
+    // Qu…". A layout that degrades with the data is the bug.
+    testWidgets('both save buttons keep their full labels at a large total',
+        (tester) async {
+      tester.view.physicalSize = const Size(375, 667);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_wrap(
+        Row(
+          children: [
+            Expanded(
+              child: AppButton(label: 'Save Sale', onTap: () {}),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: AppButton(
+                label: 'Save as Quote',
+                variant: AppButtonVariant.outline,
+                onTap: () {},
+              ),
+            ),
+          ],
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      // Assert on the *rendered* width, not on the `overflow` property.
+      // `AppButton` sets `overflow: TextOverflow.ellipsis` on every label
+      // unconditionally, so checking the property proves nothing — it is
+      // non-null whether or not the text was actually clipped. What matters is
+      // whether the painted paragraph is wider than the box it sits in, which
+      // is what an ellipsis means in practice.
+      for (final label in ['Save Sale', 'Save as Quote']) {
+        final finder = find.text(label);
+        final textWidth = tester.getSize(finder).width;
+        final buttonWidth =
+            tester.getSize(find.ancestor(of: finder, matching: find.byType(AppButton)).first).width;
+        expect(textWidth, lessThan(buttonWidth),
+            reason: '"$label" paints $textWidth wide inside a $buttonWidth '
+                'button, so it is being truncated');
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    // Was 68x30 \u2014 under the app's own 48dp touch minimum, and
     // cramped for a 5-6 digit figure. It is the most-typed value on the screen.
     testWidgets('is a full-size, legible target', (tester) async {
       await _pumpPriceField(tester);
@@ -1555,6 +1794,130 @@ void main() {
       expect(_pageCount(bytes), 1);
     });
 
+    testWidgets('the money columns are wide enough for the figures they hold',
+        (tester) async {
+      // The reported bug: a 120,000 total printed as "120,00" and a 60,000 unit
+      // price as "60,00". The table allocated a fixed fraction of the 80mm roll
+      // to the money columns, which was sized for four-digit amounts; with
+      // `maxLines: 1` + `TextOverflow.clip` the rest of the number was silently
+      // dropped. A *wrong number* on a customer's receipt.
+      //
+      // The invariant, checked here: each money column must be at least as wide
+      // as the string it has to render, in the font the receipt is actually
+      // painted with. Measuring in Helvetica would NOT reproduce the failure —
+      // Inter's digits are wider, which is precisely why the fixed split ran out
+      // of room in the app while still looking plausible on paper.
+      final data = ReceiptData(
+        storeName: 'Asif Foam Center',
+        date: '27/9/2026',
+        receiptNo: 'INV-1',
+        metaLine: 'Shop #4, Urdu Bazaar',
+        customerName: 'Walk-in Customer',
+        items: const [
+          // Exactly the receipt from the bug report.
+          ReceiptLine(
+              name: 'luxury', qty: '2', unitPrice: '60,000', total: '120,000'),
+        ],
+        total: 'Rs 120,000',
+        paid: 'Rs 100,000',
+        isDue: true,
+        dueValue: 'Rs 20,000',
+        footer: 'Asif Foam Center',
+      );
+
+      // The real faces, straight from the asset bundle, as `generateReceiptPdf`
+      // loads them.
+      final regular = pw.Font.ttf(
+          await rootBundle.load('assets/fonts/Inter-Regular.ttf'));
+      final bold = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Bold.ttf'));
+      final theme = pw.ThemeData.withFont(base: regular, bold: bold);
+
+      final doc = pw.Document(theme: theme);
+      doc.addPage(pw.Page(
+        pageFormat: PdfPageFormat(80 * PdfPageFormat.mm, 400 * PdfPageFormat.mm,
+            marginAll: 6 * PdfPageFormat.mm),
+        build: (_) => pw.SizedBox(),
+      ));
+      final page = doc.document.page(0)!;
+      final ctx = pw.Context(
+        document: doc.document,
+        page: page,
+        canvas: page.getGraphics(),
+      ).inheritFromAll([theme]);
+
+      double paintedWidth(String s, pw.Font f) => pw.Widget.measure(
+            pw.Text(s,
+                maxLines: 1,
+                overflow: pw.TextOverflow.clip,
+                style: pw.TextStyle(fontSize: 8.6, font: f)),
+            context: ctx,
+          ).x;
+
+      final contentWidth = 80 * PdfPageFormat.mm - (6 * PdfPageFormat.mm * 2);
+      final widths = receiptColumnWidths(
+        data: data,
+        regular: regular,
+        bold: bold,
+        contentWidth: contentWidth,
+        context: ctx,
+      );
+
+      double share(int column) {
+        final sum = widths.values
+            .whereType<pw.FlexColumnWidth>()
+            .map((f) => f.flex)
+            .fold<double>(0, (a, b) => a + b);
+        return (widths[column]! as pw.FlexColumnWidth).flex / sum * contentWidth;
+      }
+
+      // `td` pads right-aligned cells with `EdgeInsets.symmetric(horizontal: 4)`,
+      // so 8 points of every money column is padding, not digits.
+      const cellPadX = 8.0;
+      expect(share(2), greaterThanOrEqualTo(paintedWidth('60,000', regular) + cellPadX),
+          reason: 'PRICE column must fit "60,000"');
+      expect(share(3), greaterThanOrEqualTo(paintedWidth('120,000', bold) + cellPadX),
+          reason: 'TOTAL column must fit "120,000"');
+      expect(share(1), greaterThanOrEqualTo(paintedWidth('2', regular) + cellPadX),
+          reason: 'QTY column must fit its value');
+    });
+
+    test('a longer total widens the total column rather than clipping', () {
+      ReceiptData withTotal(String total) => ReceiptData(
+            storeName: 'Asif Foam Center',
+            date: '27/9/2026',
+            receiptNo: 'INV-1',
+            metaLine: 'Shop #4',
+            customerName: 'Walk-in Customer',
+            items: [
+              ReceiptLine(name: 'luxury', qty: '2', unitPrice: '60,000', total: total),
+            ],
+            total: 'Rs $total',
+            paid: 'Rs 0',
+            isDue: true,
+            dueValue: 'Rs $total',
+            footer: 'Asif Foam Center',
+          );
+
+      final contentWidth = 80 * PdfPageFormat.mm - (6 * PdfPageFormat.mm * 2);
+      double totalShareFor(ReceiptData d) {
+        final w = receiptColumnWidths(
+          data: d,
+          regular: pw.Font.helvetica(),
+          bold: pw.Font.helveticaBold(),
+          contentWidth: contentWidth,
+        );
+        final sum =
+            w.values.whereType<pw.FlexColumnWidth>().map((f) => f.flex).fold<double>(0, (a, b) => a + b);
+        return (w[3]! as pw.FlexColumnWidth).flex / sum * contentWidth;
+      }
+
+      // A seven-digit total must claim more room than a five-digit one, which is
+      // only true if the width is derived from the content.
+      final narrow = totalShareFor(withTotal('120,000'));
+      final wide = totalShareFor(withTotal('12,345,600'));
+      expect(wide, greaterThan(narrow));
+    });
+
     test('a typical receipt fits on a single page', () async {
       // The failure mode this guards is subtle and bad: if the page is sized a
       // little too short, `MultiPage` does not clip, it paginates. The customer
@@ -1709,6 +2072,336 @@ void main() {
       );
       expect(
           _firstPageSizeMm(long).$2, greaterThan(_firstPageSizeMm(short).$2));
+    });
+  });
+
+  // ── Data integrity regressions ──
+  //
+  // These guard defects that produced *plausible but wrong numbers* rather than
+  // a visible error, which is why nothing else in the suite would catch them.
+
+  group('Stock label', () {
+    Product product({double stock = 15, String unitType = 'per_sqft'}) => Product(
+          id: 'p',
+          name: 'Foam',
+          type: 'Sheet',
+          sizeLength: 72,
+          sizeWidth: 36,
+          thickness: 4,
+          density: 16,
+          unitType: unitType,
+          unitPrice: 0,
+          costPrice: 100,
+          currentStock: stock,
+          lowStockThreshold: 5,
+        );
+
+    test('reports the unit the product is actually sold in', () {
+      // `stockLabel` used to hardcode "pcs", so a per-square-foot product was
+      // labelled "15 pcs" in the inventory list while the restock sheet said
+      // "15 sq.ft" — two different units for the same product.
+      expect(product().stockLabel, '15 sq.ft');
+      expect(product(unitType: 'pcs').stockLabel, '15 pcs');
+    });
+
+    test('does not silently truncate a fractional stock count', () {
+      // Stock is a double because foam is tracked in fractional square feet.
+      // `.toInt()` turned 2.5 into "2" — a real quantity reported as a
+      // different real quantity.
+      expect(product(stock: 2.5).stockLabel, '2.50 sq.ft');
+      expect(product(stock: 0.25).stockLabel, '0.25 sq.ft');
+    });
+
+    test('renders a whole-number stock without a decimal tail', () {
+      expect(product(stock: 15).stockLabel, '15 sq.ft');
+      expect(product(stock: 0).stockLabel, '0 sq.ft');
+    });
+  });
+
+  group('Error sanitisation', () {
+    test('passes through the app\'s own user-facing validation messages', () {
+      expect(sanitizeErrorMessage(Exception('Insufficient stock')),
+          'Exception: Insufficient stock');
+      expect(sanitizeErrorMessage(Exception('Select a customer')),
+          'Exception: Select a customer');
+    });
+
+    test('masks Firebase internals behind the fallback', () {
+      expect(
+        sanitizeErrorMessage(Exception('[firebase_firestore/failed-precondition] '
+            'permission denied at /users/x/sales/y')),
+        'Something went wrong. Please try again.',
+      );
+    });
+
+    test('masks a genuine null-safety fault behind the fallback', () {
+      expect(
+        sanitizeErrorMessage(
+            Exception('Null check operator used on a null value')),
+        'Something went wrong. Please try again.',
+      );
+      expect(
+        sanitizeErrorMessage(
+            Exception("type 'String' is not a subtype of type 'int'")),
+        'Something went wrong. Please try again.',
+      );
+    });
+
+    test('does not mask an unrelated error just for containing both words', () {
+      // The guard used to be `contains('type') && contains('null')`, which
+      // matched on the mere presence of those two words anywhere in the message
+      // and silently replaced the real cause with a generic string.
+      final real = 'Could not resolve type size for the null terminator table';
+      expect(sanitizeErrorMessage(Exception(real)), 'Exception: $real');
+    });
+  });
+
+  group('Report export', () {
+    // The bug: every export path read `customerId.substring(0, 6)` to label a
+    // sale's customer, behind a `customerName ??` fallback. That throws
+    // `RangeError` whenever the name is absent AND the id is shorter than six
+    // characters — which is exactly the shape of a *legacy* record: sales
+    // written before the `customer_name` field existed carry only a short
+    // `customer_id`. One such sale in the selected period aborted CSV, XLSX and
+    // PDF generation together, which is how "export is not working" presented.
+    AccountingSummary summaryFor(List<Sale> sales) => AccountingService().compute(
+          sales: sales,
+          purchases: const [],
+          expenses: const [],
+          payments: const [],
+          supplierPayments: const [],
+          products: const [],
+          openingBal: null,
+        );
+
+    Sale walkInSale({String id = 'walkin-1'}) => Sale(
+          id: id,
+          date: DateTime(2026, 9, 27),
+          // Exactly what the Walk-in button stores.
+          customerId: '',
+          customerName: 'Walk-in Customer',
+          lineItems: [
+            SaleLineItem(
+              productId: 'p1',
+              name: 'luxury',
+              qtyOrArea: 2,
+              salePrice: 60000,
+              costPriceAtSale: 40000,
+            ),
+          ],
+          paid: 100000,
+        );
+
+    /// A record written before the `customer_name` field existed: no name, and
+    /// a `customer_id` shorter than the six characters the old code sliced.
+    /// `substring(0, 6)` needs at least six; anything under that threw.
+    Sale legacySale({String customerId = 'walk'}) => Sale(
+          id: 'legacy-1',
+          date: DateTime(2026, 9, 27),
+          customerId: customerId,
+          customerName: null,
+          lineItems: [
+            SaleLineItem(
+              productId: 'p1',
+              qtyOrArea: 2,
+              salePrice: 60000,
+              costPriceAtSale: 40000,
+            ),
+          ],
+          paid: 100000,
+        );
+
+    test('CSV export survives a legacy sale with no name and a short id',
+        () async {
+      final service = ExportService();
+      final sales = [legacySale()];
+
+      // Precondition: the exact shape that used to throw RangeError.
+      expect(sales.first.customerName, isNull);
+      expect(sales.first.customerId.length, lessThan(6));
+
+      final csv = service.buildCsvReport(
+        sales: sales,
+        products: const [],
+        summary: summaryFor(sales),
+        startDate: DateTime(2026, 9, 27),
+        endDate: DateTime(2026, 9, 27),
+        shopName: 'Asif Foam Center',
+      );
+
+      // The sale must be present and legibly labelled, not dropped.
+      expect(csv, contains('walk'));
+    });
+
+    test('CSV export survives a nameless sale with an empty customer id',
+        () async {
+      final service = ExportService();
+      final sales = [legacySale(customerId: '')];
+      final csv = service.buildCsvReport(
+        sales: sales,
+        products: const [],
+        summary: summaryFor(sales),
+        startDate: DateTime(2026, 9, 27),
+        endDate: DateTime(2026, 9, 27),
+      );
+      // An entirely empty id must still produce a readable label.
+      expect(csv, contains('Walk-in Customer'));
+    });
+
+    test('CSV export survives a walk-in sale with an empty customer id',
+        () async {
+      final service = ExportService();
+      final sales = [walkInSale()];
+
+      // Precondition: the data that used to break the export.
+      expect(sales.first.customerId, isEmpty);
+
+      final csv = service.buildCsvReport(
+        sales: sales,
+        products: const [],
+        summary: summaryFor(sales),
+        startDate: DateTime(2026, 9, 27),
+        endDate: DateTime(2026, 9, 27),
+        shopName: 'Asif Foam Center',
+      );
+
+      // The walk-in sale must actually be in the report, labelled readably —
+      // not dropped, and not an empty cell.
+      expect(csv, contains('Walk-in Customer'));
+    });
+
+    test('CSV export reports real numbers for a walk-in sale', () async {
+      final service = ExportService();
+      final sales = [walkInSale()];
+      final csv = service.buildCsvReport(
+        sales: sales,
+        products: const [],
+        summary: summaryFor(sales),
+        startDate: DateTime(2026, 9, 27),
+        endDate: DateTime(2026, 9, 27),
+        shopName: 'Asif Foam Center',
+      );
+      // Revenue 120,000, COGS 80,000, profit 40,000.
+      expect(csv, contains('120,000'));
+      expect(csv, contains('80,000'));
+      expect(csv, contains('40,000'));
+    });
+
+    test('a short non-empty customer id does not abort the export', () async {
+      final service = ExportService();
+      final sales = [
+        Sale(
+          id: 's-short',
+          date: DateTime(2026, 9, 27),
+          customerId: 'abc',
+          customerName: null,
+          lineItems: [
+            SaleLineItem(
+                productId: 'p1', qtyOrArea: 1, salePrice: 100, costPriceAtSale: 50),
+          ],
+          paid: 100,
+        ),
+      ];
+      final csv = service.buildCsvReport(
+        sales: sales,
+        products: const [],
+        summary: summaryFor(sales),
+        startDate: DateTime(2026, 9, 27),
+        endDate: DateTime(2026, 9, 27),
+      );
+      // The full short id is used verbatim rather than throwing.
+      expect(csv, contains('abc'));
+    });
+
+    test('a named customer wins over the id fallback', () async {
+      final service = ExportService();
+      final sales = [
+        Sale(
+          id: 's-named',
+          date: DateTime(2026, 9, 27),
+          customerId: 'abcdef123456',
+          customerName: 'Bilal Traders',
+          lineItems: [
+            SaleLineItem(
+                productId: 'p1', qtyOrArea: 1, salePrice: 100, costPriceAtSale: 50),
+          ],
+          paid: 100,
+        ),
+      ];
+      final csv = service.buildCsvReport(
+        sales: sales,
+        products: const [],
+        summary: summaryFor(sales),
+        startDate: DateTime(2026, 9, 27),
+        endDate: DateTime(2026, 9, 27),
+      );
+      expect(csv, contains('Bilal Traders'));
+      expect(csv, isNot(contains('abcdef')));
+    });
+  });
+
+  group('COGS diagnostics stay off by default', () {
+    Sale lossMakingSale({String id = 's1', double salePrice = 50}) => Sale(
+          id: id,
+          date: DateTime(2026, 1, 1),
+          customerId: 'c1',
+          lineItems: [
+            SaleLineItem(
+              productId: 'p1',
+              qtyOrArea: 2,
+              salePrice: salePrice,
+              // Zero cost price: the exact condition the diagnostic reports on.
+              costPriceAtSale: 0,
+            ),
+          ],
+          paid: 2 * salePrice,
+        );
+
+    test('computes the same figures whether or not diagnostics are enabled', () {
+      final service = AccountingService();
+      final products = [
+        Product(
+          id: 'p1',
+          name: 'Foam',
+          type: 'Sheet',
+          sizeLength: 72,
+          sizeWidth: 36,
+          thickness: 4,
+          density: 16,
+          unitType: 'per_sqft',
+          unitPrice: 0,
+          costPrice: 0,
+          currentStock: 10,
+          lowStockThreshold: 5,
+        ),
+      ];
+      final sales = [lossMakingSale()];
+
+      final quiet = service.compute(
+        sales: sales,
+        purchases: [],
+        expenses: [],
+        payments: [],
+        supplierPayments: [],
+        products: products,
+        openingBal: null,
+      );
+      final loud = service.compute(
+        sales: sales,
+        purchases: [],
+        expenses: [],
+        payments: [],
+        supplierPayments: [],
+        products: products,
+        openingBal: null,
+        logCogsDiagnostics: true,
+      );
+
+      expect(quiet.revenue, loud.revenue);
+      expect(quiet.cogs, loud.cogs);
+      expect(quiet.grossProfit, loud.grossProfit);
+      expect(quiet.netProfit, loud.netProfit);
+      expect(quiet.cashInHand, loud.cashInHand);
     });
   });
 }

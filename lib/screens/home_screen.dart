@@ -96,9 +96,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // One watch, two reads. This previously called `ref.watch` on the same
+    // provider twice in a row (`lowStockCount` and `khataCount`); the second
+    // watch re-subscribed for a value already in hand.
     final as = ref.watch(accountingSummaryProvider);
-    final lowStockCount = as.asData?.value.lowStockCount ?? 0;
-    final khataCount = ref.watch(accountingSummaryProvider).asData?.value.totalCustomerBaqaya ?? 0;
+    final summary = as.asData?.value;
+    final lowStockCount = summary?.lowStockCount ?? 0;
+
+    // The unread dot on the Khata tab means "someone owes you money", so it is
+    // driven by the total outstanding balance rather than a customer count.
+    final hasOutstandingBaqaya = (summary?.totalCustomerBaqaya ?? 0) > 0;
 
     if (!_notifiedOnce) {
       final products = ref.read(productsStreamProvider).asData?.value;
@@ -154,7 +161,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     currentIndex: _tab,
                     onTap: (i) => setState(() => _tab = i),
                     showInventoryDot: lowStockCount > 0,
-                    showKhataDot: khataCount > 0,
+                    showKhataDot: hasOutstandingBaqaya,
                   ),
                 ),
               ),

@@ -25,6 +25,20 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          # Pinned deliberately, for reproducible builds.
+          #
+          # `pubspec.lock` is committed so dependency resolution is fixed, but
+          # the *toolchain* also affects the output: a different Flutter release
+          # can change engine/asset behaviour, so "whatever stable is today"
+          # would make the same tag produce a different APK on different days.
+          #
+          # Bump this only as a deliberate, reviewed change — and bump
+          # `pubspec.yaml`'s `environment.sdk` in the same commit if the bump
+          # moves the minimum supported Dart version.
+          #
+          # A developer machine on a newer patch (e.g. 3.44.9) is fine: the
+          # project is expected to analyze and test clean on the current stable
+          # release, and CI remains the authority on what is published.
           flutter-version: '3.44.8'
           architecture: x64
           cache: true

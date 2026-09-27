@@ -232,19 +232,27 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
           Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // "PRICE PER SQ.FT" rather than a bare "Sale price Rs". The old
-              // caption left the unit basis unstated, which is the one thing
-              // that causes a mis-keyed sale: a foam price quoted per square
-              // foot entered as a per-piece price is off by the order size, and
-              // nothing on screen said which one was expected.
-              Text('PRICE PER ${p.unitLabel.toUpperCase()}',
+              // "PRICE PER UNIT", not a derived "PRICE PER SQ.FT".
+              //
+              // The label used to read `unitLabel`, which resolves to "sq.ft" for
+              // every product — `unitType` is hardcoded to 'per_sqft' when a
+              // product is created and `Product.fromMap` defaults to it when the
+              // field is absent, and nothing in the UI ever sets it to 'pcs'.
+              // So the caption asserted a square-foot basis the shop does not
+              // sell on, directly above a stock count reading "15 pcs". A
+              // caption that contradicts the line beneath it is worse than no
+              // caption: it states the unit basis, and states it wrongly.
+              //
+              // "Unit" is what the shop actually sells by, and it stays correct
+              // if `unitType` ever becomes user-selectable.
+              Text('PRICE PER UNIT',
                   style: TextStyle(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
                       color: ac.inkFaint)),
               const SizedBox(height: AppSpacing.xs),
-              // Was 68x30 ? below the 48dp touch minimum, and too small to read
+              // Was 68x30 \u2014 below the 48dp touch minimum, and too small to read
               // a 5-6 digit price without pinching to zoom. The price is the
               // single most-typed value on this screen, so it gets a full-size
               // target and a bigger font.
@@ -468,7 +476,8 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
                   ),
                   const SizedBox(height: 1),
                   Text(
-                    'Cost is $csym ${fmt.format(costPrice.toInt())} per ${p.unitLabel}.',
+                    // "per unit" for the same reason as the field caption above.
+                    'Cost is $csym ${fmt.format(costPrice.toInt())} per unit.',
                     style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -823,7 +832,6 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     if (_saving) return;
     _saving = true;
     try {
-      final t0 = DateTime.now();
       final state = ref.read(salesProvider);
       if (state.cart.isEmpty) return;
       if (!isQuote && state.cart.any((c) => c.salePrice <= 0)) {
@@ -842,10 +850,34 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
       final svc = ref.read(firestoreServiceProvider);
       final cartProductIds = state.cart.map((c) => c.product.id).toSet();
       final products = await svc.getProductsByIds(cartProductIds);
-      debugPrint(
-          '[Save] getProductsByIds: ${DateTime.now().difference(t0).inMilliseconds}ms');
       if (!mounted) return;
       final productMap = {for (final p in products) p.id: p};
+
+      // Every cart line must resolve to a live product. A line that does not is
+      // one whose stock the transaction could not be checked against, and whose
+      // cost price would be written as 0 — silently overstating profit forever.
+      // Failing here is the honest outcome: nothing is written.
+      final missingProducts = state.cart
+          .where((c) => !productMap.containsKey(c.product.id))
+          .map((c) => c.product.name)
+          .toList();
+      if (missingProducts.isNotEmpty && !isQuote) {
+        logSecureError(
+          'Sale blocked: cart products not found in inventory: '
+          '$missingProducts',
+          StackTrace.current,
+          tag: 'save_sale',
+        );
+        _saving = false;
+        if (!mounted) return;
+        showAppToast(
+          context,
+          missingProducts.length == 1
+              ? '${missingProducts.first} is no longer in your inventory.'
+              : 'Some cart items are no longer in your inventory. Review the cart.',
+        );
+        return;
+      }
 
       final belowCostItems = state.cart.where((c) {
         final prod = productMap[c.product.id];
@@ -907,7 +939,6 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
         isQuote: isQuote,
       );
 
-      final t1 = DateTime.now();
       if (!isQuote) {
         final deductions = <String, double>{};
         for (final c in state.cart) {
@@ -923,10 +954,6 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
       } else {
         await svc.addSale(sale);
       }
-      debugPrint(
-          '[Save] Firestore write: ${DateTime.now().difference(t1).inMilliseconds}ms');
-      debugPrint(
-          '[Save] Total save: ${DateTime.now().difference(t0).inMilliseconds}ms');
       if (!mounted) return;
 
       ref.invalidate(accountingSummaryProvider);
@@ -948,6 +975,18 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
               context, slideUpRoute(ReceiptPreviewScreen(sale: savedSale))),
         );
       }
+    } catch (e, st) {
+      // This method only had a `finally`, so any Firestore failure — a stock
+      // race, a permissions denial, an offline write — escaped as an unhandled
+      // async error. The cart survived (nothing was cleared) but the screen gave
+      // the user no indication that the sale had not been recorded, and they
+      // would reasonably tap Save again. Surface the failure.
+      logSecureError(e, st, tag: 'save_sale');
+      if (!mounted) return;
+      showAppToast(
+        context,
+        sanitizeErrorMessage(e, fallback: 'Could not save the sale. Please try again.'),
+      );
     } finally {
       _saving = false;
     }
@@ -1301,12 +1340,23 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                           ]),
                       const SizedBox(height: 14),
                       Row(children: [
+                        // Both buttons are `flex: 1`.
+                        //
+                        // The primary was `flex: 2` and carried a variable-width
+                        // label — "Save Sale · Rs 0" grew to "Save Sale · Rs
+                        // 118,500" as the total rose. So the secondary's share
+                        // shrank *as the sale got bigger*, and "Save as Quote"
+                        // ellipsised to "Save as Qu…" on exactly the large sales
+                        // where the amount matters most. A layout that degrades
+                        // with the data is a layout bug, not a tight fit.
+                        //
+                        // The amount is dropped from the label: it is already
+                        // printed as "Total amount · Rs N" directly above this
+                        // row, so repeating it in the button was redundant *and*
+                        // was the source of the instability.
                         Expanded(
-                          flex: 2,
                           child: AppButton(
-                            label: _saving
-                                ? 'Saving\u2026'
-                                : 'Save Sale \u00b7 $csym ${salesState.subtotal.toInt()}',
+                            label: _saving ? 'Saving\u2026' : 'Save Sale',
                             icon: Icons.check_rounded,
                             onTap: (_saving ||
                                     salesState.cart.isEmpty ||

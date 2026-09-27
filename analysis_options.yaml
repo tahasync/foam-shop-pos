@@ -1,4 +1,6 @@
-analyzer:
-  errors:
-    uri_does_not_exist: ignore
-    undefined_identifier: ignore
+﻿# Static analysis configuration.
+#
+# The two suppressions that used to live here (`uri_does_not_exist` and
+# `undefined_identifier`) have been removed: they were silencing real defects
+# rather than accommodating a known-good case, and `flutter analyze` is clean
+# without them.

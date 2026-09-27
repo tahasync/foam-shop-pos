@@ -8,6 +8,7 @@
 // This file owns the data and the print layout, and the on-screen preview
 // feeds the same [ReceiptData], so the two agree by construction.
 
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show rootBundle;
@@ -144,24 +145,41 @@ class ReceiptPalette {
   final PdfColor white = PdfColors.white;
 }
 
-Future<pw.ThemeData> _loadReceiptTheme() async {
+/// The faces the receipt is painted with, plus the theme built from them.
+///
+/// The column measurer needs the *same* fonts the painter uses. Handing it a
+/// different face would size the columns against metrics that are not on the
+/// page, so the two are loaded together and always travel as one value.
+class _ReceiptFonts {
+  final pw.Font regular;
+  final pw.Font bold;
+  final pw.ThemeData theme;
+
+  const _ReceiptFonts(this.regular, this.bold, this.theme);
+}
+
+Future<_ReceiptFonts> _loadReceiptTheme() async {
   // The built-in PDF fonts (Helvetica et al.) are WinAnsi-only: the receipt's
   // `✓` and `·` render as blank boxes or mojibake, and the `pdf` package prints a
   // "Helvetica has no Unicode support" warning on every run. Inter is already
   // bundled and is the same family the on-screen preview uses.
-  pw.ThemeData make(pw.Font base, pw.Font bold) => pw.ThemeData.withFont(
-        base: base,
-        bold: bold,
-      );
   try {
-    return make(
-      pw.Font.ttf(await rootBundle.load(_kRegular)),
-      pw.Font.ttf(await rootBundle.load(_kBold)),
-    );
+    final regular = pw.Font.ttf(await rootBundle.load(_kRegular));
+    final bold = pw.Font.ttf(await rootBundle.load(_kBold));
+    return _ReceiptFonts(regular, bold, pw.ThemeData.withFont(
+      base: regular,
+      bold: bold,
+    ));
   } catch (_) {
     // Fonts unavailable (e.g. a unit test with no asset bundle): fall back to
-    // the built-ins rather than failing the whole receipt.
-    return pw.ThemeData.withFont();
+    // the built-ins rather than failing the whole receipt. Built-in Helvetica
+    // metrics are narrower than Inter's, so the table ends up with a little
+    // more slack than it strictly needs rather than less.
+    return _ReceiptFonts(
+      pw.Font.helvetica(),
+      pw.Font.helveticaBold(),
+      pw.ThemeData.withFont(),
+    );
   }
 }
 
@@ -199,7 +217,109 @@ String stripCurrencySymbol(String value) {
 /// measuring *this* widget rather than from a hand-maintained sum of paddings
 /// and font sizes, which is what previously drifted out of sync with the real
 /// layout and left receipts either clipped or trailing a mostly blank sheet.
-pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
+/// Measures the painted width of [value] at [fontSize] with [font].
+///
+/// Uses the same measure path the painter uses — a real `pw.Text` laid out
+/// against a real `pw.Context` — rather than reaching into font internals or
+/// counting characters. That matters for correctness twice over:
+///
+///  * the returned width is the width the glyphs will actually occupy, so a
+///    column sized from it cannot clip the figure that gets drawn;
+///  * it is measured with the *same* font the cell is painted with, which the
+///    widget API enforces, where a raw `PdfFont` handle would have to be
+///    resolved by hand and could silently differ from the painted face.
+///
+/// Falls back to a conservative estimate if the context cannot be built, which
+/// can only happen outside a document (a bare unit test) and would otherwise
+/// make a width assertion impossible to run.
+double _measureMoneyWidth(
+  String value,
+  pw.Font font,
+  double fontSize,
+  pw.Context? context,
+) {
+  if (value.isEmpty) return 0;
+  if (context != null) {
+    final size = pw.Widget.measure(
+      pw.Text(
+        value,
+        maxLines: 1,
+        overflow: pw.TextOverflow.clip,
+        style: pw.TextStyle(fontSize: fontSize, font: font),
+      ),
+      context: context,
+    );
+    return size.x;
+  }
+  // No document to measure against: assume a generous advance so the caller
+  // over-allocates rather than clipping.
+  return value.length * fontSize * 0.62;
+}
+
+/// Computes the four column widths (ITEM, QTY, PRICE, TOTAL) for [data].
+///
+/// Each money column is sized to the widest value it must hold, plus a little
+/// breathing room and the cell's own horizontal padding. The ITEM column takes
+/// whatever is left over, so a wider number costs the product name width rather
+/// than silently truncating the number — the item name already elides over two
+/// lines, whereas a truncated *number* is a wrong number.
+///
+/// Exposed for testing: a truncated figure is invisible in the PDF byte stream
+/// (the receipt embeds a subset font, so the content stream stores glyph
+/// indices, not ASCII) — the only place this can be pinned is the layout maths.
+Map<int, pw.TableColumnWidth> receiptColumnWidths({
+  required ReceiptData data,
+  required pw.Font regular,
+  required pw.Font bold,
+  required double contentWidth,
+  pw.Context? context,
+  double fontSize = 8.6,
+}) {
+  const cellPadX = 4.0;
+  const minQtyWidth = 16.0;
+  const safety = 1.5;
+
+  var widestQty = 0.0;
+  var widestPrice = 0.0;
+  var widestTotal = 0.0;
+
+  for (final line in data.items) {
+    widestQty = math.max(widestQty,
+        _measureMoneyWidth(line.qty, regular, fontSize, context));
+    widestPrice = math.max(
+        widestPrice,
+        _measureMoneyWidth(
+            stripCurrencySymbol(line.unitPrice), regular, fontSize, context));
+    // The TOTAL cell is bold, so it must be measured with the bold face or it
+    // is guaranteed to be a little too narrow.
+    widestTotal = math.max(
+        widestTotal,
+        _measureMoneyWidth(
+            stripCurrencySymbol(line.total), bold, fontSize, context));
+  }
+
+  final qtyWidth = math.max(minQtyWidth, widestQty + (cellPadX * 2) + safety);
+  final priceWidth = widestPrice + (cellPadX * 2) + safety;
+  final totalWidth = widestTotal + (cellPadX * 2) + safety;
+
+  // The item name is the elastic column: it is free text that already elides
+  // over two lines, whereas a truncated *number* is a wrong number. So the
+  // money columns get exactly what they measured and the name takes the
+  // remainder, down to a floor that keeps the column usable.
+  const minItemWidth = 46.0;
+  final itemWidth = math.max(
+      minItemWidth, contentWidth - (qtyWidth + priceWidth + totalWidth));
+
+  return {
+    0: pw.FlexColumnWidth(itemWidth),
+    1: pw.FlexColumnWidth(qtyWidth),
+    2: pw.FlexColumnWidth(priceWidth),
+    3: pw.FlexColumnWidth(totalWidth),
+  };
+}
+
+pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
+    {required Map<int, pw.TableColumnWidth> columnWidths}) {
   // Small-caps labels, matching the mockup's `text-transform: uppercase` +
   // `letter-spacing` on `.meta-label` / `th`. The wide tracking gives the tiny
   // type a label-like texture that survives thermal printing.
@@ -514,16 +634,11 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
         border: pw.TableBorder.symmetric(
           inside: pw.BorderSide(color: p.line, width: 0.4),
         ),
-        // The mockup's 43 / 15 / 21 / 21 split assumes bare digits in the money
-        // columns, which is what [bareMoney] guarantees. QTY is the narrowest
-        // column because it holds a small integer, which frees the width for
-        // the two money columns where the digits actually run out of room.
-        columnWidths: const {
-          0: pw.FlexColumnWidth(3.6),
-          1: pw.FlexColumnWidth(1.0),
-          2: pw.FlexColumnWidth(1.4),
-          3: pw.FlexColumnWidth(1.6),
-        },
+        // Columns are measured from the actual figures in this receipt rather
+        // than fixed as a fraction of the roll width, so a five- or six-figure
+        // total gets the room it needs and the product name absorbs the cost.
+        // See [receiptColumnWidths] for why a fixed split truncated the numbers.
+        columnWidths: columnWidths,
         children: [
           pw.TableRow(
             decoration: pw.BoxDecoration(
@@ -679,8 +794,12 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
 /// receipt, so it is given a full A4 sheet and paginates normally.
 Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
   // Load the theme once. The measuring pass and the painting pass must agree on
-  // it — see the comment on [measureContext] below.
-  final theme = await _loadReceiptTheme();
+  // it — see the comment on [measureContext] below. The same load yields the
+  // font faces the table columns are measured against.
+  final fonts = await _loadReceiptTheme();
+  final theme = fonts.theme;
+  final regularFont = fonts.regular;
+  final boldFont = fonts.bold;
   final pdf = pw.Document(
     title: 'Receipt ${data.receiptNo}',
     author: data.storeName,
@@ -696,7 +815,9 @@ Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
   // used to drift out of sync with the real layout.
   //
   // `Widget.measure` needs a page *and* a graphics canvas, so the probe page is
-  // really added to a throwaway document; only its size is read.
+  // really added to a throwaway document; only its canvas is read, and it is
+  // deliberately blank — the probe exists to give the measuring context a
+  // surface to measure against, not to reproduce the body.
   final probeDoc = pw.Document(theme: theme);
   probeDoc.addPage(
     pw.Page(
@@ -705,7 +826,7 @@ Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
         4000 * PdfPageFormat.mm,
         marginAll: margin,
       ),
-      build: (_) => _buildReceipt(data, palette),
+      build: (_) => pw.SizedBox(),
     ),
   );
   final probePage = probeDoc.document.page(0)!;
@@ -726,8 +847,20 @@ Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
     canvas: probePage.getGraphics(),
   ).inheritFromAll([theme]);
 
+  // The itemised table's money columns are sized by measuring the real figures
+  // in *this* receipt, so a total like "120,000" cannot be clipped to "120,00".
+  // Resolved once here and reused by every pass, because the measuring pass and
+  // the painting pass must lay the table out identically.
+  final columnWidths = receiptColumnWidths(
+    data: data,
+    regular: regularFont,
+    bold: boldFont,
+    contentWidth: contentWidth,
+    context: measureContext,
+  );
+
   final measured = pw.Widget.measure(
-    _buildReceipt(data, palette),
+    _buildReceipt(data, palette, columnWidths: columnWidths),
     context: measureContext,
     constraints: pw.BoxConstraints(maxWidth: contentWidth),
   ).y;
@@ -746,7 +879,7 @@ Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
           heightMm * PdfPageFormat.mm,
           marginAll: margin,
         ),
-        build: (_) => _buildReceipt(data, palette),
+        build: (_) => _buildReceipt(data, palette, columnWidths: columnWidths),
       ),
     );
   } else {
@@ -754,7 +887,7 @@ Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        build: (_) => [_buildReceipt(data, palette)],
+        build: (_) => [_buildReceipt(data, palette, columnWidths: columnWidths)],
       ),
     );
   }

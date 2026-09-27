@@ -1,5 +1,98 @@
 # Changelog
 
+## Unreleased
+
+Two data-integrity bugs that both presented as "the app is broken", plus the
+audit pass that surfaced them.
+
+### Fixed
+- **Receipt prices were silently truncated.** A `120,000` total printed as
+  `120,00` and a `60,000` unit price as `60,00` on the 80mm receipt. The
+  itemised table gave the money columns a fixed slice of the roll width
+  (`FlexColumnWidth(1.4)` and `(1.6)` of 7.6) that was sized when totals were
+  four digits, and the cells render with `maxLines: 1` +
+  `TextOverflow.clip` — so the overflow was dropped rather than wrapped or
+  flagged. A customer's receipt showed a *wrong number*. The columns are now
+  measured from the actual figures in each receipt, using the same font and the
+  same measure path the painter uses, and the product name (which already
+  elides over two lines) absorbs the difference.
+- **CSV, XLSX and PDF report export failed whenever the period contained an
+  older sale.** Every export path labelled a sale's customer with
+  `customerName ?? customerId.substring(0, 6)`, which throws `RangeError` for
+  any id shorter than six characters. Sales written before the
+  `customer_name` field existed have exactly that shape, so a single legacy
+  record aborted all three exports. Replaced with a fallback that cannot throw,
+  and a report with no name and no id is now labelled "Walk-in Customer"
+  instead of being dropped.
+- **A failed sale save was silent.** The save path had a `finally` but no
+  `catch`, so a Firestore failure — a stock race, a permissions denial, an
+  offline write — escaped as an unhandled async error. The cart survived and
+  the user was told nothing, then tapped Save again. It now logs and shows a
+  sanitised message.
+- **A cart line whose product no longer exists could save with a cost price of
+  0**, understating COGS and overstating profit permanently. It is now rejected
+  with a clear message instead.
+- **Carts with more than 10 distinct products saved with wrong data.** The
+  product fetch took `ids.take(10)` (the Firestore `whereIn` cap), silently
+  dropping the rest, so those lines skipped the stock check and were written
+  with `costPriceAtSale: 0`. The fetch is now batched.
+- **Stock counts lost their fractional part and their unit.** `stockLabel`
+  hardcoded `pcs` and truncated with `.toInt()`, so `2.5` sq.ft read as "2 pcs"
+  in the inventory list while the restock sheet said "2 sq.ft" for the same
+  product.
+- **The Expenses screen had two filter buttons**, one with no accessible label.
+- **"Saved to Downloads/…" was shown on every platform**, including iOS, where
+  the file goes to the app's documents directory.
+- Removed two analyzer suppressions (`uri_does_not_exist`,
+  `undefined_identifier`) that were hiding real defect classes. Analysis is clean
+  without them.
+
+### Changed
+- The accounting hot path no longer logs once per sale line on every stream
+  tick; the same checks are counted and reported once, behind an opt-in flag.
+  Figures are unchanged.
+- Receipts are laid out from measured column widths rather than hardcoded flex
+  ratios, so a wider number costs product-name width instead of correctness.
+- Dead code removed: 12 unused `FirestoreService` methods, an unused success
+  dialog, two unused providers, 11 unused theme colour aliases, two placeholder
+  tests that asserted nothing, and stray files at the repo root.
+
+### Added
+- **On-device end-to-end tests for report export**
+  (`integration_test/export_e2e_test.dart`). The host-side suite could not prove
+  that a report is actually *written*: `path_provider` is stubbed on the host
+  and returns a path that does not exist, so a broken export passed CI and only
+  failed in a shop's hands. These run on physical hardware, generate each format
+  through the same public API the Export screen calls, then reopen the file and
+  parse it back — CSV re-parsed into rows, XLSX unzipped and its cells read back
+  as numbers, PDF checked for its structural markers, page count, and (for the
+  report, which uses the built-in Helvetica) its money figures read from the
+  content stream. Run with
+  `flutter test integration_test/export_e2e_test.dart -d <device-id>`; excluded
+  from the plain `flutter test` run because it needs a device attached.
+  Verified passing on a Pixel 9 running Android 17.
+- **The receipt's money figures are now verified on-device, not just on layout
+  maths.** The receipt embeds a subsetted Inter, so its content stream stores
+  glyph ids rather than ASCII — but the `pdf` package writes a `/ToUnicode` CMap
+  beside each subset. The on-device test decodes that and asserts `60,000` and
+  `120,000` are printed whole, and that a clipped `120,00` appears nowhere. This
+  corrects an earlier claim in this changelog's working notes that the receipt's
+  text "cannot be read back from the file" — it can, and now is.
+- **The receipt-save-to-Downloads path is now verified end to end on hardware.**
+  The real `MethodChannel` runs against the real `MainActivity`, and the
+  returned location must be a `content://media/external/downloads/...` URI —
+  proving the file is registered with MediaStore rather than written to a
+  scoped-storage path that silently goes nowhere. A blank file name must be
+  rejected natively. Confirmed independently out-of-band with
+  `adb shell content query`, which lists the saved receipt in Downloads.
+- **Documented the release signing-identity gap.** The release keystore is
+  correctly gitignored, which means the signing identity cannot be recovered
+  from a clone and a local `release.keystore` is not necessarily the key that
+  signed the published APKs. `RELEASE.md` now spells out the two identities, how
+  to compare their fingerprints, and what happens if they differ.
+- **Documented why the CI Flutter version is pinned**, and when it is safe to
+  bump. The local toolchain being one patch ahead is expected and harmless.
+
 ## v1.5.1 — September 2026
 
 Sales-screen cart line rebuilt, and a text-encoding bug that the analyzer could not see.

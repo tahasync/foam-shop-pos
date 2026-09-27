@@ -7,7 +7,6 @@ import '../providers/firebase_providers.dart';
 import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/safe_error_handler.dart';
-import '../widgets/save_success_sheet.dart';
 import '../widgets/design_system/design_system.dart';
 
 const _categories = ['Cutting Labor', 'Transport', 'Electricity', 'Packaging', 'Rent', 'Tea / Misc', 'Other'];
@@ -33,8 +32,14 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
     return FullScreenOverlay(
       title: 'Expenses',
       actions: [
-        AppIconButton(icon: Icons.filter_list_rounded, onTap: _showFilter),
-          AppIconButton(icon: Icons.filter_list_rounded, semanticLabel: 'Filter expenses', onTap: _showFilter),
+        // A single filter button. There used to be two stacked here — the first
+        // had no `semanticLabel`, so screen readers announced an unnamed button
+        // and the toolbar showed the same icon twice.
+        AppIconButton(
+          icon: Icons.filter_list_rounded,
+          semanticLabel: 'Filter expenses',
+          onTap: _showFilter,
+        ),
         const SizedBox(width: 8),
         AppIconButton(
             semanticLabel: 'Add expense',
@@ -248,19 +253,18 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
                     id: s.generateId(), date: date, category: cat2, description: noteC.text.trim(), amount: a));
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (context.mounted) {
-                  SaveSuccessSheet.show(
+                  // Uses the shared design-system SuccessSheet like every other
+                  // save in the app. The previous call went through
+                  // `SaveSuccessSheet`, a second, older success dialog that only
+                  // this screen still used. It was being driven with
+                  // `paid == total` and `printLabel: ''`, so it rendered a
+                  // pointless "Change: Rs 0" row and a duplicate Total for a
+                  // plain expense confirmation.
+                  SuccessSheet.show(
                     context: context,
                     title: 'Expense Saved',
                     subtitle: '$cat2 \u00b7 $csym ${fmt.format(a.toInt())}',
-                    items: [SheetLineItem(
-                        label: noteC.text.trim().isEmpty ? cat2 : noteC.text.trim(),
-                        value: '$csym ${fmt.format(a.toInt())}')],
-                    paid: a,
-                    total: a,
-                    printLabel: '',
-                    newLabel: '+ Add Expense',
-                    onNew: () {},
-                    csym: csym,
+                    primaryLabel: '+ Add Expense',
                   );
                 }
               },

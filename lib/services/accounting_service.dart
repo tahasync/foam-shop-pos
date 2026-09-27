@@ -72,11 +72,26 @@ class AccountingService {
     required List<SupplierPayment> supplierPayments,
     required List<Product> products,
     required OpeningBalance? openingBal,
+
+    /// Opt-in diagnostics for profit figures that do not reconcile. See the
+    /// counters in the COGS loop below.
+    bool logCogsDiagnostics = false,
   }) {
     final productMap = {for (final p in products) p.id: p};
 
     double revenue = 0;
     double cogs = 0;
+
+    // Counters, logged once at the end rather than per line.
+    //
+    // This method is the hot path of the whole app: it re-runs on *every* stream
+    // tick from sales, purchases, expenses, payments, supplier payments and
+    // products. The previous implementation called `developer.log` inside both
+    // inner loops, so a single shop with 30 loss-making sale lines emitted 30
+    // log records on every dashboard rebuild — the log became noise that also
+    // cost real time to format and write.
+    var missingCostLines = 0;
+    var lossMakingLines = 0;
 
     for (final sale in sales) {
       if (sale.isVoided || sale.isQuote) continue;
@@ -88,21 +103,23 @@ class AccountingService {
           unitCost = product?.costPrice ?? 0;
         }
         if (unitCost <= 0) {
-          developer.log('[COGS] Missing cost for sale ${sale.id}, line ${li.productId} — costPrice=0',
-              name: 'accounting');
+          missingCostLines++;
         }
         final lineCogs = sanitize(li.qtyOrArea) * sanitize(unitCost);
         final lineRevenue = sanitize(li.qtyOrArea) * sanitize(li.salePrice);
         if (lineCogs >= lineRevenue && lineRevenue > 0) {
-          developer.log('[COGS] Sale ${sale.id}: line ${li.productId} '
-              'qty=${li.qtyOrArea} salePrice=${li.salePrice} '
-              'costPriceAtSale=${li.costPriceAtSale} '
-              'productCostPrice=${productMap[li.productId]?.costPrice} '
-              'unitCost=$unitCost lineRevenue=$lineRevenue lineCOGS=$lineCogs',
-              name: 'accounting');
+          lossMakingLines++;
         }
         cogs += lineCogs;
       }
+    }
+
+    if (logCogsDiagnostics && (missingCostLines > 0 || lossMakingLines > 0)) {
+      // Opt-in only. Turn on when investigating a profit figure that does not
+      // reconcile: a non-zero count means either a product was saved without a
+      // buy price, or a sale was recorded at or below cost.
+      developer.log('[COGS] missingCostLines=$missingCostLines '
+          'lossMakingLines=$lossMakingLines', name: 'accounting');
     }
 
     final grossProfit = sanitize(revenue) - sanitize(cogs);
@@ -178,13 +195,18 @@ class AccountingService {
     }
 
     double inventoryValue = 0;
+    var zeroCostProducts = 0;
     for (final p in products) {
       final unitCost = sanitize(p.costPrice);
       if (unitCost <= 0) {
-        developer.log('[COGS] Missing cost for product ${p.id} — costPrice=0, inventory value=0',
-            name: 'accounting');
+        zeroCostProducts++;
       }
       inventoryValue += sanitize(p.currentStock) * unitCost;
+    }
+
+    if (logCogsDiagnostics && zeroCostProducts > 0) {
+      developer.log('[COGS] $zeroCostProducts product(s) have costPrice=0 — '
+          'their inventory value contributes 0', name: 'accounting');
     }
 
     final lowStockCount = products.where((p) => p.isLowStock).length;

@@ -456,22 +456,19 @@ class AppColors extends ThemeExtension<AppColors> {
 }
 
 class AppTheme {
-  // Backwards-compatible aliases mapped onto the new liquid palette so
-  // existing screens keep compiling while they are progressively restyled.
-  static const ink = Color(0xFF0E0D15);
-  static const inkSoft = Color(0xFF3D3B45);
-  static const inkFaint = Color(0xFF777582);
+  // Legacy fixed-colour aliases.
+  //
+  // These predate the `AppColors` ThemeExtension and were kept so screens could
+  // be restyled incrementally. The ones still referenced are listed; the rest
+  // (ink/inkSoft/inkFaint/terracotta/sage/bgLight/bgDark/surfaceLight/
+  // surface2Light/surfaceDark/surface2Dark) had no remaining callers and were
+  // removed, because a static colour here silently bypasses the theme: it
+  // cannot follow light/dark and is invisible to the palette-drift test.
+  //
+  // New code must read from `AppColors.of(context)` instead.
   static const teal = Color(0xFF3D5387);
   static const tealDark = Color(0xFF182346);
   static const amber = Color(0xFF7C83AD);
-  static const terracotta = Color(0xFF7E4A63);
-  static const sage = Color(0xFF4A5C97);
-  static const bgLight = Color(0xFFF7F4F2);
-  static const bgDark = Color(0xFF0E0D15);
-  static const surfaceLight = Color(0xFFFFFFFF);
-  static const surface2Light = Color(0xFFFBF9F8);
-  static const surfaceDark = Color(0xFF141A2A);
-  static const surface2Dark = Color(0xFF0E0D15);
 
   static ThemeData light() {
     final ac = AppColors._light;

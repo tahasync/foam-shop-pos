@@ -10,12 +10,3 @@ final productsStreamProvider = StreamProvider<List<Product>>((ref) {
     }).toList();
   });
 });
-
-final lowStockProductsProvider = Provider<AsyncValue<List<Product>>>((ref) {
-  final products = ref.watch(productsStreamProvider);
-  return products.when(
-    data: (list) => AsyncValue.data(list.where((p) => p.isLowStock).toList()),
-    loading: () => const AsyncValue.loading(),
-    error: (e, st) => AsyncValue.error(e, st),
-  );
-});

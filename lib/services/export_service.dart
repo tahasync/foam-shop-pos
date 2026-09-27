@@ -21,6 +21,25 @@ class ExportService {
       revenue > 0 ? '${((netProfit / revenue) * 100).toStringAsFixed(1)}%' : '0%';
   String _invoiceId(String id) => id.length >= 8 ? id.substring(0, 8) : id;
 
+  /// A display name for a sale's customer, safe for any ID length.
+  ///
+  /// This used to be `customerName ?? customerId.substring(0, 6)`, which threw
+  /// `RangeError` for any ID shorter than six characters — and a walk-in sale
+  /// stores an *empty* `customerId` by design (see the Walk-in button in
+  /// `sales_entry_screen.dart`). One walk-in sale in the selected period was
+  /// therefore enough to abort CSV, XLSX and PDF generation together, which is
+  /// exactly what "export is not working" looked like from the shop's side.
+  ///
+  /// Falls back to a readable label, and only truncates when there is enough
+  /// text to make the abbreviation worth it.
+  String _customerLabel(Sale sale) {
+    final name = sale.customerName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    final id = sale.customerId.trim();
+    if (id.isEmpty) return 'Walk-in Customer';
+    return id.length >= 6 ? id.substring(0, 6) : id;
+  }
+
   static String _sanitizeCsvCell(String value) {
     if (value.isEmpty) return value;
     final first = value.codeUnitAt(0);
@@ -38,14 +57,19 @@ class ExportService {
     return '${_dateFmt.format(start)} - ${_dateFmt.format(end)}';
   }
 
-  Future<File> generateCsvReport({
+  /// Builds the report as CSV text, without touching the filesystem.
+  ///
+  /// Split out from [generateCsvReport] so the content can be asserted in tests
+  /// without a plugin-provided documents directory, and so a formatting bug
+  /// cannot hide behind a file-system error.
+  String buildCsvReport({
     required List<Sale> sales,
     required List<Product> products,
     required AccountingSummary summary,
     required DateTime startDate,
     required DateTime endDate,
     String shopName = 'Digital Register',
-  }) async {
+  }) {
     final productMap = {for (final p in products) p.id: p};
     final rows = <List<String>>[
       ['$shopName - Digital Register'],
@@ -81,7 +105,7 @@ class ExportService {
       rows.add([
         _invoiceId(sale.id),
         _dateFmt.format(sale.date),
-        sale.customerName ?? sale.customerId.substring(0, 6),
+        _customerLabel(sale),
         _sanitizeCsvCell(items),
         _fmtCsv(sale.amount),
         _fmtCsv(cogs),
@@ -90,9 +114,35 @@ class ExportService {
     }
 
     rows.add([]);
-    rows.add(['TOTAL', '', '', '', _fmtCsv(summary.revenue), _fmtCsv(summary.cogs), _fmtCsv(summary.netProfit)]);
+    rows.add([
+      'TOTAL',
+      '',
+      '',
+      '',
+      _fmtCsv(summary.revenue),
+      _fmtCsv(summary.cogs),
+      _fmtCsv(summary.netProfit)
+    ]);
 
-    final csv = const ListToCsvConverter().convert(rows);
+    return const ListToCsvConverter().convert(rows);
+  }
+
+  Future<File> generateCsvReport({
+    required List<Sale> sales,
+    required List<Product> products,
+    required AccountingSummary summary,
+    required DateTime startDate,
+    required DateTime endDate,
+    String shopName = 'Digital Register',
+  }) async {
+    final csv = buildCsvReport(
+      sales: sales,
+      products: products,
+      summary: summary,
+      startDate: startDate,
+      endDate: endDate,
+      shopName: shopName,
+    );
     final dir = await getApplicationDocumentsDirectory();
     final fileName = 'foam_shop_report_${_dateFmtFile.format(DateTime.now())}.csv';
     final file = File('${dir.path}/$fileName');
@@ -211,7 +261,7 @@ class ExportService {
               return [
                 _invoiceId(s.id),
                 _dateFmt.format(s.date),
-                s.customerName ?? s.customerId.substring(0, 6),
+                _customerLabel(s),
                 items.length > 25 ? '${items.substring(0, 25)}...' : items,
                 _fmt(s.amount, currencyCode: currencyCode),
                 _fmt(cogs, currencyCode: currencyCode),
@@ -354,7 +404,7 @@ class ExportService {
       totalProfit += s.amount - cogs;
       detailSheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(_invoiceId(s.id));
       detailSheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(_dateFmt.format(s.date));
-      detailSheet.cell(CellIndex.indexByString('C$row')).value = TextCellValue(s.customerName ?? s.customerId.substring(0, 6));
+      detailSheet.cell(CellIndex.indexByString('C$row')).value = TextCellValue(_customerLabel(s));
       detailSheet.cell(CellIndex.indexByString('D$row')).value = TextCellValue(items.length > 25 ? '${items.substring(0, 25)}...' : items);
       detailSheet.cell(CellIndex.indexByString('E$row')).value = IntCellValue(s.amount.toInt());
       detailSheet.cell(CellIndex.indexByString('E$row')).cellStyle = numStyle;

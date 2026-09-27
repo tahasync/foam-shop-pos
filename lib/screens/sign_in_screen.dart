@@ -63,8 +63,17 @@ class SignInScreen extends ConsumerWidget {
                         try {
                           await authService.signInWithGoogle();
                           if (context.mounted) {
-                            final status = await Permission.storage.request();
-                            debugPrint('[Perm] Storage permission: $status');
+                            // Android 10+ uses MediaStore for receipt writes,
+                            // which needs no runtime permission, so this is only a
+                            // best-effort request for the legacy storage path.
+                            // A denial must never block a completed sign-in, so
+                            // it is requested and discarded.
+                            try {
+                              await Permission.storage.request();
+                            } catch (_) {
+                              // Unsupported on this platform/version — receipts
+                              // still save through MediaStore.
+                            }
                           }
                         } catch (e) {
                           if (context.mounted) {

@@ -42,70 +42,57 @@ class FirestoreService {
   Future<void> archiveProduct(String id) => _products.doc(id).update({'is_archived': true});
   Stream<QuerySnapshot> get productsStream => _products.where('is_archived', isEqualTo: false).snapshots();
 
+  /// Firestore caps a `whereIn` / `in` clause at 10 values, so a cart with more
+  /// than 10 distinct products has to be fetched in batches.
+  ///
+  /// This used to be `ids.take(10)`, which silently dropped every product past
+  /// the tenth. A large sale then reached [saveSaleTransaction] with
+  /// `verifiedStocks` missing entries — so the pre-flight stock check was
+  /// skipped for those lines — and the sale was written with
+  /// `costPriceAtSale: 0`, which understates COGS and overstates gross profit
+  /// for the rest of that sale's life. Batching returns every requested product.
   Future<List<Product>> getProductsByIds(Set<String> ids) async {
     if (ids.isEmpty) return [];
-    final snap = await _products
-        .where(FieldPath.documentId, whereIn: ids.take(10).toList())
-        .get();
-    return snap.docs
-        .map((d) => Product.fromMap(d.data() as Map<String, dynamic>))
-        .toList();
+
+    // `whereIn` is capped at 10 operands; anything more fails the query outright.
+    const batchSize = 10;
+    final all = ids.toList();
+    final results = <Product>[];
+
+    for (var i = 0; i < all.length; i += batchSize) {
+      final end = (i + batchSize) < all.length ? (i + batchSize) : all.length;
+      final snap = await _products
+          .where(FieldPath.documentId, whereIn: all.sublist(i, end))
+          .get();
+      results.addAll(snap.docs
+          .map((d) => Product.fromMap(d.data() as Map<String, dynamic>)));
+    }
+    return results;
   }
 
   // Customers
   Future<void> addCustomer(Customer c) => _customers.doc(c.id).set(c.toMap());
-  Future<void> updateCustomer(Customer c) => _customers.doc(c.id).update(c.toMap());
-  Future<void> archiveCustomer(String id) => _customers.doc(id).update({'is_archived': true});
   Stream<QuerySnapshot> get customersStream => _customers.where('is_archived', isEqualTo: false).snapshots();
-  Stream<QuerySnapshot> get customersWithBaqayaStream =>
-      _customers.where('baqaya', isGreaterThan: 0).where('is_archived', isEqualTo: false).snapshots();
-
-  static const walkInCustomerId = 'walk_in_customer';
-  Future<Customer> ensureWalkInCustomer() async {
-    final ref = _customers.doc(walkInCustomerId);
-    final snap = await ref.get();
-    if (snap.exists) {
-      return Customer.fromMap(snap.data() as Map<String, dynamic>);
-    }
-    final c = Customer(id: walkInCustomerId, name: 'Walk-in Customer', phone: '');
-    await ref.set(c.toMap());
-    return c;
-  }
 
   // Suppliers
   Future<void> addSupplier(Supplier s) => _suppliers.doc(s.id).set(s.toMap());
-  Future<void> updateSupplier(Supplier s) => _suppliers.doc(s.id).update(s.toMap());
-  Future<void> archiveSupplier(String id) => _suppliers.doc(id).update({'is_archived': true});
   Stream<QuerySnapshot> get suppliersStream => _suppliers.where('is_archived', isEqualTo: false).snapshots();
 
   // Sales
   Future<void> addSale(Sale s) => _sales.doc(s.id).set(s.toMap());
-  Future<void> updateSale(Sale s) => _sales.doc(s.id).update(s.toMap());
-  Future<Sale?> getSale(String id) async {
-    final snap = await _sales.doc(id).get();
-    if (!snap.exists) return null;
-    return Sale.fromMap(snap.data() as Map<String, dynamic>);
-  }
   Stream<QuerySnapshot> salesStream({DateTime? from, DateTime? to}) {
     Query q = _sales.orderBy('date', descending: true);
     if (from != null) q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
     if (to != null) q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
     return q.snapshots();
   }
-  Future<List<Sale>> getCustomerSales(String customerId, {int limit = 5}) async {
-    final snap = await _sales
-        .where('customer_id', isEqualTo: customerId)
-        .where('is_quote', isEqualTo: false)
-        .orderBy('date', descending: true)
-        .limit(limit)
-        .get();
-    return snap.docs
-        .map((d) => Sale.fromMap(d.data() as Map<String, dynamic>))
-        .toList();
-  }
 
   // Purchases
-  Future<void> addPurchase(Purchase p) => _purchases.doc(p.id).set(p.toMap());
+  //
+  // There is no `addPurchase`: every purchase is created inside
+  // [restockTransaction], together with the stock increase and the WAC
+  // recalculation it belongs to. A standalone write path would let the two
+  // disagree.
   Stream<QuerySnapshot> purchasesStream({DateTime? from, DateTime? to}) {
     Query q = _purchases.orderBy('date', descending: true);
     if (from != null) q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
@@ -123,8 +110,11 @@ class FirestoreService {
   }
 
   // Payments (Customer Recovery)
-  Future<void> addPayment(Payment p) => _payments.doc(p.id).set(p.toMap());
-
+  //
+  // There is no `addPayment`: a collection always goes through
+  // [savePaymentTransaction], which also decrements the customer's baqaya in
+  // the same transaction. Writing the payment alone would leave the two out of
+  // step.
   Future<void> savePaymentTransaction(Payment payment) async {
     await _db.runTransaction((transaction) async {
       final ref = _payments.doc(payment.id);
@@ -157,12 +147,6 @@ class FirestoreService {
     if (from != null) q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
     if (to != null) q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
     return q.snapshots();
-  }
-
-  // Idempotency
-  Future<bool> saleExistsByUuid(String uuid) async {
-    final snap = await _sales.where('transaction_uuid', isEqualTo: uuid).limit(1).get();
-    return snap.docs.isNotEmpty;
   }
 
   // Atomic sale transaction — also updates customer baqaya.
@@ -269,29 +253,8 @@ class FirestoreService {
     });
   }
 
-  Future<void> restoreStockAfterVoid(Sale sale) async {
-    await _db.runTransaction((transaction) async {
-      for (final li in sale.lineItems) {
-        final productRef = _products.doc(li.productId);
-        final snap = await transaction.get(productRef);
-        if (snap.exists) {
-          final data = snap.data() as Map<String, dynamic>;
-          final currentStock = (data['current_stock'] as num).toDouble();
-          transaction.update(productRef, {'current_stock': currentStock + li.qtyOrArea});
-        }
-      }
-    });
-  }
-
-  Future<void> revertSaleStock(Sale sale) => restoreStockAfterVoid(sale);
-
   // Opening Balance
   Future<void> setOpeningBalance(OpeningBalance ob) => _openingBalances.doc(ob.id).set(ob.toMap());
-  Future<OpeningBalance?> getOpeningBalance() async {
-    final snap = await _openingBalances.orderBy('date', descending: true).limit(1).get();
-    if (snap.docs.isEmpty) return null;
-    return OpeningBalance.fromMap(snap.docs.first.data() as Map<String, dynamic>);
-  }
 
   Stream<QuerySnapshot> get openingBalanceStream =>
       _openingBalances.orderBy('date', descending: true).limit(1).snapshots();
