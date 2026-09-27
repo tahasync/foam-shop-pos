@@ -26,6 +26,14 @@ class AuthService {
   /// behaviour and surfaces to the user as a bare "Sign in failed".
   bool _initialized = false;
 
+  /// The web OAuth client id actually passed to [GoogleSignIn.initialize].
+  String? _serverClientId;
+
+  /// This project's Web OAuth client id, mirroring the `client_type: 3` entry
+  /// in `android/app/google-services.json`.
+  static const String _fallbackWebClientId =
+      '279323547618-e1n7bobp7b81f99idi7c4dkfoqoik435.apps.googleusercontent.com';
+
   bool get isInitialized => _initialized;
 
   Future<void> initialize() async {
@@ -38,18 +46,26 @@ class AuthService {
       // Not fatal on Android: when the google-services Gradle plugin is applied,
       // the plugin reads the web OAuth client id from the generated
       // `default_web_client_id` string resource, so serverClientId is optional.
+      //
+      // This fallback is a real safety net, not decoration. That resource is
+      // only generated when `google-services.json` contains a `client_type: 3`
+      // (Web) client; if it is absent, `serverClientId` ends up null and Google
+      // Sign-In fails with error 10 (clientConfigurationError) on every build.
+      // Hardcoding the project's web client id means a trimmed-down config file
+      // can no longer break sign-in for everyone.
+      _serverClientId = _fallbackWebClientId;
       developer.log(
-        '[Auth] FIREBASE_WEB_CLIENT_ID not set — relying on google-services.json '
-        'default_web_client_id. For other platforms build with: '
+        '[Auth] FIREBASE_WEB_CLIENT_ID not set — using the built-in web client '
+        'id fallback. For other platforms build with: '
         'flutter run --dart-define-from-file=env/firebase_config.json',
         name: 'auth',
       );
+    } else {
+      _serverClientId = clientId;
     }
 
     try {
-      await _googleSignIn!.initialize(
-        serverClientId: clientId.isEmpty ? null : clientId,
-      );
+      await _googleSignIn!.initialize(serverClientId: _serverClientId);
       _initialized = true;
     } catch (e, stack) {
       developer.log(
@@ -67,7 +83,8 @@ class AuthService {
 
   Future<UserCredential> signInWithGoogle() async {
     final deviceId = _auth.currentUser?.uid;
-    final result = _rateLimiter.attempt(deviceId: 'device_sign_in', accountId: deviceId);
+    final result =
+        _rateLimiter.attempt(deviceId: 'device_sign_in', accountId: deviceId);
     if (!result.allowed) {
       logSecureError(
         RateLimitError(result.reason ?? 'Rate limit exceeded'),
