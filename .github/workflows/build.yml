@@ -71,11 +71,21 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve dependencies
+        run: flutter pub get
+
       - name: Check formatting
         run: |
-          # Dart 3.7 switched the formatter to the "tall" style, so a file
-          # edited without `dart format` run on it fails this check. Run
-          # `dart format lib test` locally before pushing.
+          # `flutter pub get` above is REQUIRED before this check, not just for
+          # the build. `dart format` picks the code style from the project's
+          # *language version*, which it reads from
+          # `.dart_tool/package_config.json` — not from `pubspec.yaml`. With no
+          # such file it falls back to the SDK's default language version and
+          # formats in the Dart 3.7 "tall" style, while this project declares
+          # `sdk: ">=3.4.0"`, i.e. the short style. The result is a check that
+          # fails on every file (72 of 94 when this was first added) purely
+          # because it ran before `pub get`. Always run `flutter pub get`
+          # before `dart format`, locally and in CI.
           dart format --output=none --set-exit-if-changed lib test
 
       - name: Run Tests
