@@ -6,6 +6,19 @@ Two data-integrity bugs that both presented as "the app is broken", plus the
 audit pass that surfaced them.
 
 ### Fixed
+- **Every product announced its stock in the wrong unit.** A product the shop
+  counted as 5 cut pieces read "5 sq.ft in stock" on a real device. `unitType`
+  was a hardcoded `'per_sqft'` written when a product was created, with no
+  control anywhere in the UI to change it and `Product.fromMap` defaulting to it
+  when the field was absent — so `unitLabel` had nothing correct to read and
+  labelled all stock in square feet. A stock count in the wrong unit is a
+  misstatement of inventory, not a cosmetic slip. Add and Edit Product now have
+  a **Pieces / Per sq.ft** toggle (defaulting to Pieces), Edit seeds it from the
+  stored value so it never silently resets, and the unit is now carried on every
+  stock figure the user reads — the inventory pill, the sale-entry search row
+  (which was printing a bare "4 in stock" with no unit at all), the low-stock
+  notification and the restock sheet — so the list, the cart and the restock
+  sheet can no longer disagree with one another.
 - **The product search row rendered `78in ? 72in ? 6in ? 15 in stock` on device.**
   The `×` (U+00D7) and `·` (U+00B7) separators in the search result had been
   written into the source as literal `?` bytes, so Flutter drew four

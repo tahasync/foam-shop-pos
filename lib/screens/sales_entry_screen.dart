@@ -131,7 +131,8 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
         color: isBelowCost ? ac.expenseTint.withValues(alpha: 0.05) : null,
         borderRadius: BorderRadius.circular(AppRadii.md),
         border: isBelowCost
-            ? Border.all(color: ac.expenseFg.withValues(alpha: 0.45), width: 1.2)
+            ? Border.all(
+                color: ac.expenseFg.withValues(alpha: 0.45), width: 1.2)
             : null,
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -259,12 +260,12 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
               SizedBox(
                 height: AppHit.min,
                 child: TextField(
-                    controller: _priceCtrl,
-                    focusNode: _priceFocus,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.done,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    maxLength: 9,
+                  controller: _priceCtrl,
+                  focusNode: _priceFocus,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  maxLength: 9,
                   textAlign: TextAlign.left,
                   // Select-all on focus. Without it, tapping the field to correct
                   // a price put the caret between two digits of the old value, so
@@ -282,8 +283,8 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
                   decoration: InputDecoration(
                     counterText: '',
                     isDense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 14),
                     filled: true,
                     // Tinted when the line is under cost, so the field itself
                     // carries the warning rather than only the card behind it.
@@ -464,26 +465,27 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(
-                    qty > 1
-                        ? 'Losing $csym ${fmt.format(lineShort.toInt())} on this line'
-                        : 'Losing $csym ${fmt.format(unitShort.toInt())} on this line',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: ac.expenseFg),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    // "per unit" for the same reason as the field caption above.
-                    'Cost is $csym ${fmt.format(costPrice.toInt())} per unit.',
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: ac.expenseFg.withValues(alpha: 0.85)),
-                  ),
-                ]),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        qty > 1
+                            ? 'Losing $csym ${fmt.format(lineShort.toInt())} on this line'
+                            : 'Losing $csym ${fmt.format(unitShort.toInt())} on this line',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: ac.expenseFg),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        // "per unit" for the same reason as the field caption above.
+                        'Cost is $csym ${fmt.format(costPrice.toInt())} per unit.',
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: ac.expenseFg.withValues(alpha: 0.85)),
+                      ),
+                    ]),
               ),
               const SizedBox(width: AppSpacing.sm),
               // A compact text target rather than a filled button: this is a
@@ -764,13 +766,18 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                 // tapped again. Saying "OUT OF STOCK" in the expense colour makes the
                 // reason visible before the tap, which is the only point at which it
                 // is useful.
+                // The unit was dropped here, so a piece-counted product read
+                // "4 in stock" while the restock sheet and the inventory list,
+                // one tap away, said "4 pcs". A bare number with no unit is
+                // exactly the ambiguity this shop keeps tripping over.
                 Text(
                   outOfStock
                       ? '${p.sizeLength.toStringAsFixed(0)}in \u00d7 ${p.sizeWidth.toStringAsFixed(0)}in \u00b7 ${p.thickness.toStringAsFixed(0)}in \u00b7 Out of stock'
-                      : '${p.sizeLength.toStringAsFixed(0)}in \u00d7 ${p.sizeWidth.toStringAsFixed(0)}in \u00b7 ${p.thickness.toStringAsFixed(0)}in \u00b7 ${p.currentStock.toInt()} in stock',
+                      : '${p.sizeLength.toStringAsFixed(0)}in \u00d7 ${p.sizeWidth.toStringAsFixed(0)}in \u00b7 ${p.thickness.toStringAsFixed(0)}in \u00b7 ${p.stockLabel} in stock',
                   style: TextStyle(
                     fontSize: 10,
-                    fontWeight: outOfStock ? FontWeight.w700 : FontWeight.normal,
+                    fontWeight:
+                        outOfStock ? FontWeight.w700 : FontWeight.normal,
                     color: outOfStock ? ac.expenseFg : cs.onSurfaceVariant,
                   ),
                 ),
@@ -784,8 +791,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                   // Greys the price on an unavailable row so the whole row reads as
                   // disabled rather than just the trailing "+".
                   color: outOfStock ? ac.inkFaint : ac.saleFg,
-                  decoration:
-                      outOfStock ? TextDecoration.lineThrough : TextDecoration.none,
+                  decoration: outOfStock ? TextDecoration.lineThrough : TextDecoration.none,
                   decorationColor: ac.inkFaint,
                   fontFeatures: const [FontFeature.tabularFigures()])),
           const SizedBox(width: 8),
@@ -816,8 +822,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                       borderRadius: BorderRadius.circular(AppRadii.sm),
                     ),
                     child: Icon(Icons.add_rounded,
-                        size: 16,
-                        color: outOfStock ? ac.inkFaint : ac.saleFg),
+                        size: 16, color: outOfStock ? ac.inkFaint : ac.saleFg),
                   ),
                 ),
               ),
@@ -985,7 +990,8 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
       if (!mounted) return;
       showAppToast(
         context,
-        sanitizeErrorMessage(e, fallback: 'Could not save the sale. Please try again.'),
+        sanitizeErrorMessage(e,
+            fallback: 'Could not save the sale. Please try again.'),
       );
     } finally {
       _saving = false;
@@ -1185,9 +1191,9 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                     // a "Clear" escape hatch: previously the only way to empty a
                     // cart was to tap the ? on every line, one mistake at a
                     // time.
-                    title: 'Cart \u00b7 ${salesState.totalItems} ${salesState.totalItems == 1 ? 'item' : 'items'}',
-                    actionLabel:
-                        salesState.cart.isEmpty ? null : 'Clear all',
+                    title:
+                        'Cart \u00b7 ${salesState.totalItems} ${salesState.totalItems == 1 ? 'item' : 'items'}',
+                    actionLabel: salesState.cart.isEmpty ? null : 'Clear all',
                     onAction: salesState.cart.isEmpty
                         ? null
                         : () => ref.read(salesProvider.notifier).clearCart()),

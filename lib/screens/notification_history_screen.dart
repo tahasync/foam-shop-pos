@@ -36,7 +36,8 @@ class NotificationHistoryScreen extends ConsumerWidget {
         if (p.customerId.isNotEmpty) p.customerId,
     };
     for (final cid in overdueIds) {
-      final cSales = sales.where((s) => s.customerId == cid && !s.isVoided && !s.isQuote);
+      final cSales =
+          sales.where((s) => s.customerId == cid && !s.isVoided && !s.isQuote);
       final cPayments = payments.where((p) => p.customerId == cid);
       final total = cSales.fold(0.0, (s, x) => s + x.amount);
       final paid = cSales.fold(0.0, (s, x) => s + x.paid);
@@ -44,8 +45,13 @@ class NotificationHistoryScreen extends ConsumerWidget {
       final bal = total - paid - recv;
       final lastActivity = cSales.fold<DateTime?>(null,
           (prev, s) => prev == null || s.date.isAfter(prev) ? s.date : prev);
-      if (bal > 0 && lastActivity != null && lastActivity.isBefore(thirtyDaysAgo)) {
-        final name = customerMap[cid]?.name ?? (cSales.isNotEmpty ? cSales.first.customerName ?? 'Customer' : 'Customer');
+      if (bal > 0 &&
+          lastActivity != null &&
+          lastActivity.isBefore(thirtyDaysAgo)) {
+        final name = customerMap[cid]?.name ??
+            (cSales.isNotEmpty
+                ? cSales.first.customerName ?? 'Customer'
+                : 'Customer');
         final days = DateTime.now().difference(lastActivity).inDays;
         overdue.add((name: name, balance: bal, days: days));
       }
@@ -73,7 +79,7 @@ class NotificationHistoryScreen extends ConsumerWidget {
                       tint: ac.purchaseTint,
                       fg: ac.purchaseFg,
                       title: 'Low stock: ${p.name}',
-                      subtitle: '${p.currentStock.toInt()} left',
+                      subtitle: '${p.currentStock.toInt()} ${p.unitLabel} left',
                     ),
                   for (final o in overdue)
                     _NotifRow(
@@ -81,7 +87,8 @@ class NotificationHistoryScreen extends ConsumerWidget {
                       tint: ac.expenseTint,
                       fg: ac.expenseFg,
                       title: 'Overdue baqaya: ${o.name}',
-                      subtitle: '$csym ${o.balance.toInt()} \u00b7 ${o.days} days overdue',
+                      subtitle:
+                          '$csym ${o.balance.toInt()} \u00b7 ${o.days} days overdue',
                     ),
                 ],
               ),
@@ -115,16 +122,21 @@ class _NotifRow extends StatelessWidget {
           Container(
             width: 38,
             height: 38,
-            decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+                color: tint, borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, size: 17, color: fg),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ac.ink)),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: ac.ink)),
               const SizedBox(height: 1),
               Text(subtitle,
                   maxLines: 1,

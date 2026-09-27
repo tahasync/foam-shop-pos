@@ -23,7 +23,11 @@ class InventoryScreen extends ConsumerStatefulWidget {
   final bool initialLowStockFilter;
   final String? highlightProductId;
   final double fabBottomClearance;
-  const InventoryScreen({super.key, this.initialLowStockFilter = false, this.highlightProductId, this.fabBottomClearance = 96});
+  const InventoryScreen(
+      {super.key,
+      this.initialLowStockFilter = false,
+      this.highlightProductId,
+      this.fabBottomClearance = 96});
   @override
   ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
 }
@@ -49,14 +53,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final products = ref.read(productsStreamProvider).asData?.value ?? [];
-        final product = products.where((p) => p.id == widget.highlightProductId).firstOrNull;
+        final product = products
+            .where((p) => p.id == widget.highlightProductId)
+            .firstOrNull;
         if (product != null) _showOptions(product);
       });
     }
   }
 
   @override
-  void dispose() { _searchCtrl.dispose(); _searchDebounce.dispose(); super.dispose(); }
+  void dispose() {
+    _searchCtrl.dispose();
+    _searchDebounce.dispose();
+    super.dispose();
+  }
 
   String _dims(Product p) =>
       '${p.sizeLength.toStringAsFixed(0)}\u00d7${p.sizeWidth.toStringAsFixed(0)}\u00b7${p.thickness.toStringAsFixed(0)} in';
@@ -80,124 +90,149 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       ),
       body: GlassBackground(
         child: productsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load inventory'),
-                    style: TextStyle(color: cs.onSurface)),
-              ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                  sanitizeErrorMessage(e, fallback: 'Could not load inventory'),
+                  style: TextStyle(color: cs.onSurface)),
             ),
-        data: (products) {
-          final query = _searchCtrl.text.toLowerCase();
-          var filtered = products.where((p) {
-            if (_typeFilter == 'Low Stock' && !p.isLowStock) return false;
-            if (query.isNotEmpty && !p.name.toLowerCase().contains(query)) return false;
-            return true;
-          }).toList();
+          ),
+          data: (products) {
+            final query = _searchCtrl.text.toLowerCase();
+            var filtered = products.where((p) {
+              if (_typeFilter == 'Low Stock' && !p.isLowStock) return false;
+              if (query.isNotEmpty && !p.name.toLowerCase().contains(query))
+                return false;
+              return true;
+            }).toList();
 
-          final lowStockCount = products.where((p) => p.isLowStock).length;
-          final summary = ref.watch(accountingSummaryProvider).asData?.value;
-          final double totalValue;
-          if (summary != null) {
-            totalValue = summary.inventoryValue;
-          } else {
-            totalValue = products.fold(0.0, (s, p) => s + (p.currentStock * p.costPrice));
-          }
+            final lowStockCount = products.where((p) => p.isLowStock).length;
+            final summary = ref.watch(accountingSummaryProvider).asData?.value;
+            final double totalValue;
+            if (summary != null) {
+              totalValue = summary.inventoryValue;
+            } else {
+              totalValue = products.fold(
+                  0.0, (s, p) => s + (p.currentStock * p.costPrice));
+            }
 
-          return SafeArea(
-            top: true,
-            bottom: false,
-            child: Column(children: [
-              AppBarRow(
-                showBrand: false,
-                title: 'Inventory',
-                trailing: [
-                  AppIconButton(
-                    icon: Icons.filter_list_rounded,
+            return SafeArea(
+              top: true,
+              bottom: false,
+              child: Column(children: [
+                AppBarRow(
+                  showBrand: false,
+                  title: 'Inventory',
+                  trailing: [
+                    AppIconButton(
+                      icon: Icons.filter_list_rounded,
                       semanticLabel: 'Filter inventory',
-                    onTap: () => setState(() =>
-                        _typeFilter = _typeFilter == 'Low Stock' ? 'All' : 'Low Stock'),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: Column(children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-                    child: GlassContainer(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      radius: 16,
-                      level: AppGlassLevel.raised,
-                      gloss: false,
-                      child: Row(children: [
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(color: ac.profitTint, borderRadius: BorderRadius.circular(9)),
-                          child: Icon(Icons.edit_rounded, size: 15, color: ac.profitFg),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text('Total Inventory Value',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ac.inkSoft)),
-                        ),
-                        Text('$_csym ${NumberFormat('#,##0').format(totalValue.toInt())}',
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                fontFeatures: const [FontFeature.tabularFigures()],
-                                color: ac.profitFg)),
-                      ]),
+                      onTap: () => setState(() => _typeFilter =
+                          _typeFilter == 'Low Stock' ? 'All' : 'Low Stock'),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: AppSearchField(
-                      controller: _searchCtrl,
-                      hintText: 'Search products\u2026',
-                      onChanged: (_) => _searchDebounce.call(() => setState(() {})),
+                  ],
+                ),
+                Expanded(
+                  child: Column(children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                      child: GlassContainer(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        radius: 16,
+                        level: AppGlassLevel.raised,
+                        gloss: false,
+                        child: Row(children: [
+                          Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                                color: ac.profitTint,
+                                borderRadius: BorderRadius.circular(9)),
+                            child: Icon(Icons.edit_rounded,
+                                size: 15, color: ac.profitFg),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('Total Inventory Value',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: ac.inkSoft)),
+                          ),
+                          Text(
+                              '$_csym ${NumberFormat('#,##0').format(totalValue.toInt())}',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures()
+                                  ],
+                                  color: ac.profitFg)),
+                        ]),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: ChipRow(
-                      values: ['All', 'Low stock ($lowStockCount)'],
-                      selected: _typeFilter == 'All' ? 'All' : 'Low stock ($lowStockCount)',
-                      onSelected: (v) => setState(() => _typeFilter = v == 'All' ? 'All' : 'Low Stock'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: AppSearchField(
+                        controller: _searchCtrl,
+                        hintText: 'Search products\u2026',
+                        onChanged: (_) =>
+                            _searchDebounce.call(() => setState(() {})),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      child: filtered.isEmpty
-                          ? NoResults(
-                              key: ValueKey(_typeFilter),
-                              title: 'No matching products',
-                              subtitle: 'Try a different search term',
-                            )
-                          : ListView.builder(
-                              key: ValueKey(_typeFilter),
-                              padding: EdgeInsets.fromLTRB(18, 0, 18, widget.fabBottomClearance),
-                              itemCount: filtered.length,
-                              itemBuilder: (_, i) => _ProdCard(
-                                product: filtered[i],
-                                onTap: () => _showOptions(filtered[i]),
-                                csym: _csym,
-                              ).animate().fadeIn(duration: 250.ms, delay: (i * 50).ms).slideY(begin: 0.15, duration: 250.ms, delay: (i * 50).ms),
-                            ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: ChipRow(
+                        values: ['All', 'Low stock ($lowStockCount)'],
+                        selected: _typeFilter == 'All'
+                            ? 'All'
+                            : 'Low stock ($lowStockCount)',
+                        onSelected: (v) => setState(() =>
+                            _typeFilter = v == 'All' ? 'All' : 'Low Stock'),
+                      ),
                     ),
-                  ),
-                ]),
-              ),
-            ]),
-          );
-        },
-      ),
+                    const SizedBox(height: 6),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        child: filtered.isEmpty
+                            ? NoResults(
+                                key: ValueKey(_typeFilter),
+                                title: 'No matching products',
+                                subtitle: 'Try a different search term',
+                              )
+                            : ListView.builder(
+                                key: ValueKey(_typeFilter),
+                                padding: EdgeInsets.fromLTRB(
+                                    18, 0, 18, widget.fabBottomClearance),
+                                itemCount: filtered.length,
+                                itemBuilder: (_, i) => _ProdCard(
+                                  product: filtered[i],
+                                  onTap: () => _showOptions(filtered[i]),
+                                  csym: _csym,
+                                )
+                                    .animate()
+                                    .fadeIn(
+                                        duration: 250.ms, delay: (i * 50).ms)
+                                    .slideY(
+                                        begin: 0.15,
+                                        duration: 250.ms,
+                                        delay: (i * 50).ms),
+                              ),
+                      ),
+                    ),
+                  ]),
+                ),
+              ]),
+            );
+          },
+        ),
       ),
     );
   }
@@ -210,21 +245,50 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           Text(product.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+              style:
+                  const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           Text('${_dims(product)} \u00b7 ${product.stockLabel}',
-              style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
           const SizedBox(height: 6),
-          SheetOption(icon: Icons.edit_rounded, title: 'Edit product',
-              onTap: () { Navigator.pop(ctx); _edit(product); }),
-          SheetOption(icon: Icons.history_rounded, title: 'Cost price history',
-              onTap: () { Navigator.pop(ctx); _showCostHistory(product); }),
-          SheetOption(icon: Icons.currency_exchange_rounded, title: 'Edit cost price',
-              onTap: () { Navigator.pop(ctx); _editCostPrice(product); }),
-          SheetOption(icon: Icons.add_shopping_cart_rounded, title: 'Restock',
-              onTap: () { Navigator.pop(ctx); _restock(product); }),
-          SheetOption(icon: Icons.archive_rounded, title: 'Archive product', danger: true,
-              onTap: () { Navigator.pop(ctx); _archive(product); }),
+          SheetOption(
+              icon: Icons.edit_rounded,
+              title: 'Edit product',
+              onTap: () {
+                Navigator.pop(ctx);
+                _edit(product);
+              }),
+          SheetOption(
+              icon: Icons.history_rounded,
+              title: 'Cost price history',
+              onTap: () {
+                Navigator.pop(ctx);
+                _showCostHistory(product);
+              }),
+          SheetOption(
+              icon: Icons.currency_exchange_rounded,
+              title: 'Edit cost price',
+              onTap: () {
+                Navigator.pop(ctx);
+                _editCostPrice(product);
+              }),
+          SheetOption(
+              icon: Icons.add_shopping_cart_rounded,
+              title: 'Restock',
+              onTap: () {
+                Navigator.pop(ctx);
+                _restock(product);
+              }),
+          SheetOption(
+              icon: Icons.archive_rounded,
+              title: 'Archive product',
+              danger: true,
+              onTap: () {
+                Navigator.pop(ctx);
+                _archive(product);
+              }),
         ]),
       ),
     );
@@ -243,28 +307,115 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   void _showCostHistory(Product product) {
-    Navigator.push(context, slideUpRoute(_CostHistoryScreen(product: product, csym: _csym)));
+    Navigator.push(context,
+        slideUpRoute(_CostHistoryScreen(product: product, csym: _csym)));
   }
 
   void _addProduct() {
     _AddProductDialog.show(context, _csym, (Product product) {
       final svc = ref.read(firestoreServiceProvider);
-      svc.addProduct(product.copyWith(id: svc.generateId())).catchError((e, st) {
-              logSecureError(e, st, tag: 'product_add');
-            });
+      svc
+          .addProduct(product.copyWith(id: svc.generateId()))
+          .catchError((e, st) {
+        logSecureError(e, st, tag: 'product_add');
+      });
     });
   }
 
   void _edit(Product product) {
     _EditProductDialog.show(context, product, _csym, (Product updated) {
-      ref.read(firestoreServiceProvider).updateProduct(updated).catchError((e, st) {
-            logSecureError(e, st, tag: 'product_update');
-          });
+      ref
+          .read(firestoreServiceProvider)
+          .updateProduct(updated)
+          .catchError((e, st) {
+        logSecureError(e, st, tag: 'product_update');
+      });
     });
   }
 
   void _restock(Product product) {
     RestockDialog.show(context, product);
+  }
+}
+
+/// Piece / square-foot selector for a product's stock unit.
+///
+/// The unit was previously a hardcoded `'per_sqft'` written at creation time
+/// with no control anywhere in the UI, so `unitLabel` — which is correct —
+/// had nothing correct to read. Every product therefore announced itself as
+/// "5 sq.ft in stock" while the shop counted 5 cut pieces. The number was
+/// right, the unit was a lie, and a stock count in the wrong unit is a
+/// misstatement of inventory.
+///
+/// Defaults to pieces because that is how a cut-to-size foam counter is used.
+class _UnitTypeToggle extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  const _UnitTypeToggle({required this.value, required this.onChanged});
+
+  static const _options = <(String, String)>[
+    ('per_piece', 'Pieces'),
+    ('per_sqft', 'Per sq.ft'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 6),
+          child: Text('STOCK COUNTED IN',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: ac.inkSoft,
+                  letterSpacing: 0.03)),
+        ),
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: ac.surface2,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: ac.outline),
+          ),
+          child: Row(
+            children: [
+              for (final (key, label) in _options)
+                Expanded(
+                  child: GestureDetector(
+                    // Full-height target: the visible pill is 32dp but the row
+                    // carries a 3dp pad either side, so the tappable area is
+                    // larger than it looks without breaking the field rhythm.
+                    onTap: () => onChanged(key),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 140),
+                      height: AppHit.min - 12,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: value == key ? ac.surface : Colors.transparent,
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(
+                            color:
+                                value == key ? ac.outline : Colors.transparent),
+                      ),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: value == key ? ac.ink : ac.inkSoft,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ]),
+    );
   }
 }
 
@@ -287,7 +438,11 @@ class _SheetField extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.only(left: 2, bottom: 6),
         child: Text(label.toUpperCase(),
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ac.inkSoft, letterSpacing: 0.03)),
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: ac.inkSoft,
+                letterSpacing: 0.03)),
       ),
       TextField(
         controller: controller,
@@ -298,7 +453,8 @@ class _SheetField extends StatelessWidget {
           isDense: true,
           filled: true,
           fillColor: ac.surface2,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: ac.outline),
@@ -322,7 +478,8 @@ class _AddProductDialog extends StatefulWidget {
   final void Function(Product) onSave;
   const _AddProductDialog({required this.csym, required this.onSave});
 
-  static void show(BuildContext context, String csym, void Function(Product) onSave) {
+  static void show(
+      BuildContext context, String csym, void Function(Product) onSave) {
     showAppSheet(
       context: context,
       builder: (_) => _AddProductDialog(
@@ -348,6 +505,15 @@ class _AddProductDialogState extends State<_AddProductDialog> {
   final _sc = TextEditingController();
   final _thc = TextEditingController();
 
+  /// Whether this product is counted in pieces or in square feet.
+  ///
+  /// This used to be a hardcoded `'per_sqft'` with no way to change it, so every
+  /// product in the shop rendered as "5 sq.ft in stock" even when the shop
+  /// counted it as 5 cut pieces. `unitLabel` was correct; the data it read was
+  /// not. Defaults to pieces, which is what a cut-to-size foam counter
+  /// actually tallies.
+  String _unitType = 'per_piece';
+
   @override
   void dispose() {
     _nc.dispose();
@@ -365,7 +531,8 @@ class _AddProductDialogState extends State<_AddProductDialog> {
     final buyPrice = double.tryParse(_cc.text) ?? 0;
     if (buyPrice <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Buy Price is required and must be greater than 0')),
+        const SnackBar(
+            content: Text('Buy Price is required and must be greater than 0')),
       );
       return;
     }
@@ -377,7 +544,7 @@ class _AddProductDialogState extends State<_AddProductDialog> {
       sizeWidth: double.tryParse(_wc.text) ?? 0,
       thickness: double.tryParse(_tc.text) ?? 0,
       density: 0,
-      unitType: 'per_sqft',
+      unitType: _unitType,
       unitPrice: 0,
       costPrice: buyPrice,
       currentStock: double.tryParse(_sc.text) ?? 0,
@@ -395,16 +562,28 @@ class _AddProductDialogState extends State<_AddProductDialog> {
     return AppSheetContent(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Add Product',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface)),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.onSurface)),
         const SizedBox(height: 12),
-        _SheetField(label: 'Name', controller: _nc, keyboardType: TextInputType.text),
+        _SheetField(
+            label: 'Name', controller: _nc, keyboardType: TextInputType.text),
         _SheetField(label: 'Size Length (in)', controller: _lc),
         _SheetField(label: 'Size Width (in)', controller: _wc),
+        _UnitTypeToggle(
+          value: _unitType,
+          onChanged: (v) => setState(() => _unitType = v),
+        ),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: _SheetField(label: 'Thickness (in)', controller: _tc)),
+          Expanded(
+              child: _SheetField(label: 'Thickness (in)', controller: _tc)),
           const SizedBox(width: 10),
-          Expanded(child: _SheetField(label: 'Buy Price (${widget.csym})', controller: _cc,
-              onChanged: (_) => setState(() {}))),
+          Expanded(
+              child: _SheetField(
+                  label: 'Buy Price (${widget.csym})',
+                  controller: _cc,
+                  onChanged: (_) => setState(() {}))),
         ]),
         const SizedBox(height: 4),
         Container(
@@ -416,28 +595,41 @@ class _AddProductDialogState extends State<_AddProductDialog> {
           ),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
-              width: 28, height: 28,
-              decoration: BoxDecoration(color: ac.surface, borderRadius: BorderRadius.circular(9)),
-              child: Icon(Icons.info_outline_rounded, size: 14, color: ac.purchaseFg),
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                  color: ac.surface, borderRadius: BorderRadius.circular(9)),
+              child: Icon(Icons.info_outline_rounded,
+                  size: 14, color: ac.purchaseFg),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('No sale price here',
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.ink)),
-                const SizedBox(height: 1),
-                Text("You'll set the sale price per transaction in the Sales screen",
-                    style: TextStyle(fontSize: 10.5, color: ac.inkSoft)),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('No sale price here',
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: ac.ink)),
+                    const SizedBox(height: 1),
+                    Text(
+                        "You'll set the sale price per transaction in the Sales screen",
+                        style: TextStyle(fontSize: 10.5, color: ac.inkSoft)),
+                  ]),
             ),
           ]),
         ),
         const SizedBox(height: 12),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: _SheetField(label: 'Current Stock', controller: _sc,
-              onChanged: (_) => setState(() {}))),
+          Expanded(
+              child: _SheetField(
+                  label: 'Current Stock',
+                  controller: _sc,
+                  onChanged: (_) => setState(() {}))),
           const SizedBox(width: 10),
-          Expanded(child: _SheetField(label: 'Low Stock Alert', controller: _thc)),
+          Expanded(
+              child: _SheetField(label: 'Low Stock Alert', controller: _thc)),
         ]),
         const SizedBox(height: 4),
         Container(
@@ -448,11 +640,18 @@ class _AddProductDialogState extends State<_AddProductDialog> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: ac.outline),
           ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          child:
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('Total Cost for this lot',
-                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.inkSoft)),
+                style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: ac.inkSoft)),
             Text('${widget.csym} ${totalCost.toStringAsFixed(0)}',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Theme.of(context).colorScheme.onSurface,
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontFeatures: const [FontFeature.tabularFigures()])),
           ]),
         ),
@@ -483,9 +682,11 @@ class _EditProductDialog extends StatefulWidget {
   final Product product;
   final String csym;
   final void Function(Product) onSave;
-  const _EditProductDialog({required this.product, required this.csym, required this.onSave});
+  const _EditProductDialog(
+      {required this.product, required this.csym, required this.onSave});
 
-  static void show(BuildContext context, Product product, String csym, void Function(Product) onSave) {
+  static void show(BuildContext context, Product product, String csym,
+      void Function(Product) onSave) {
     showAppSheet(
       context: context,
       builder: (_) => _EditProductDialog(
@@ -512,6 +713,11 @@ class _EditProductDialogState extends State<_EditProductDialog> {
   late final TextEditingController _sc;
   late final TextEditingController _thc;
 
+  /// Initialised from the stored value so editing a product does not silently
+  /// reset its unit. See [_AddProductDialogState._unitType] for why this is
+  /// user-selectable at all.
+  late String _unitType;
+
   @override
   void initState() {
     super.initState();
@@ -523,6 +729,7 @@ class _EditProductDialogState extends State<_EditProductDialog> {
     _cc = TextEditingController(text: p.costPrice.toString());
     _sc = TextEditingController(text: p.currentStock.toString());
     _thc = TextEditingController(text: p.lowStockThreshold.toString());
+    _unitType = p.unitType;
   }
 
   @override
@@ -544,9 +751,11 @@ class _EditProductDialogState extends State<_EditProductDialog> {
       sizeLength: double.tryParse(_lc.text) ?? widget.product.sizeLength,
       sizeWidth: double.tryParse(_wc.text) ?? widget.product.sizeWidth,
       thickness: double.tryParse(_tc.text) ?? widget.product.thickness,
+      unitType: _unitType,
       costPrice: double.tryParse(_cc.text) ?? widget.product.costPrice,
       currentStock: double.tryParse(_sc.text) ?? widget.product.currentStock,
-      lowStockThreshold: double.tryParse(_thc.text) ?? widget.product.lowStockThreshold,
+      lowStockThreshold:
+          double.tryParse(_thc.text) ?? widget.product.lowStockThreshold,
     ));
   }
 
@@ -560,16 +769,28 @@ class _EditProductDialogState extends State<_EditProductDialog> {
     return AppSheetContent(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Edit Product',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface)),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.onSurface)),
         const SizedBox(height: 12),
-        _SheetField(label: 'Name', controller: _nc, keyboardType: TextInputType.text),
+        _SheetField(
+            label: 'Name', controller: _nc, keyboardType: TextInputType.text),
         _SheetField(label: 'Size Length (in)', controller: _lc),
         _SheetField(label: 'Size Width (in)', controller: _wc),
+        _UnitTypeToggle(
+          value: _unitType,
+          onChanged: (v) => setState(() => _unitType = v),
+        ),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: _SheetField(label: 'Thickness (in)', controller: _tc)),
+          Expanded(
+              child: _SheetField(label: 'Thickness (in)', controller: _tc)),
           const SizedBox(width: 10),
-          Expanded(child: _SheetField(label: 'Buy Price (${widget.csym})', controller: _cc,
-              onChanged: (_) => setState(() {}))),
+          Expanded(
+              child: _SheetField(
+                  label: 'Buy Price (${widget.csym})',
+                  controller: _cc,
+                  onChanged: (_) => setState(() {}))),
         ]),
         const SizedBox(height: 4),
         Container(
@@ -581,28 +802,41 @@ class _EditProductDialogState extends State<_EditProductDialog> {
           ),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
-              width: 28, height: 28,
-              decoration: BoxDecoration(color: ac.surface, borderRadius: BorderRadius.circular(9)),
-              child: Icon(Icons.info_outline_rounded, size: 14, color: ac.purchaseFg),
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                  color: ac.surface, borderRadius: BorderRadius.circular(9)),
+              child: Icon(Icons.info_outline_rounded,
+                  size: 14, color: ac.purchaseFg),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('No sale price here',
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.ink)),
-                const SizedBox(height: 1),
-                Text("You'll set the sale price per transaction in the Sales screen",
-                    style: TextStyle(fontSize: 10.5, color: ac.inkSoft)),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('No sale price here',
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: ac.ink)),
+                    const SizedBox(height: 1),
+                    Text(
+                        "You'll set the sale price per transaction in the Sales screen",
+                        style: TextStyle(fontSize: 10.5, color: ac.inkSoft)),
+                  ]),
             ),
           ]),
         ),
         const SizedBox(height: 12),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: _SheetField(label: 'Current Stock', controller: _sc,
-              onChanged: (_) => setState(() {}))),
+          Expanded(
+              child: _SheetField(
+                  label: 'Current Stock',
+                  controller: _sc,
+                  onChanged: (_) => setState(() {}))),
           const SizedBox(width: 10),
-          Expanded(child: _SheetField(label: 'Low Stock Alert', controller: _thc)),
+          Expanded(
+              child: _SheetField(label: 'Low Stock Alert', controller: _thc)),
         ]),
         const SizedBox(height: 4),
         Container(
@@ -613,11 +847,18 @@ class _EditProductDialogState extends State<_EditProductDialog> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: ac.outline),
           ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          child:
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('Total Cost for this lot',
-                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.inkSoft)),
+                style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: ac.inkSoft)),
             Text('${widget.csym} ${totalCost.toStringAsFixed(0)}',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Theme.of(context).colorScheme.onSurface,
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontFeatures: const [FontFeature.tabularFigures()])),
           ]),
         ),
@@ -648,9 +889,11 @@ class _EditCostPriceSheet extends StatefulWidget {
   final Product product;
   final String csym;
   final VoidCallback onSaved;
-  const _EditCostPriceSheet({required this.product, required this.csym, required this.onSaved});
+  const _EditCostPriceSheet(
+      {required this.product, required this.csym, required this.onSaved});
 
-  static void show(BuildContext context, Product product, String csym, VoidCallback onSaved) {
+  static void show(BuildContext context, Product product, String csym,
+      VoidCallback onSaved) {
     showAppSheet(
       context: context,
       builder: (_) => _EditCostPriceSheet(
@@ -673,7 +916,8 @@ class _EditCostPriceSheetState extends State<_EditCostPriceSheet> {
   @override
   void initState() {
     super.initState();
-    _priceCtrl = TextEditingController(text: widget.product.costPrice.toStringAsFixed(0));
+    _priceCtrl = TextEditingController(
+        text: widget.product.costPrice.toStringAsFixed(0));
   }
 
   @override
@@ -692,7 +936,8 @@ class _EditCostPriceSheetState extends State<_EditCostPriceSheet> {
     setState(() => _saving = true);
     try {
       final svc = FirestoreService();
-      await svc.updateCostPrice(widget.product.id, _newPrice, note: _noteCtrl.text.trim());
+      await svc.updateCostPrice(widget.product.id, _newPrice,
+          note: _noteCtrl.text.trim());
       widget.onSaved();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -705,7 +950,9 @@ class _EditCostPriceSheetState extends State<_EditCostPriceSheet> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -723,9 +970,13 @@ class _EditCostPriceSheetState extends State<_EditCostPriceSheet> {
     return AppSheetContent(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Edit Cost Price',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: cs.onSurface)),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: cs.onSurface)),
         const SizedBox(height: 2),
-        Text('${widget.product.name} \u00b7 '
+        Text(
+            '${widget.product.name} \u00b7 '
             '${widget.product.sizeLength.toStringAsFixed(0)}in \u00d7 ${widget.product.sizeWidth.toStringAsFixed(0)}in \u00b7 ${widget.product.thickness.toStringAsFixed(0)}in',
             style: TextStyle(fontSize: 11, color: ac.inkFaint)),
         const SizedBox(height: 14),
@@ -740,7 +991,11 @@ class _EditCostPriceSheetState extends State<_EditCostPriceSheet> {
               ),
               child: Column(children: [
                 Text('CURRENT',
-                    style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: ac.inkFaint, letterSpacing: 0.03)),
+                    style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: ac.inkFaint,
+                        letterSpacing: 0.03)),
                 const SizedBox(height: 4),
                 Text('${widget.csym} ${fmt.format(oldVal)}',
                     style: AppTheme.display(context, size: 17)),
@@ -749,7 +1004,8 @@ class _EditCostPriceSheetState extends State<_EditCostPriceSheet> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Icon(Icons.arrow_forward_rounded, size: 18, color: ac.inkFaint),
+            child:
+                Icon(Icons.arrow_forward_rounded, size: 18, color: ac.inkFaint),
           ),
           Expanded(
             child: Container(
@@ -760,18 +1016,28 @@ class _EditCostPriceSheetState extends State<_EditCostPriceSheet> {
               ),
               child: Column(children: [
                 Text('NEW',
-                    style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: ac.saleFg, letterSpacing: 0.03)),
+                    style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: ac.saleFg,
+                        letterSpacing: 0.03)),
                 const SizedBox(height: 4),
                 Text('${widget.csym} ${fmt.format(newVal)}',
-                    style: AppTheme.display(context, size: 17, color: ac.saleFg)),
+                    style:
+                        AppTheme.display(context, size: 17, color: ac.saleFg)),
               ]),
             ),
           ),
         ]),
         const SizedBox(height: 14),
-        _SheetField(label: 'New cost price (${widget.csym})', controller: _priceCtrl,
+        _SheetField(
+            label: 'New cost price (${widget.csym})',
+            controller: _priceCtrl,
             onChanged: (_) => setState(() {})),
-        _SheetField(label: 'Reason (optional)', controller: _noteCtrl, keyboardType: TextInputType.text),
+        _SheetField(
+            label: 'Reason (optional)',
+            controller: _noteCtrl,
+            keyboardType: TextInputType.text),
         Row(children: [
           Expanded(
             child: AppButton(
@@ -819,7 +1085,8 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
   void initState() {
     super.initState();
     _qtyCtrl = TextEditingController(text: '1');
-    _unitCostCtrl = TextEditingController(text: widget.product.costPrice.toStringAsFixed(0));
+    _unitCostCtrl = TextEditingController(
+        text: widget.product.costPrice.toStringAsFixed(0));
   }
 
   @override
@@ -835,15 +1102,20 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
       builder: (ctx) => Consumer(builder: (context, ref, _) {
         final suppliersAsync = ref.watch(suppliersStreamProvider);
         return AppSheetContent(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Select Supplier',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface)),
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 6),
             if (_supplierId.isNotEmpty)
               SheetOption(
                 icon: Icons.close_rounded,
                 title: 'Unknown / In-house',
-                onTap: () => Navigator.pop(ctx, Supplier(id: '', name: 'Unknown')),
+                onTap: () =>
+                    Navigator.pop(ctx, Supplier(id: '', name: 'Unknown')),
               ),
             suppliersAsync.when(
               loading: () => const Padding(
@@ -865,7 +1137,10 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
       }),
     );
     if (result != null) {
-      setState(() { _supplierId = result.id; _supplierName = result.name; });
+      setState(() {
+        _supplierId = result.id;
+        _supplierName = result.name;
+      });
     }
   }
 
@@ -885,7 +1160,9 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -901,16 +1178,24 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
     final product = widget.product;
     final qty = double.tryParse(_qtyCtrl.text) ?? 0;
     final unitCost = double.tryParse(_unitCostCtrl.text) ?? 0;
-    final newCost = AccountingService().calculateProductCostAfterRestock(product, qty, unitCost);
+    final newCost = AccountingService()
+        .calculateProductCostAfterRestock(product, qty, unitCost);
     final total = qty * unitCost;
     final valid = qty > 0 && unitCost > 0;
 
     return AppSheetContent(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Restock \u2014 ${product.name}',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: cs.onSurface)),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: cs.onSurface)),
         const SizedBox(height: 2),
-        Text('Current stock: ${product.currentStock.toInt()} ${product.unitLabel}',
+        Text(
+            // [Product.stockLabel] rather than a raw .toInt(), which truncated
+            // fractional square feet (2.5 sq.ft displayed as "2") and disagreed
+            // with the pill the user had just tapped.
+            'Current stock: ${product.stockLabel}',
             style: TextStyle(fontSize: 11, color: ac.inkFaint)),
         const SizedBox(height: 14),
         GestureDetector(
@@ -927,8 +1212,14 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
               Icon(Icons.business_rounded, size: 16, color: ac.inkSoft),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(_supplierId.isEmpty ? 'Supplier (optional) \u2014 choose' : _supplierName,
-                    style: TextStyle(fontSize: 13, color: _supplierId.isEmpty ? ac.inkFaint : cs.onSurface)),
+                child: Text(
+                    _supplierId.isEmpty
+                        ? 'Supplier (optional) \u2014 choose'
+                        : _supplierName,
+                    style: TextStyle(
+                        fontSize: 13,
+                        color:
+                            _supplierId.isEmpty ? ac.inkFaint : cs.onSurface)),
               ),
               Icon(Icons.arrow_drop_down_rounded, size: 18, color: ac.inkFaint),
             ]),
@@ -936,11 +1227,17 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
         ),
         const SizedBox(height: 12),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: _SheetField(label: 'Quantity', controller: _qtyCtrl,
-              onChanged: (_) => setState(() {}))),
+          Expanded(
+              child: _SheetField(
+                  label: 'Quantity',
+                  controller: _qtyCtrl,
+                  onChanged: (_) => setState(() {}))),
           const SizedBox(width: 10),
-          Expanded(child: _SheetField(label: 'Unit cost ($csym)', controller: _unitCostCtrl,
-              onChanged: (_) => setState(() {}))),
+          Expanded(
+              child: _SheetField(
+                  label: 'Unit cost ($csym)',
+                  controller: _unitCostCtrl,
+                  onChanged: (_) => setState(() {}))),
         ]),
         const SizedBox(height: 8),
         Container(
@@ -954,24 +1251,32 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
             Container(
               width: 28,
               height: 28,
-              decoration: BoxDecoration(color: ac.surface, borderRadius: BorderRadius.circular(9)),
-              child: Icon(Icons.bar_chart_rounded, size: 14, color: ac.purchaseFg),
+              decoration: BoxDecoration(
+                  color: ac.surface, borderRadius: BorderRadius.circular(9)),
+              child:
+                  Icon(Icons.bar_chart_rounded, size: 14, color: ac.purchaseFg),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('New weighted-average cost',
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.ink)),
-                const SizedBox(height: 2),
-                Text(
-                  qty <= 0
-                      ? 'Enter a quantity to preview the new average cost'
-                      : '(${product.currentStock.toInt()} \u00d7 ${fmt.format(product.costPrice.toInt())} '
-                          '+ ${qty.toInt()} \u00d7 ${fmt.format(unitCost.toInt())}) \u00f7 '
-                          '${(product.currentStock + qty).toInt()} = ${fmt.format(newCost.toInt())}',
-                  style: TextStyle(fontSize: 10.5, color: ac.inkSoft, height: 1.4),
-                ),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('New weighted-average cost',
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: ac.ink)),
+                    const SizedBox(height: 2),
+                    Text(
+                      qty <= 0
+                          ? 'Enter a quantity to preview the new average cost'
+                          : '(${product.currentStock.toInt()} \u00d7 ${fmt.format(product.costPrice.toInt())} '
+                              '+ ${qty.toInt()} \u00d7 ${fmt.format(unitCost.toInt())}) \u00f7 '
+                              '${(product.currentStock + qty).toInt()} = ${fmt.format(newCost.toInt())}',
+                      style: TextStyle(
+                          fontSize: 10.5, color: ac.inkSoft, height: 1.4),
+                    ),
+                  ]),
             ),
           ]),
         ),
@@ -984,11 +1289,18 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: ac.outline),
           ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          child:
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('Calculated total',
-                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: ac.inkSoft)),
+                style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: ac.inkSoft)),
             Text('$csym ${fmt.format(total.toInt())}',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: cs.onSurface,
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: cs.onSurface,
                     fontFeatures: const [FontFeature.tabularFigures()])),
           ]),
         ),
@@ -1007,7 +1319,8 @@ class _ProdCard extends StatelessWidget {
   final Product product;
   final VoidCallback onTap;
   final String csym;
-  const _ProdCard({required this.product, required this.onTap, this.csym = 'Rs'});
+  const _ProdCard(
+      {required this.product, required this.onTap, this.csym = 'Rs'});
 
   @override
   Widget build(BuildContext context) {
@@ -1016,7 +1329,8 @@ class _ProdCard extends StatelessWidget {
     final fmt = NumberFormat('#,##0');
     final stockInt = product.currentStock.toInt();
     final low = product.isLowStock;
-    final dims = '${product.sizeLength.toStringAsFixed(0)}\u00d7${product.sizeWidth.toStringAsFixed(0)}\u00b7${product.thickness.toStringAsFixed(0)} in';
+    final dims =
+        '${product.sizeLength.toStringAsFixed(0)}\u00d7${product.sizeWidth.toStringAsFixed(0)}\u00b7${product.thickness.toStringAsFixed(0)} in';
 
     return ScaleButton(
       onTap: onTap,
@@ -1031,16 +1345,23 @@ class _ProdCard extends StatelessWidget {
           Container(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(color: ac.inventoryTint, borderRadius: BorderRadius.circular(13)),
-            child: Icon(Icons.inventory_2_rounded, size: 18, color: ac.inventoryFg),
+            decoration: BoxDecoration(
+                color: ac.inventoryTint,
+                borderRadius: BorderRadius.circular(13)),
+            child: Icon(Icons.inventory_2_rounded,
+                size: 18, color: ac.inventoryFg),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(product.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: cs.onSurface)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                      color: cs.onSurface)),
               const SizedBox(height: 2),
               Text(dims, style: TextStyle(fontSize: 11, color: ac.inkFaint)),
             ]),
@@ -1053,13 +1374,24 @@ class _ProdCard extends StatelessWidget {
                 color: low ? ac.expenseTint : ac.saleTint,
                 borderRadius: BorderRadius.circular(999),
               ),
-              child: Text(low ? '$stockInt left' : '$stockInt in stock',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+              child: Text(
+                  low
+                      ? '$stockInt ${product.unitLabel} left'
+                      : '$stockInt ${product.unitLabel} in stock',
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
                       color: low ? ac.expenseFg : ac.saleFg)),
             ),
             const SizedBox(height: 3),
-            Text(low ? 'Reorder soon' : 'Cost $csym ${fmt.format(product.costPrice.toInt())}',
-                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: ac.inkFaint)),
+            Text(
+                low
+                    ? 'Reorder soon'
+                    : 'Cost $csym ${fmt.format(product.costPrice.toInt())}',
+                style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: ac.inkFaint)),
           ]),
         ]),
       ),
@@ -1084,7 +1416,8 @@ class _CostHistoryScreen extends ConsumerWidget {
           padding: EdgeInsets.only(top: 120),
           child: Center(child: CircularProgressIndicator()),
         ),
-        error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+        error: (e, _) => Center(
+            child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
         data: (history) {
           if (history.isEmpty) {
             return EmptyState(
@@ -1112,7 +1445,8 @@ class _TimelineRow extends StatelessWidget {
   final CostPriceHistory h;
   final String csym;
   final bool primary;
-  const _TimelineRow({required this.h, required this.csym, required this.primary});
+  const _TimelineRow(
+      {required this.h, required this.csym, required this.primary});
 
   @override
   Widget build(BuildContext context) {
@@ -1135,29 +1469,36 @@ class _TimelineRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               RichText(
                 text: TextSpan(
                   style: AppTheme.display(context, size: 13, color: ac.ink),
                   children: [
                     TextSpan(
                       text: '$csym ${fmt.format(h.oldCostPrice.toInt())}',
-                      style: TextStyle(color: ac.inkFaint, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          color: ac.inkFaint, fontWeight: FontWeight.w600),
                     ),
                     const TextSpan(text: '  \u2192  '),
                     TextSpan(
                       text: '$csym ${fmt.format(h.newCostPrice.toInt())}',
-                      style: TextStyle(color: ac.saleFg, fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                          color: ac.saleFg, fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 1),
-              Text(dateFmt.format(h.date), style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
+              Text(dateFmt.format(h.date),
+                  style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
               if (h.note.isNotEmpty) ...[
                 const SizedBox(height: 3),
                 Text('"${h.note}"',
-                    style: TextStyle(fontSize: 11, color: ac.inkSoft, fontStyle: FontStyle.italic)),
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: ac.inkSoft,
+                        fontStyle: FontStyle.italic)),
               ],
             ]),
           ),
@@ -1167,7 +1508,8 @@ class _TimelineRow extends StatelessWidget {
   }
 }
 
-final _costHistoryProvider = StreamProvider.family<List<CostPriceHistory>, String>((ref, productId) {
+final _costHistoryProvider =
+    StreamProvider.family<List<CostPriceHistory>, String>((ref, productId) {
   final service = ref.watch(firestoreServiceProvider);
   return service.costPriceHistoryStream(productId);
 });

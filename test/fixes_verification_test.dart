@@ -5,6 +5,52 @@ import 'package:foam_shop_register/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  // The stock unit shown next to a count. Found on a physical Pixel 9: a
+  // product the shop counted as 5 cut pieces announced "5 sq.ft in stock",
+  // because `unitType` was a hardcoded 'per_sqft' with no UI to change it.
+  group('Stock unit label', () {
+    Product make(String unitType, double stock) => Product(
+          id: 'p1',
+          name: 'luxury',
+          type: '',
+          sizeLength: 78,
+          sizeWidth: 72,
+          thickness: 6,
+          density: 0,
+          unitType: unitType,
+          unitPrice: 0,
+          costPrice: 20500,
+          currentStock: stock,
+          lowStockThreshold: 0,
+        );
+
+    test('per_piece counts in pieces, not square feet', () {
+      expect(make('per_piece', 5).stockLabel, '5 pcs');
+    });
+
+    test('per_sqft counts in square feet', () {
+      expect(make('per_sqft', 5).stockLabel, '5 sq.ft');
+    });
+
+    test('a piece-counted product never says sq.ft', () {
+      // The exact regression: 5 pieces rendered as "5 sq.ft in stock".
+      expect(make('per_piece', 5).stockLabel, isNot(contains('sq.ft')));
+    });
+
+    test('fractional square feet are not truncated', () {
+      expect(make('per_sqft', 2.5).stockLabel, '2.50 sq.ft');
+    });
+
+    test('the unit survives a Firestore round trip', () {
+      // unit_type is persisted, so a piece-counted product must not come back
+      // as sq.ft after a reload -- fromMap's own default is 'per_sqft'.
+      final saved = make('per_piece', 5).toMap();
+      final reloaded = Product.fromMap(saved);
+      expect(reloaded.unitType, 'per_piece');
+      expect(reloaded.stockLabel, '5 pcs');
+    });
+  });
+
   // ── Fix 1: subscriptionLabel fallback when trialEndsAt is null ──
   group('Fix 1 — subscriptionLabel fallback', () {
     test('returns Trial label when trialEndsAt is null (falls back to createdAt + 14d)', () {
