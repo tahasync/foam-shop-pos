@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_tokens.dart';
 
-enum BadgeType { quote, void_, paid }
+enum BadgeType { quote, void_, paid, change }
 
-/// Status pill for quote / void / paid states.
+/// Status pill for quote / void / paid / change states.
 ///
 /// Fixes applied:
 ///  * the tint is no longer used as a *text* colour. The old code used
@@ -13,6 +13,10 @@ enum BadgeType { quote, void_, paid }
 ///    failed contrast. Foregrounds are now the matching `-Fg` tokens.
 ///  * the void state keeps its strikethrough *and* gains a distinct border, so
 ///    the state is not signalled by decoration alone.
+///  * `change` is its own state, not a flavour of `paid`. A sale the customer
+///    overpaid is settled, so it used to render as a plain "PAID" badge while the
+///    row beside it said "Bal -1,000" — nothing told the shopkeeper that money
+///    was owed back out of the till.
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.type, required this.label});
 
@@ -24,6 +28,9 @@ class StatusBadge extends StatelessWidget {
 
   factory StatusBadge.paid(String label) =>
       StatusBadge(type: BadgeType.paid, label: label);
+
+  factory StatusBadge.change(String label) =>
+      StatusBadge(type: BadgeType.change, label: label);
 
   final BadgeType type;
   final String label;
@@ -44,6 +51,11 @@ class StatusBadge extends StatelessWidget {
       case BadgeType.paid:
         bg = ac.saleTint;
         fg = ac.saleFg;
+      case BadgeType.change:
+        // Money leaving the till, so it takes the purchase accent: the badge
+        // must not read as the same green "money in" state as a paid sale.
+        bg = ac.purchaseTint;
+        fg = ac.purchaseFg;
     }
 
     return Container(

@@ -101,7 +101,43 @@ class Sale {
       discountAmount ?? (subtotal * (discountPercent ?? 0) / 100);
   double get amount =>
       subtotal - totalDiscount + (deliveryCharge ?? 0) + (cuttingCharge ?? 0);
-  double get balance => amount - paid;
+
+  /// What the customer still owes. Never negative.
+  ///
+  /// This used to be the raw `amount - paid`, which goes *negative* the moment
+  /// the customer hands over more than the bill (pay Rs 70,000 for a Rs 69,000
+  /// sale and this returned -1,000). A negative balance is not a real thing on a
+  /// khata: it is not a debt the customer owes, it is change the shop has to
+  /// give back, and every caller had to re-derive that distinction. It also fed
+  /// the receipt, which printed "Balance Rs 0 / FULLY PAID" and so stated
+  /// nothing at all about the Rs 1,000 the customer was owed — the cashier had
+  /// to work it out by hand. Floored here so "balance" can only ever mean
+  /// "outstanding", and [changeDue] owns the other direction.
+  double get balance {
+    final due = amount - paid;
+    return due > 0 ? due : 0.0;
+  }
+
+  /// Money handed back to the customer because they overpaid.
+  ///
+  /// Zero when the sale is exact or only partly paid. This is the figure the
+  /// receipt prints as "Change" and the cashier reads out before handing over
+  /// the goods, so an overpayment is never silently swallowed.
+  double get changeDue {
+    final over = paid - amount;
+    return over > 0 ? over : 0.0;
+  }
+
+  /// True when the customer handed over more than the bill, so there is change
+  /// to return rather than a balance to collect.
+  bool get hasChange => changeDue > 0;
+
+  /// Cash this sale actually leaves in the till.
+  ///
+  /// An overpayment does not stay in the drawer: the shop gives the excess back
+  /// as change, so only `amount` is ever retained. Counting the full `paid`
+  /// overstated Cash in Hand by exactly the change on every overpaid sale.
+  double get netCashReceived => paid - changeDue;
 
   Map<String, dynamic> toMap() => {
         'id': id,

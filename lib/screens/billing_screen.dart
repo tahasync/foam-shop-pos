@@ -129,15 +129,24 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
   ) {
     final dateStr = DateFormat('d MMM y').format(sale.date);
     final voided = sale.isVoided;
+    // An overpaid sale has no balance and no debt. It has change to give back,
+    // and that is what the cashier needs to see here — the row used to print
+    // "Bal -1,000", a figure that reads as a negative debt rather than Rs 1,000
+    // leaving the till.
+    final settledNote = sale.hasChange
+        ? 'Change ${fmt.format(sale.changeDue.toInt())}'
+        : 'Bal ${fmt.format(sale.balance.toInt())}';
     final sub = voided
         ? '$dateStr \u00b7 Voided'
-        : '$dateStr \u00b7 Paid ${fmt.format(sale.paid.toInt())} \u00b7 Bal ${fmt.format(sale.balance.toInt())}';
+        : '$dateStr \u00b7 Paid ${fmt.format(sale.paid.toInt())} \u00b7 $settledNote';
 
     Widget trailing;
     if (voided) {
       trailing = StatusBadge.voided('Void');
     } else if (sale.isQuote) {
       trailing = StatusBadge.quote('Quote');
+    } else if (sale.hasChange) {
+      trailing = StatusBadge.change('Change');
     } else if (sale.balance <= 0) {
       trailing = StatusBadge.paid('Paid');
     } else {
@@ -176,8 +185,13 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                               FontFeature.tabularFigures()
                             ])),
                     const SizedBox(height: 1),
+                    // Two lines, not one: "28 Sep 2026 · Paid 26,000 · Change
+                    // 3,500" is wider than a Pixel 4 at this font size, and a
+                    // single ellipsised line cut the figure the cashier actually
+                    // needs ("Change 3,500" -> "Change ..."). This affected due
+                    // rows too ("Bal 12,500" was dropped the same way).
                     Text(sub,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
                   ]),
@@ -610,6 +624,7 @@ class _ReceiptPaper extends StatelessWidget {
                   paid: d.paid,
                   isDue: d.isDue,
                   dueValue: d.dueValue,
+                  change: d.change,
                   tnum: tnum,
                 ),
                 const SizedBox(height: 12),
@@ -839,6 +854,9 @@ class _TotalsCard extends StatelessWidget {
   final String paid;
   final bool isDue;
   final String dueValue;
+
+  /// The change to hand back, already formatted. Empty when there is none.
+  final String change;
   final List<FontFeature> tnum;
 
   const _TotalsCard({
@@ -846,8 +864,13 @@ class _TotalsCard extends StatelessWidget {
     required this.paid,
     required this.isDue,
     required this.dueValue,
+    this.change = '',
     required this.tnum,
   });
+
+  /// Mirrors [ReceiptData.hasChange] so the preview and the printed PDF decide
+  /// identically whether the change row is shown.
+  bool get hasChange => change.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -891,7 +914,12 @@ class _TotalsCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                isDue ? 'Balance Due' : 'Balance',
+                // Matches the PDF's grand row: an overpaid sale is settled, so
+                // "Balance Rs 0" under a Rs 1,000 change reads as a
+                // contradiction. The change takes the emphasized row instead.
+                hasChange
+                    ? 'Change Returned'
+                    : (isDue ? 'Balance Due' : 'Balance'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
@@ -899,7 +927,7 @@ class _TotalsCard extends StatelessWidget {
                 ),
               ),
               Text(
-                isDue ? dueValue : 'Rs 0',
+                hasChange ? change : (isDue ? dueValue : 'Rs 0'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,

@@ -129,9 +129,13 @@ class AccountingService {
     final netProfit = sanitize(grossProfit) - sanitize(totalExpenses);
 
     final openingCapital = sanitize(openingBal?.capitalAmount);
+    // Only what the till actually keeps counts as cash. An overpaid sale nets
+    // `paid` against the change handed straight back out, so summing the raw
+    // `paid` inflated Cash in Hand by the change on every such sale — the shop
+    // would have counted more money than it ever held.
     final cashFromSales = sales
         .where((s) => !s.isVoided && !s.isQuote)
-        .fold(0.0, (s, x) => s + sanitize(x.paid));
+        .fold(0.0, (s, x) => s + sanitize(x.netCashReceived));
     final cashFromRecoveries =
         payments.fold(0.0, (s, p) => s + sanitize(p.amountCollected));
     final cashPaidForPurchases =
@@ -260,9 +264,13 @@ class AccountingService {
     final newGrossProfit = sanitize(newRevenue) - sanitize(newCogs);
     final newNetProfit =
         sanitize(newGrossProfit) - sanitize(summary.totalExpenses);
-    final newCashFromSales =
-        sanitize(summary.cashFromSales) - sanitize(sale.paid);
-    final newCashInHand = sanitize(summary.cashInHand) - sanitize(sale.paid);
+    // Reverses exactly what [compute] added: the net cash the sale left in the
+    // till, not the raw `paid`. Using `paid` here while `compute` banks
+    // `netCashReceived` made the two disagree by the change on an overpaid
+    // sale, so a void left phantom cash behind.
+    final saleCash = sanitize(sale.netCashReceived);
+    final newCashFromSales = sanitize(summary.cashFromSales) - saleCash;
+    final newCashInHand = sanitize(summary.cashInHand) - saleCash;
 
     return AccountingSummary(
       revenue: newRevenue,

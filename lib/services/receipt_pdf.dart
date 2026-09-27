@@ -48,6 +48,16 @@ class ReceiptData {
   final String dueValue;
   final String footer;
 
+  /// Money to hand back as change, already formatted with the currency symbol.
+  ///
+  /// Empty when the customer paid the bill exactly or underpaid. This is the
+  /// figure the receipt must state out loud: the customer handed over more than
+  /// the bill, and until it is printed neither the customer nor the cashier
+  /// knows how much to give back.
+  final String change;
+
+  /// The share sheet, print job and on-screen preview all render this one model,
+  /// so a "Change" row cannot appear on one and be missing from another.
   const ReceiptData({
     required this.storeName,
     required this.date,
@@ -59,8 +69,12 @@ class ReceiptData {
     required this.paid,
     required this.isDue,
     required this.dueValue,
+    this.change = '',
     required this.footer,
   });
+
+  /// True when there is real change to give back, i.e. the row should be drawn.
+  bool get hasChange => change.isNotEmpty;
 }
 
 /// 80mm thermal-roll width, the format a real shop printer expects.
@@ -680,8 +694,14 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
             ),
             pw.SizedBox(height: 6),
             totalRow(
-              d.isDue ? 'Balance Due' : 'Balance',
-              d.dueValue,
+              // Only one of these can be true. An overpaid sale is settled, so
+              // printing "Balance Rs 0" directly under "Change Rs 1,000" reads
+              // as a contradiction; the customer is owed change, not a refund
+              // of nothing. The change therefore takes the grand row.
+              d.hasChange
+                  ? 'Change Returned'
+                  : (d.isDue ? 'Balance Due' : 'Balance'),
+              d.hasChange ? d.change : d.dueValue,
               grand: true,
             ),
           ],
@@ -913,6 +933,13 @@ ReceiptData buildReceiptData({
   String money(double v) => '$csym ${fmt.format(v.toInt())}';
 
   final isDue = remainingBalance > 0;
+  // Overpayment is change the shop hands back, not a negative balance. The
+  // receipt has to state the figure: paying Rs 70,000 for a Rs 69,000 bill used
+  // to print "Balance Rs 0 / PAID IN FULL", which told the customer nothing
+  // about the Rs 1,000 they were owed, and left the cashier to subtract it by
+  // hand in front of them. Floored at 0 so a rounding wobble never prints
+  // "Change Rs 0".
+  final change = (paidAmount - totalAmount).clamp(0.0, double.infinity);
   return ReceiptData(
     storeName: storeName,
     date: date,
@@ -928,6 +955,7 @@ ReceiptData buildReceiptData({
     isDue: isDue,
     // Overpayment is change, not a negative balance, so never print a minus.
     dueValue: isDue ? money(remainingBalance) : money(0),
+    change: change > 0 ? money(change) : '',
     footer: location.isNotEmpty ? '$storeName \u00b7 $location' : storeName,
   );
 }

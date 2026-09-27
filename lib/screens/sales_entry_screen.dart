@@ -20,6 +20,43 @@ import '../utils/animations.dart';
 import 'billing_screen.dart';
 import 'package:flutter/services.dart';
 
+/// The note denominations a customer is likely to hand over.
+///
+/// Ordered smallest first. Deliberately not a free "any round number" control:
+/// these are the values that actually come out of a pocket or a cash drawer, so
+/// the offered set is short enough to hit blind, without aiming.
+const List<double> kChangeSteps = [100, 500, 1000, 5000, 10000];
+
+/// The amounts worth offering as "the customer handed me this" for a bill of
+/// [subtotal].
+///
+/// Cash in this market is round. A Rs 69,000 bill is settled with a Rs 70,000
+/// note essentially every time, and that Rs 70,000 used to be typed by hand,
+/// digit by digit, with the customer standing there. The exact total comes
+/// first so "paid in full, no change" is also one tap.
+///
+/// Round-ups are only offered when they are *plausible*: a step is skipped if it
+/// lands on the bill exactly (nothing to give back), and one is skipped if the
+/// change would exceed half the bill — a Rs 900 bill rounded to Rs 5,000 is not
+/// a change of Rs 4,100, it is a different transaction.
+///
+/// Steps that reach the same figure are collapsed, so a bill that rounds up to
+/// Rs 70,000 via both the 1,000 and the 5,000 step offers that amount once.
+List<double> quickPaidOptions(double subtotal) {
+  if (subtotal <= 0) return const [];
+  final options = <double>{subtotal};
+  for (final step in kChangeSteps) {
+    // The epsilon absorbs the float error that would otherwise turn a bill of
+    // exactly 69,000 into an offer of "70,000" via `69000 / 1000 = 69.000001`.
+    final rounded = (subtotal / step).ceilToDouble() * step;
+    if (rounded - subtotal <= 0.005) continue; // lands on the bill: no change
+    if ((rounded - subtotal) > subtotal / 2) continue; // absurd as change
+    options.add(rounded);
+  }
+  final sorted = options.toList()..sort();
+  return sorted;
+}
+
 class CartWidget extends ConsumerStatefulWidget {
   final CartItem item;
   const CartWidget({super.key, required this.item});
@@ -681,6 +718,19 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     super.dispose();
   }
 
+  /// Fills the Paid field from a quick-change chip.
+  ///
+  /// Writing through the controller's `text` does NOT fire the field's
+  /// `onChanged`, so the surrounding `setState` has to be explicit or the Change
+  /// box and the balance would keep showing the previous figure. The debouncer
+  /// is cancelled for the same reason: its pending timer would land *after* this
+  /// setState and rebuild with a stale value.
+  void _applyQuickPaid(double amount) {
+    _paidDebounce.cancel();
+    _paidCtrl.text = amount.toStringAsFixed(0);
+    setState(() {});
+  }
+
   Future<Customer?> _addNewCustomerFromDialog() async {
     return showAddCustomerSheet(context, ref);
   }
@@ -969,11 +1019,23 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
       if (mounted) {
         final csym2 = ref.read(currencySymbolProvider);
         final savedSale = sale;
+        // Money the shop has to hand back, stated on the confirmation so the
+        // cashier reads it out before the customer leaves. Previously the
+        // success sheet only ever confirmed the sale was saved, so an
+        // overpayment was discovered later — or not at all.
+        final changeGiven = (paid - subtotal).clamp(0, double.infinity);
+        final changeNote = changeGiven > 0
+            ? ' \u00b7 Change $csym2 ${NumberFormat('#,##0').format(changeGiven.toInt())}'
+            : '';
         SuccessSheet.show(
           context: context,
-          title: isQuote ? 'Quote saved' : 'Sale saved',
+          title: isQuote
+              ? 'Quote saved'
+              : (changeGiven > 0
+                  ? 'Sale saved \u00b7 give change'
+                  : 'Sale saved'),
           subtitle:
-              '$csym2 ${NumberFormat('#,##0').format(subtotal.toInt())} \u00b7 $custName',
+              '$csym2 ${NumberFormat('#,##0').format(subtotal.toInt())} \u00b7 $custName$changeNote',
           primaryLabel: 'New Sale',
           secondaryLabel: 'View Receipt',
           onSecondary: () => Navigator.push(
@@ -1006,6 +1068,13 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     final productsAsync = ref.watch(productsStreamProvider);
     final paid = double.tryParse(_paidCtrl.text) ?? 0;
     final balance = (salesState.subtotal - paid).clamp(0, double.infinity);
+    // What the customer handed over beyond the bill, and so what comes back out
+    // of the till. Clamped at 0 so an underpayment (or an untouched field) is
+    // never shown as a negative "change".
+    final change = (paid - salesState.subtotal).clamp(0, double.infinity);
+    // The round figures worth one-tapping for this bill. Empty while the cart is
+    // empty, so the row does not sit there offering to pay Rs 0.
+    final quickPaid = quickPaidOptions(salesState.subtotal);
     final csym = ref.watch(currencySymbolProvider);
     final bottom = widget.bottomInset;
 
@@ -1311,7 +1380,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Balance',
+                                    Text(change > 0 ? 'Change' : 'Balance',
                                         style: TextStyle(
                                             fontSize: 10.5,
                                             fontWeight: FontWeight.w700,
@@ -1329,7 +1398,17 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                                                 ? ac.expenseFg
                                                 : ac.outline),
                                       ),
-                                      child: Text('$csym ${balance.toInt()}',
+                                      // This box used to always read "Balance 0"
+                                      // once the customer overpaid, so the cashier
+                                      // was told nothing about the Rs 1,000 they
+                                      // had to hand back while the customer waited.
+                                      // It now states the change explicitly, in the
+                                      // purchase accent, because that money is
+                                      // leaving the till rather than being kept.
+                                      child: Text(
+                                          change > 0
+                                              ? '$csym ${change.toInt()}'
+                                              : '$csym ${balance.toInt()}',
                                           textAlign: TextAlign.end,
                                           style: TextStyle(
                                               fontWeight: FontWeight.w800,
@@ -1337,14 +1416,25 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                                               fontFeatures: const [
                                                 FontFeature('tnum')
                                               ],
-                                              color: balance > 0
-                                                  ? ac.expenseFg
-                                                  : ac.saleFg)),
+                                              color: change > 0
+                                                  ? ac.purchaseFg
+                                                  : (balance > 0
+                                                      ? ac.expenseFg
+                                                      : ac.saleFg))),
                                     ),
                                   ]),
                             ),
                           ]),
                       const SizedBox(height: 14),
+                      if (quickPaid.isNotEmpty) ...[
+                        _QuickPaidRow(
+                          options: quickPaid,
+                          currentPaid: paid,
+                          csym: csym,
+                          onSelected: _applyQuickPaid,
+                        ),
+                        const SizedBox(height: 14),
+                      ],
                       Row(children: [
                         // Both buttons are `flex: 1`.
                         //
@@ -1390,6 +1480,128 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           ),
         ),
       ]),
+    );
+  }
+}
+
+/// One-tap amounts for the Paid field, drawn from [quickPaidOptions].
+///
+/// Tapping "70,000" on a Rs 69,000 bill sets Paid to 70,000 and the Change box
+/// immediately reads Rs 1,000 — which is the whole point. Before this, that
+/// figure had to be keyed in by hand while the customer waited, and nothing on
+/// screen distinguished "the customer owes me" from "I owe the customer".
+///
+/// The row is scrollable rather than wrapped because the option count varies
+/// with the bill, and a wrapping row would change height between sales and
+/// shove the Save buttons around while the cashier is reading them.
+class _QuickPaidRow extends StatelessWidget {
+  /// Ascending, from [quickPaidOptions].
+  final List<double> options;
+
+  /// The amount currently in the Paid field, so the matching chip reads as
+  /// selected instead of leaving the row looking un-tapped after a manual entry.
+  final double currentPaid;
+  final String csym;
+  final ValueChanged<double> onSelected;
+
+  const _QuickPaidRow({
+    required this.options,
+    required this.currentPaid,
+    required this.csym,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    final fmt = NumberFormat('#,##0');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Customer hands over',
+            style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: ac.inkSoft)),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 48,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.zero,
+            itemCount: options.length,
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+            itemBuilder: (context, i) {
+              final amount = options[i];
+              // The bill itself is offered first, so "paid in full, no change"
+              // is one tap. Only that one is labelled in words; the round-ups
+              // read as plain figures, because that is what they are.
+              final isExact = i == 0;
+              final selected = (currentPaid - amount).abs() < 0.005;
+              return _QuickPaidChip(
+                label: isExact
+                    ? 'Exact $csym ${fmt.format(amount.toInt())}'
+                    : '$csym ${fmt.format(amount.toInt())}',
+                selected: selected,
+                onTap: () => onSelected(amount),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A single quick-amount target.
+class _QuickPaidChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _QuickPaidChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    return Semantics(
+      label: label,
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: selected ? ac.purchaseTint : ac.surface2,
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            border: Border.all(
+              color: selected ? ac.purchaseFg : ac.outline,
+            ),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: selected ? ac.purchaseFg : ac.inkSoft,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

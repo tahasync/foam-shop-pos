@@ -1128,6 +1128,101 @@ void main() {
     });
   });
 
+  group('Quick-change chips', () {
+    // The feature exists because a Rs 69,000 bill is paid with a Rs 70,000
+    // note, and that Rs 70,000 used to be typed by hand while the customer
+    // waited. These assert the chips behave as buttons on a real target, which
+    // `flutter analyze` cannot see.
+    Future<void> pumpChips(
+      WidgetTester tester,
+      ValueChanged<double> onSelected,
+    ) async {
+      // Mirrors _QuickPaidRow's structure so the test exercises the real
+      // layout constraints (a fixed 48dp row of horizontally scrollable chips)
+      // without needing the whole provider-backed sales screen.
+      await tester.pumpWidget(_wrap(
+        Scaffold(
+          body: Builder(
+            builder: (context) => Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Customer hands over'),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    height: 48,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: quickPaidOptions(69000).length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, i) {
+                        final amount = quickPaidOptions(69000)[i];
+                        return Semantics(
+                          button: true,
+                          child: GestureDetector(
+                            onTap: () => onSelected(amount),
+                            child: SizedBox(
+                              height: 48,
+                              child: Text(i == 0
+                                  ? 'Exact Rs 69,000'
+                                  : 'Rs ${amount.toStringAsFixed(0)}'),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('every chip is a full-height touch target', (tester) async {
+      await pumpChips(tester, (_) {});
+
+      final chips = find.textContaining('Rs');
+      expect(chips, findsWidgets);
+      for (var i = 0; i < chips.evaluate().length; i++) {
+        final size = tester.getSize(chips.at(i));
+        // These are hit with a thumb, at a till, one-handed, while holding foam.
+        expect(size.height, greaterThanOrEqualTo(AppHit.min),
+            reason: 'quick-change chip $i is only ${size.height}dp tall');
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('tapping a chip reports the exact amount, not an index',
+        (tester) async {
+      final picked = <double>[];
+      await pumpChips(tester, picked.add);
+
+      // The 70,000 chip is the whole point of the feature.
+      await tester.tap(find.text('Rs 70000'));
+      await tester.pumpAndSettle();
+
+      expect(picked, [70000.0],
+          reason: 'tapping the chip must fill Paid with 70,000 exactly');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the chips fit a small phone without overflowing',
+        (tester) async {
+      tester.view.physicalSize = const Size(375, 667);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await pumpChips(tester, (_) {});
+      // Scrollable, so the row scrolls rather than clipping the last chip.
+      expect(find.byType(ListView), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('Sale price field', () {
     Product _product() => Product(
           id: 'p1',
