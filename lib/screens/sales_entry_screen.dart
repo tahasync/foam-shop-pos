@@ -766,8 +766,8 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                 // is useful.
                 Text(
                   outOfStock
-                      ? '${p.sizeLength.toStringAsFixed(0)}in ? ${p.sizeWidth.toStringAsFixed(0)}in ? ${p.thickness.toStringAsFixed(0)}in ? Out of stock'
-                      : '${p.sizeLength.toStringAsFixed(0)}in ? ${p.sizeWidth.toStringAsFixed(0)}in ? ${p.thickness.toStringAsFixed(0)}in ? ${p.currentStock.toInt()} in stock',
+                      ? '${p.sizeLength.toStringAsFixed(0)}in \u00d7 ${p.sizeWidth.toStringAsFixed(0)}in \u00b7 ${p.thickness.toStringAsFixed(0)}in \u00b7 Out of stock'
+                      : '${p.sizeLength.toStringAsFixed(0)}in \u00d7 ${p.sizeWidth.toStringAsFixed(0)}in \u00b7 ${p.thickness.toStringAsFixed(0)}in \u00b7 ${p.currentStock.toInt()} in stock',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: outOfStock ? FontWeight.w700 : FontWeight.normal,

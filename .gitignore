@@ -1,4 +1,4 @@
-# Flutter/Dart build outputs
+﻿# Flutter/Dart build outputs
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -73,3 +73,7 @@ env/
 migrate_working_dir/
 .build/
 .buildlog/
+
+# Local dev run logs
+run*.txt
+

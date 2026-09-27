@@ -6,6 +6,14 @@ Two data-integrity bugs that both presented as "the app is broken", plus the
 audit pass that surfaced them.
 
 ### Fixed
+- **The product search row rendered `78in ? 72in ? 6in ? 15 in stock` on device.**
+  The `×` (U+00D7) and `·` (U+00B7) separators in the search result had been
+  written into the source as literal `?` bytes, so Flutter drew four
+  replacement characters in the row a user taps most often while building a
+  sale. The Inventory screen showed the same dimensions correctly, which is why
+  it survived review. Restored using the `\u00d7` / `\u00b7` escapes already
+  used in `inventory_screen.dart`, and added `test/source_integrity_test.dart`
+  to fail the build if a " ? " separator reappears in `lib/`.
 - **Receipt prices were silently truncated.** A `120,000` total printed as
   `120,00` and a `60,000` unit price as `60,00` on the 80mm receipt. The
   itemised table gave the money columns a fixed slice of the roll width
