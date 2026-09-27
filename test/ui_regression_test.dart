@@ -1,4 +1,5 @@
-﻿import 'dart:io';
+﻿import 'dart:convert' show LineSplitter;
+import 'dart:io';
 
 import 'package:archive/archive.dart' show ZLibDecoder;
 import 'package:flutter/material.dart';
@@ -29,7 +30,44 @@ Widget _wrap(Widget child, {Brightness brightness = Brightness.light}) {
 }
 
 void main() {
-  group('Palette integrity Ã¢â‚¬â€ colours must not drift', () {
+  // A mojibake guard. Every other test here asserts on rendered behaviour, but
+  // this one reads the source text, because the failure it guards is *in the
+  // source* and nothing else would catch it.
+  //
+  // The reports screen shipped "Peak Sep \u00b7 Rs 172,000": a middle dot (U+00B7)
+  // had been UTF-8 encoded, then decoded as Latin-1 and re-encoded, leaving the
+  // two-character sequence U+00C2 U+00B7 in the file. It is valid Dart, so the
+  // analyzer is silent and the widget tree is correct \u2014 the glyph just renders
+  // as two stray glyphs in front of the user. Only a source scan can see it.
+  test('no source file carries a double-encoded character', () {
+    // U+00C2/U+00C3 followed by U+0080-U+00BF, and U+00E2 followed by the
+    // UTF-8 lead for an em dash / curly quote. These are Latin-1 renderings of
+    // bytes that were already UTF-8 \u2014 the fingerprint of one decode too many.
+    final mojibake = RegExp('[\u00C2\u00C3][\u0080-\u00BF]|\u00E2[\u0080\u0093]');
+    final offenders = <String>[];
+    for (final entity in [Directory('lib'), Directory('test')]) {
+      if (!entity.existsSync()) continue;
+      for (final file in entity.listSync(recursive: true)) {
+        if (file is! File || !file.path.endsWith('.dart')) continue;
+        final lines = const LineSplitter().convert(file.readAsStringSync());
+        for (var i = 0; i < lines.length; i++) {
+          if (mojibake.hasMatch(lines[i])) {
+            // `$1` is the offending line, `$2` its 1-based number.
+            offenders.add('${file.path}:${i + 1}');
+          }
+        }
+      }
+    }
+
+    expect(
+      offenders,
+      isEmpty,
+      reason: 'mojibake found at ${offenders.join(', ')}. A character was '
+          'decoded as Latin-1 and re-encoded. Use a \\uXXXX Dart escape '
+          'instead of a literal glyph so the source is encoding-independent.',
+    );
+  });
+  group('Palette integrity \u2014 colours must not drift', () {
     test('light and dark both define every glass-engine token', () {
       for (final theme in [AppTheme.light(), AppTheme.dark()]) {
         final ac = theme.extension<AppColors>()!;
@@ -47,7 +85,7 @@ void main() {
     });
 
     test('light and dark hairlines are opposites (visible in both themes)', () {
-      // A dark hairline is invisible on dark glass Ã¢â‚¬â€ this is the trap that made
+      // A dark hairline is invisible on dark glass — this is the trap that made
       // cards lose their edges in dark mode.
       final light = AppTheme.light().extension<AppColors>()!;
       final dark = AppTheme.dark().extension<AppColors>()!;
@@ -108,7 +146,7 @@ void main() {
     });
 
     test('cards are clearly lighter than the page in both themes', () {
-      // Dark cards used to be #141A2A on a #0E0D15 page Ã¢â‚¬â€ almost no separation,
+      // Dark cards used to be #141A2A on a #0E0D15 page — almost no separation,
       // so the layout read as one flat mass.
       //
       // Judged by WCAG *ratio*, not absolute luma: near-blacks all have tiny
@@ -154,7 +192,7 @@ void main() {
       // `inkFaint` sits under every secondary label in the app.
       //
       // WCAG contrast is (lighter + 0.05) / (darker + 0.05). It has to be
-      // computed with the ordering resolved, not ink-over-card literally Ã¢â‚¬â€
+      // computed with the ordering resolved, not ink-over-card literally —
       // light mode has dark ink on a light card, dark mode the exact inverse.
       double ratio(Color a, Color b) {
         final la = a.computeLuminance();
@@ -187,7 +225,7 @@ void main() {
     });
 
     test('the dark page is dark but not pure black', () {
-      // The page was briefly #0D0D11 Ã¢â‚¬â€ 5% grey, which on an OLED panel reads
+      // The page was briefly #0D0D11 — 5% grey, which on an OLED panel reads
       // as "screen off". Cards sank into it and the layout lost its depth. It
       // has to stay a *dark theme*, not a black void.
       //
@@ -217,7 +255,7 @@ void main() {
     });
   });
 
-  group('Input fix Ã¢â‚¬â€ no opaque slab inside the glass search pill', () {
+  group('Input fix — no opaque slab inside the glass search pill', () {
     testWidgets('AppSearchField paints no opaque inner fill', (tester) async {
       await tester.pumpWidget(_wrap(
         const Padding(
@@ -260,7 +298,7 @@ void main() {
     });
   });
 
-  group('Layout fix Ã¢â‚¬â€ content is never hidden behind the floating nav', () {
+  group('Layout fix — content is never hidden behind the floating nav', () {
     testWidgets('the shared inset clears the nav pill and the safe area',
         (tester) async {
       // The four tabs used to disagree (120 vs 100 vs 80), so the last row of a
@@ -308,7 +346,7 @@ void main() {
     });
   });
 
-  group('KPI row Ã¢â‚¬â€ tiles share one height', () {
+  group('KPI row — tiles share one height', () {
     testWidgets('AppKpiRow renders both tiles at equal height', (tester) async {
       await tester.pumpWidget(_wrap(
         const Padding(
@@ -455,7 +493,7 @@ void main() {
     });
   });
 
-  group('Glass budget Ã¢â‚¬â€ blur is rationed to the floating nav only', () {
+  group('Glass budget — blur is rationed to the floating nav only', () {
     // Regression guard for the "minimal 2027" restyle. The old design put a
     // `BackdropFilter` on every card, chip and search field; each one forces a
     // separate offscreen render pass, which is what made scrolling stutter on
@@ -511,7 +549,7 @@ void main() {
         (tester) async {
       // The old background ran three infinite `AnimationController`s driving
       // large radial-gradient orbs, repainting the full screen forever. If one
-      // came back, `pumpAndSettle` below would never return Ã¢â‚¬â€ an infinite
+      // came back, `pumpAndSettle` below would never return — an infinite
       // animation keeps scheduling frames.
       await tester.pumpWidget(_wrap(
         const GlassBackground(child: SizedBox.expand()),
@@ -541,7 +579,7 @@ void main() {
     // background as a `GlassContainer(child: SizedBox.expand())`. Inside a
     // `Stack(fit: StackFit.expand)` in a `Row`, that child reported *infinite*
     // width, so an inline (`fullWidth: false`) button claimed the whole row and
-    // squeezed the sibling `Expanded` to zero Ã¢â‚¬â€ the customer card rendered as a
+    // squeezed the sibling `Expanded` to zero — the customer card rendered as a
     // one-character-wide column.
     testWidgets('an inline button leaves room for its sibling', (tester) async {
       const key = ValueKey('sibling');
@@ -947,7 +985,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // The price box was 68x30 â€” under the app's own 48dp touch minimum, and
+    // The price box was 68x30 \u2014 under the app's own 48dp touch minimum, and
     // cramped for a 5-6 digit figure. It is the most-typed value on the screen.
     testWidgets('is a full-size, legible target', (tester) async {
       await _pumpPriceField(tester);
@@ -966,7 +1004,7 @@ void main() {
 
     // The bug: the field had no FocusNode, and the cart republishes on every
     // keystroke, so the TextField's element was rebuilt, focus was dropped, and
-    // the platform handed it to the next focusable widget â€” the search field.
+    // the platform handed it to the next focusable widget \u2014 the search field.
     // The symptom was "I can type one character, then the caret jumps to
     // Search products".
     testWidgets('keeps focus across a price edit', (tester) async {
@@ -1036,14 +1074,14 @@ void main() {
     // around a "\u2715" glyph, and both quantity steppers were 24x24 inside a
     // 32-tall track. On a phone held one-handed at a counter those are the
     // hardest controls on the screen to hit, and the steppers in particular sit
-    // next to each other â€” a miss on "+" lands on "\u2212" and quietly changes
+    // next to each other \u2014 a miss on "+" lands on "\u2212" and quietly changes
     // the quantity of a real sale.
     testWidgets('cart remove and stepper controls meet the touch minimum',
         (tester) async {
       await _pumpPriceField(tester);
 
       // Measure the tappable target, not the glyph. The icons are intentionally
-      // 17px, so `find.byIcon(...)` finds the Icon itself and reports 17 â€” the
+      // 17px, so `find.byIcon(...)` finds the Icon itself and reports 17 \u2014 the
       // thing being asserted here is the hit area wrapped around it. Each target
       // is the enclosing `InkWell` of the icon, which is exactly what receives
       // the tap.
@@ -1083,16 +1121,24 @@ void main() {
     });
 
     // A price of 0 leaves the line total undefined, and the old caption showed a
-    // bare "\u00d7 1" with no figure at all. The replacement shows an em dash
-    // until there is a real price, so the row never displays a number that
-    // implies a value it does not have.
+    // bare "\u00d7 1" with no figure at all. The line now carries a dedicated
+    // total slot that shows an em dash until there is a real price, so the row
+    // never displays a number that implies a value it does not have.
+    //
+    // The total also moved out of the "= Rs 20,500" string that used to sit
+    // inline against the price field: that caption was the first thing pushed
+    // off the right edge on a narrow phone. It is asserted here as its own
+    // element, on the same row as the status pill.
     testWidgets('line total stays blank until a price is entered', (tester) async {
       await _pumpPriceField(tester);
 
       // The pre-filled price renders a real figure, formatted with thousands
-      // separators, rather than the placeholder.
-      expect(find.textContaining('='), findsWidgets);
+      // separators, rather than the placeholder. 20,500 is the cart's line total
+      // (quantity 1), so it appears on its own without an "=" prefix.
+      expect(find.textContaining('20,500'), findsWidgets);
       expect(find.text('\u2014'), findsNothing);
+      // With a valid price and a cost below it, the line is up, not down.
+      expect(find.textContaining('margin'), findsWidgets);
 
       final field = find.byType(TextField).first;
       await tester.enterText(field, '');
@@ -1100,10 +1146,71 @@ void main() {
 
       expect(
         find.text('\u2014'),
-        findsNWidgets(2),
-        reason: 'with no price there is neither a line total nor a margin to '
-            'show, so both readouts fall back to a dash',
+        findsOneWidget,
+        reason: 'with no price there is no line total to show, so the total slot '
+            'falls back to a dash',
       );
+      // The margin used to be a second dash here. It is now a status pill that
+      // says what is actually wrong \u2014 an unset price, not a missing number.
+      expect(
+        find.text('Price not set'),
+        findsOneWidget,
+        reason: 'an unset price must be named, not rendered as a blank figure',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    // The "MARGIN -832%" readout was arithmetically correct and practically
+    // useless: a margin that far negative only means "well below cost", which
+    // the rupee shortfall says directly. The pill must name the state, and the
+    // notice must quantify the loss in currency.
+    testWidgets('a below-cost line states the loss in rupees, not just a margin',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              salesProvider.overrideWith(() => SalesNotifier()),
+            ],
+            child: MaterialApp(
+              home: Scaffold(
+                body: CartWidget(
+                  item: CartItem(
+                    product: _product(),
+                    quantity: 2,
+                    salePrice: 2000,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Cost is 1,000 in `_product`, so this case is *above* cost. Drive the
+      // price under the cost to exercise the loss branch.
+      final field = find.byType(TextField).first;
+      await tester.enterText(field, '200');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Below cost'),
+        findsOneWidget,
+        reason: 'the status pill must name the state rather than show a bare '
+            'negative percentage',
+      );
+      expect(
+        find.textContaining('Losing'),
+        findsOneWidget,
+        reason: 'the shortfall must be quantified in rupees so it is actionable',
+      );
+      expect(
+        find.textContaining('-832'),
+        findsNothing,
+        reason: 'the -832% margin is arithmetic the user cannot act on',
+      );
+      expect(find.text('Use cost'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
@@ -1112,7 +1219,7 @@ void main() {
     // The bug: "Save PDF" reported success but no file ever appeared in the
     // phone's storage. The Dart side wrote with `dart:io`'s `File` into
     // getDownloadsDirectory(), which Android 10+ scoped storage turns into a
-    // no-op â€” and WRITE_EXTERNAL_STORAGE is capped at maxSdkVersion=28, so no
+    // no-op \u2014 and WRITE_EXTERNAL_STORAGE is capped at maxSdkVersion=28, so no
     // permission could ever have rescued it.
     //
     // The fix routes Android through MediaStore. These tests pin the contract
@@ -1164,7 +1271,7 @@ void main() {
         () async {
       // The native side can reject the insert (no writable volume, a full
       // disk). That must propagate so the caller can fall back to the share
-      // sheet â€” swallowing it would repeat the "saved but nowhere" bug.
+      // sheet \u2014 swallowing it would repeat the "saved but nowhere" bug.
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
         throw PlatformException(code: 'save_failed', message: 'disk full');
@@ -1329,7 +1436,7 @@ void main() {
     test('every section survives into the drawable content stream', () async {
       // The bug this guards: the status pill used `BorderRadius.circular(999)`.
       // A radius far larger than the box emits degenerate path geometry, and
-      // renderers then drop everything drawn before it â€” the shop header, the
+      // renderers then drop everything drawn before it \u2014 the shop header, the
       // item table and the totals block simply vanished, and the customer got a
       // near-blank receipt. Byte length and the `%PDF-` header both stayed
       // perfectly valid, so every other test in this group still passed.
@@ -1364,7 +1471,7 @@ void main() {
     });
 
     test('embeds a Unicode-capable font so the tick and dot render', () async {
-      // The built-in Helvetica is WinAnsi only, so "âœ“ FULLY PAID" printed as a
+      // The built-in Helvetica is WinAnsi only, so "? FULLY PAID" printed as a
       // blank box. Inter ships in assets/fonts/ and is what the preview uses.
       final bytes = await generateReceiptPdfBytes(
         storeName: 'Asif Foam Center',
@@ -1452,7 +1559,7 @@ void main() {
       // The failure mode this guards is subtle and bad: if the page is sized a
       // little too short, `MultiPage` does not clip, it paginates. The customer
       // then gets sheet one of the receipt with the totals and footer pushed
-      // onto a near-blank sheet two â€” the same symptom the old 297mm page had,
+      // onto a near-blank sheet two \u2014 the same symptom the old 297mm page had,
       // just inverted.
       //
       // This is the exact receipt from the print-preview bug report.
@@ -1515,7 +1622,7 @@ void main() {
     });
 
     test('sizes the page to the content instead of A4 height', () async {
-      // The bug: the page was 80mm wide but 297mm tall â€” A4's long edge, left
+      // The bug: the page was 80mm wide but 297mm tall \u2014 A4's long edge, left
       // over from the old A4 format. A one-item receipt is only ~125mm of
       // content, so the print preview showed a sheet that was two-thirds blank.
       //
@@ -1617,7 +1724,7 @@ int _pageCount(List<int> bytes) =>
 /// Returns the width and height in millimetres of the first page's /MediaBox.
 ///
 /// PDF user units are 1/72 inch, so `value / 72 * 25.4` converts to millimetres.
-/// This is the geometry the print spooler reads â€” the same numbers the preview
+/// This is the geometry the print spooler reads \u2014 the same numbers the preview
 /// uses to size the sheet.
 (double, double) _firstPageSizeMm(List<int> bytes) {
   final m = RegExp(

@@ -38,10 +38,10 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
   /// `updateItemPrice`, which republishes the cart and rebuilds the whole
   /// screen. Without a stable node the `TextField`'s element is discarded and
   /// rebuilt, focus is dropped, and the platform hands it to the next
-  /// focusable widget in the tree — the product search field.
+  /// focusable widget in the tree ? the product search field.
   ///
   /// That is why the field accepted exactly one edit and then jumped: clear the
-  /// "0", type "5", and the caret teleported out to "Search products…".
+  /// "0", type "5", and the caret teleported out to "Search products?".
   late final FocusNode _priceFocus;
 
   @override
@@ -69,18 +69,50 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
     final costPrice = p.costPrice;
     final salePrice = double.tryParse(_priceCtrl.text) ?? 0;
     final hasValidPrice = salePrice > 0;
-    final isBelowCost = hasValidPrice && salePrice < costPrice;
+    final hasCost = costPrice > 0;
+    final isBelowCost = hasValidPrice && hasCost && salePrice < costPrice;
     final qty = widget.item.quantity;
+    final fmt = NumberFormat('#,##0');
+
+    // How far under cost this line is, per unit and across the whole line. The
+    // rupee figure is the one a person can act on while a customer waits; the
+    // old "-832%" margin was arithmetically correct and practically useless.
+    final unitShort = isBelowCost ? costPrice - salePrice : 0.0;
+    final lineShort = unitShort * qty;
+    final marginPct = hasValidPrice && hasCost
+        ? (((salePrice - costPrice) / salePrice) * 100).round()
+        : null;
+
+    // One word of state per line. Kept as plain values here so the chip below
+    // and the loss notice cannot disagree about what this line is doing.
+    final statusFg = !hasValidPrice
+        ? ac.inkSoft
+        : isBelowCost
+            ? ac.expenseFg
+            : hasCost
+                ? ac.saleFg
+                : ac.inkSoft;
+    final statusBg = isBelowCost
+        ? ac.expenseTint
+        : hasValidPrice && hasCost
+            ? ac.saleTint
+            : ac.surfaceHigh;
+    final statusIcon = !hasValidPrice
+        ? Icons.edit_outlined
+        : isBelowCost
+            ? Icons.trending_down_rounded
+            : Icons.trending_up_rounded;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 9),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md, AppSpacing.md, AppSpacing.sm, AppSpacing.md),
       // The decoration must NEVER be `null` when this is not below cost.
       //
       // `Container` only emits a `DecoratedBox` when `decoration != null`, so
       // toggling between `null` and a `BoxDecoration` inserted a new widget
       // between this `Container` and its `Padding` child. Flutter could not
       // match `Padding` against `DecoratedBox`, so it deactivated the entire
-      // subtree and built a fresh one — taking the focused price `TextField`
+      // subtree and built a fresh one ? taking the focused price `TextField`
       // with it. The replacement inherited an already-focused `FocusNode`, so
       // focus was never re-acquired, no new `TextInputConnection` was opened,
       // and the field silently swallowed every keystroke after the first one.
@@ -89,26 +121,37 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
       //
       // A `BoxDecoration` with no colour and no border paints nothing, so
       // keeping it non-null is visually identical while holding the tree shape
-      // — and therefore the text field and its IME connection — steady.
+      // ? and therefore the text field and its IME connection ? steady.
       decoration: BoxDecoration(
-        color: isBelowCost ? ac.expenseTint.withValues(alpha: 0.25) : null,
-        borderRadius: BorderRadius.circular(12),
+        // A 5% wash, not 25%. The old block of colour turned the whole row into
+        // a red slab that shouted at the same volume as the margin number beside
+        // it, so nothing on the line had a clear priority. The loss state is
+        // carried by a hairline plus the notice at the bottom, which is where the
+        // eye actually goes.
+        color: isBelowCost ? ac.expenseTint.withValues(alpha: 0.05) : null,
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: isBelowCost
-            ? Border.all(color: ac.expenseFg, width: 1.2)
+            ? Border.all(color: ac.expenseFg.withValues(alpha: 0.45), width: 1.2)
             : null,
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // ---- identity row -------------------------------------------------
+        // Name and stock on the left, remove on the right, and nothing else.
+        // The old build put the name, the price field, the running total and
+        // the close button all on one 40-tall row ? four competing things in a
+        // strip that cannot grow, so "PER UNIT" wrapped away from its field and
+        // the total was pushed off the right edge on any narrow phone.
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
                 color: ac.inventoryTint,
-                borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(AppRadii.sm)),
             child: Icon(Icons.inventory_2_rounded,
                 size: 18, color: ac.inventoryFg),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -116,277 +159,405 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface)),
-              const SizedBox(height: 4),
-              // `crossAxisAlignment: center` so the label, the 48-tall price field and
-              // the "per unit" caption share one optical centre line. The field
-              // being taller than the text would otherwise sit low and drag the
-              // row's balance off.
-              Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                // "PER UNIT" instead of a bare "Sale price Rs". The old caption
-                // left the unit basis unstated, which is the one thing that causes
-                // a mis-keyed sale: a foam price quoted per square foot entered
-                // as a per-piece price is off by the order size, and nothing on
-                // screen said which one was expected.
-                Text('PER UNIT',
-                    style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                        color: ac.inkFaint)),
-                const SizedBox(width: 6),
-                SizedBox(
-                  // Was 68x30 — below the 48dp touch minimum, and too small to
-                  // read a 5-6 digit price without pinching to zoom. The price
-                  // is the single most-typed value on this screen, so it gets a
-                  // full-size target and a bigger font.
-                  width: 96,
-                  height: 48,
-                  child: TextField(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.1,
+                      color: ac.ink)),
+              const SizedBox(height: 2),
+              // Cost and stock on one quiet sub-line. This is the context that
+              // decides whether a price is safe, and it used to be invisible:
+              // the only cost signal on the card appeared *after* a mistake had
+              // already been made.
+              Text(
+                hasCost
+                    ? '$csym ${fmt.format(costPrice.toInt())} cost \u00b7 ${p.stockLabel} in stock'
+                    : 'No cost price set \u00b7 ${p.stockLabel} in stock',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: hasCost ? ac.inkFaint : ac.expenseFg),
+              ),
+            ]),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          // The old control was a bare 24x24 InkWell around a "\u2715" glyph, so
+          // the entire tappable area was a fifth of the 48dp minimum the rest of
+          // the app holds itself to. It is the one control a user reaches for
+          // when a line is wrong, and it is the easiest to miss.
+          //
+          // The `InkWell` itself is the full 48x48 and the chip is centred
+          // inside it. Padding a SizedBox *around* the InkWell would have been
+          // the easy mistake here ? the extra space would then sit outside the
+          // tappable widget and the target would still measure 28x28.
+          Semantics(
+            button: true,
+            label: 'Remove $qty \u00d7 ${p.name} from cart',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                onTap: () => ref
+                    .read(salesProvider.notifier)
+                    .removeFromCart(widget.item.product.id),
+                child: SizedBox(
+                  width: AppHit.min,
+                  height: AppHit.min,
+                  child: Center(
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: ac.surface2,
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        border: Border.all(color: ac.outline),
+                      ),
+                      child: Icon(Icons.close_rounded,
+                          size: 15, color: ac.inkFaint),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ]),
+        const SizedBox(height: AppSpacing.md),
+
+        // ---- control row --------------------------------------------------
+        // Price and quantity side by side, both full height, sharing one
+        // baseline. The field takes whatever width the stepper does not need,
+        // so it is no longer capped at 96dp and a 6-digit price cannot clip.
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // "PRICE PER SQ.FT" rather than a bare "Sale price Rs". The old
+              // caption left the unit basis unstated, which is the one thing
+              // that causes a mis-keyed sale: a foam price quoted per square
+              // foot entered as a per-piece price is off by the order size, and
+              // nothing on screen said which one was expected.
+              Text('PRICE PER ${p.unitLabel.toUpperCase()}',
+                  style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                      color: ac.inkFaint)),
+              const SizedBox(height: AppSpacing.xs),
+              // Was 68x30 ? below the 48dp touch minimum, and too small to read
+              // a 5-6 digit price without pinching to zoom. The price is the
+              // single most-typed value on this screen, so it gets a full-size
+              // target and a bigger font.
+              SizedBox(
+                height: AppHit.min,
+                child: TextField(
                     controller: _priceCtrl,
                     focusNode: _priceFocus,
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.done,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     maxLength: 9,
-                    textAlign: TextAlign.center,
-                    // Select-all on focus. Without it, tapping the field to correct
-                    // a price put the caret between two digits of the old value, so
-                    // typing appended to a stale number instead of replacing it —
-                    // the single most common way a price ends up wrong.
-                    onTap: () => _priceCtrl.selection = TextSelection(
-                      baseOffset: 0,
-                      extentOffset: _priceCtrl.text.length,
-                    ),
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: const [FontFeature('tnum')],
-                        color: isBelowCost ? ac.expenseFg : ac.saleFg),
-                    decoration: InputDecoration(
-                      counterText: '',
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                      filled: true,
-                      fillColor: cs.surfaceContainerLowest,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: hasValidPrice && !isBelowCost
-                              ? ac.saleFg.withValues(alpha: 0.4)
-                              : cs.outlineVariant,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: hasValidPrice && !isBelowCost
-                              ? ac.saleFg.withValues(alpha: 0.4)
-                              : cs.outlineVariant,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                            color: isBelowCost ? ac.expenseFg : ac.saleFg),
-                      ),
-                    ),
-                    onChanged: (val) {
-                      final newPrice = double.tryParse(val) ?? 0;
-                      setState(() {});
-                      ref
-                          .read(salesProvider.notifier)
-                          .updateItemPrice(widget.item.product.id, newPrice);
-                      // `updateItemPrice` republishes the cart and rebuilds this
-                      // row, so re-assert focus afterwards instead of letting it
-                      // fall through to the next focusable in the tree.
-                      if (!_priceFocus.hasFocus) _priceFocus.requestFocus();
-                    },
+                  textAlign: TextAlign.left,
+                  // Select-all on focus. Without it, tapping the field to correct
+                  // a price put the caret between two digits of the old value, so
+                  // typing appended to a stale number instead of replacing it ?
+                  // the single most common way a price ends up wrong.
+                  onTap: () => _priceCtrl.selection = TextSelection(
+                    baseOffset: 0,
+                    extentOffset: _priceCtrl.text.length,
                   ),
-                ),
-                const SizedBox(width: 6),
-                // This used to read "× 3", restating the quantity that the stepper
-                // directly below already shows far more prominently. It has been
-                // replaced with the running line total, so the price the user just
-                // typed and the amount it turns into are visible in the same glance
-                // — the arithmetic that is otherwise spread across two rows and
-                // has to be done in the user's head.
-                Text(
-                  hasValidPrice
-                      ? '= $csym ${NumberFormat('#,##0').format(total.toInt())}'
-                      : '\u2014',
                   style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    fontFeatures: const [FontFeature('tnum')],
-                    color: hasValidPrice ? ac.saleFg : ac.inkFaint,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature('tnum')],
+                      color: isBelowCost ? ac.expenseFg : ac.saleFg),
+                  decoration: InputDecoration(
+                    counterText: '',
+                    isDense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    filled: true,
+                    // Tinted when the line is under cost, so the field itself
+                    // carries the warning rather than only the card behind it.
+                    fillColor: isBelowCost
+                        ? ac.expenseTint.withValues(alpha: 0.10)
+                        : cs.surfaceContainerLowest,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                      borderSide: BorderSide(
+                        color: hasValidPrice && !isBelowCost
+                            ? ac.saleFg.withValues(alpha: 0.4)
+                            : cs.outlineVariant,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                      borderSide: BorderSide(
+                        color: hasValidPrice && !isBelowCost
+                            ? ac.saleFg.withValues(alpha: 0.4)
+                            : cs.outlineVariant,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                      borderSide: BorderSide(
+                          color: isBelowCost ? ac.expenseFg : ac.saleFg,
+                          width: 1.6),
+                    ),
                   ),
+                  onChanged: (val) {
+                    final newPrice = double.tryParse(val) ?? 0;
+                    setState(() {});
+                    ref
+                        .read(salesProvider.notifier)
+                        .updateItemPrice(widget.item.product.id, newPrice);
+                    // `updateItemPrice` republishes the cart and rebuilds this
+                    // row, so re-assert focus afterwards instead of letting it
+                    // fall through to the next focusable in the tree.
+                    if (!_priceFocus.hasFocus) _priceFocus.requestFocus();
+                  },
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('QUANTITY',
+                style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    color: ac.inkFaint)),
+            const SizedBox(height: AppSpacing.xs),
+            // 48 tall so the stepper clears the touch minimum on its own,
+            // instead of relying on two 24x24 buttons wedged inside a 32-tall
+            // track. It shares the field's baseline, so the two controls read
+            // as one row rather than two stacked bands.
+            Container(
+              height: AppHit.min,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                  color: ac.surfaceHigh,
+                  borderRadius: BorderRadius.circular(AppRadii.sm)),
+              // The hairline goes in `foregroundDecoration`, not `decoration`.
+              //
+              // A border in `decoration` is painted *inset* and `Container`
+              // reserves a matching 1px `padding` for it, which silently
+              // shrank the stepper's 48x48 hit areas to 46x46 ? under the
+              // touch minimum this track exists to honour. A foreground
+              // decoration paints the same line without touching layout.
+              foregroundDecoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                  border: Border.all(color: ac.outline)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                _StepperButton(
+                  label: '\u2212',
+                  semanticLabel: 'Decrease quantity of ${p.name}',
+                  onTap: () => ref
+                      .read(salesProvider.notifier)
+                      .changeQty(widget.item.product.id, -1),
+                ),
+                // Wide enough that a two- or three-digit quantity cannot clip
+                // against the steppers. At 24 it became unreadable exactly when
+                // the order was large enough to matter.
+                Container(
+                  width: 32,
+                  alignment: Alignment.center,
+                  child: Text('$qty',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          fontFeatures: const [FontFeature('tnum')],
+                          color: ac.ink)),
+                ),
+                _StepperButton(
+                  label: '+',
+                  semanticLabel: 'Increase quantity of ${p.name}',
+                  onTap: qty < p.currentStock
+                      ? () => ref
+                          .read(salesProvider.notifier)
+                          .changeQty(widget.item.product.id, 1)
+                      : null,
                 ),
               ]),
-            ]),
-          ),
-          const SizedBox(width: 6),
-          // The old control was a bare 24x24 InkWell around a "\u2715" glyph, so the
-          // entire tappable area was a fifth of the 48dp minimum the rest of the
-          // app holds itself to. It is the one control a user reaches for when a
-          // line is wrong, and it is the easiest to miss.
-          //
-          // The `InkWell` itself is the full 48x48 and the glyph is centred inside
-          // it. Padding a SizedBox *around* the InkWell would have been the easy
-          // mistake here — the extra space would then sit outside the tappable
-          // widget and the target would still measure 34x34.
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              onTap: () => ref
-                  .read(salesProvider.notifier)
-                  .removeFromCart(widget.item.product.id),
-              child: SizedBox(
-                width: AppHit.min,
-                height: AppHit.min,
-                child: Center(
-                  child: Icon(Icons.close_rounded, size: 17, color: ac.inkFaint),
-                ),
-              ),
-            ),
-          ),
-        ]),
-        const SizedBox(height: 8),
-        Row(children: [
-          // The whole pill is now 48 tall so the quantity stepper clears the touch
-          // minimum on its own, instead of relying on two 24x24 buttons wedged
-          // inside a 32-tall track.
-          Container(
-            height: AppHit.min,
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            decoration: BoxDecoration(
-                color: ac.surfaceHigh, borderRadius: BorderRadius.circular(14)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              _StepperButton(
-                label: '\u2212',
-                onTap: () => ref
-                    .read(salesProvider.notifier)
-                    .changeQty(widget.item.product.id, -1),
-              ),
-              // Widened from 24 to 34. At 24 a two- or three-digit quantity
-              // clipped against the steppers and the count silently became
-              // unreadable exactly when the order was large enough to matter.
-              Container(
-                width: 34,
-                alignment: Alignment.center,
-                child: Text('$qty',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        fontFeatures: const [FontFeature('tnum')],
-                        color: cs.onSurface)),
-              ),
-              _StepperButton(
-                label: '+',
-                onTap: qty < p.currentStock
-                    ? () => ref
-                        .read(salesProvider.notifier)
-                        .changeQty(widget.item.product.id, 1)
-                    : null,
-              ),
-            ]),
-          ),
-          const Spacer(),
-          // This slot used to restate the line total, which now sits beside the
-          // price field. It has been given the line's margin instead — the one
-          // number that is not derivable at a glance and that the person taking
-          // the sale actually needs. Selling below cost is caught by the warning
-          // further down, but "this line is only 4% up" is invisible without this.
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('MARGIN',
-                style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: ac.inkFaint,
-                    letterSpacing: 0.04)),
-            Text(
-              hasValidPrice && costPrice > 0
-                  ? '${(((salePrice - costPrice) / salePrice) * 100).round()}%'
-                  : '\u2014',
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                  fontFeatures: const [FontFeature('tnum')],
-                  color: !hasValidPrice
-                      ? cs.onSurface
-                      : isBelowCost
-                          ? ac.expenseFg
-                          : ac.saleFg),
             ),
           ]),
         ]),
-        if (isBelowCost)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
+        const SizedBox(height: AppSpacing.md),
+        Container(height: 1, color: ac.outline),
+        const SizedBox(height: AppSpacing.md),
+        // ---- summary row --------------------------------------------------
+        // The money this line actually contributes, at display weight on the
+        // right, with the state of the line on the left. This used to read
+        // "= Rs 2,200" crammed against the price field, restating an
+        // arithmetic the user had to do from two numbers in two rows.
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          // A status pill rather than a bare "MARGIN" heading over a number.
+          // "MARGIN -832%" was loud, arithmetically correct, and useless: a
+          // margin that far negative just means "well below cost", which the
+          // rupee shortfall below says directly and actionably.
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm, vertical: 5),
+              decoration: BoxDecoration(
+                color: statusBg,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(statusIcon, size: 12, color: statusFg),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    !hasValidPrice
+                        ? 'Price not set'
+                        : isBelowCost
+                            ? 'Below cost'
+                            : !hasCost
+                                ? 'No cost set'
+                                : '${marginPct! >= 0 ? '+' : ''}$marginPct% margin',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: statusFg),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            hasValidPrice ? '$csym ${fmt.format(total.toInt())}' : '\u2014',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature('tnum')],
+              color: hasValidPrice ? ac.ink : ac.inkFaint,
+            ),
+          ),
+        ]),
+        if (isBelowCost) ...[
+          const SizedBox(height: AppSpacing.md),
+          // The shortfall in rupees, plus a one-tap way to correct it. A warning
+          // with no action leaves the user to remember the cost price and retype
+          // it; "Use cost" is one tap and it makes the decision explicit, so a
+          // deliberate discount is still one tap away.
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: ac.expenseTint.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+            ),
             child: Row(children: [
-              Icon(Icons.warning_amber_rounded, size: 12, color: ac.expenseFg),
-              const SizedBox(width: 5),
+              Icon(Icons.warning_amber_rounded, size: 16, color: ac.expenseFg),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: Text(
-                  'Below cost price ($csym ${costPrice.toInt()}) \u2014 this line is a loss',
-                  style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: ac.expenseFg),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(
+                    qty > 1
+                        ? 'Losing $csym ${fmt.format(lineShort.toInt())} on this line'
+                        : 'Losing $csym ${fmt.format(unitShort.toInt())} on this line',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: ac.expenseFg),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    'Cost is $csym ${fmt.format(costPrice.toInt())} per ${p.unitLabel}.',
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: ac.expenseFg.withValues(alpha: 0.85)),
+                  ),
+                ]),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              // A compact text target rather than a filled button: this is a
+              // shortcut, not the primary action, and a solid button here would
+              // out-shout the total it is correcting.
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppRadii.xs),
+                  onTap: () {
+                    _priceCtrl.text = costPrice.toStringAsFixed(0);
+                    ref
+                        .read(salesProvider.notifier)
+                        .updateItemPrice(widget.item.product.id, costPrice);
+                    setState(() {});
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                    child: Text('Use cost',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: ac.expenseFg,
+                            decoration: TextDecoration.underline,
+                            decorationColor: ac.expenseFg)),
+                  ),
                 ),
               ),
             ]),
           ),
+        ],
       ]),
     );
   }
 }
 
 class _StepperButton extends StatelessWidget {
+  const _StepperButton({
+    required this.label,
+    required this.semanticLabel,
+    this.onTap,
+  });
+
+  /// `'\u2212'` or `'+'`. Kept as a string so the two call sites read
+  /// identically; the glyph itself is drawn as an icon (see below).
   final String label;
+
+  /// Announced by screen readers. A bare "\u2212" / "+" is announced as
+  /// "minus" / "plus" with no indication of *what* it steps, so a
+  /// non-sighted user hears two identical, contextless buttons per line.
+  final String semanticLabel;
+
   final VoidCallback? onTap;
-  const _StepperButton({required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    final cs = Theme.of(context).colorScheme;
     final enabled = onTap != null;
-    // The glyph is drawn in a 30x30 chip, but the tappable region is padded out
-    // to the 48dp minimum. Adjacent steppers stay 48 apart at the edges, so a
-    // thumb aiming for "+" cannot land on "\u2212" and silently decrement a sale.
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        onTap: onTap,
-        child: SizedBox(
-          width: AppHit.min,
-          height: AppHit.min,
-          child: Center(
-            child: Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: enabled ? ac.glassFill : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                border: enabled
-                    ? Border.all(color: ac.glassBorder)
-                    : Border.all(color: ac.outline),
-              ),
+    // The glyph is drawn directly, but the tappable region is padded out to the
+    // 48dp minimum. Adjacent steppers stay 48 apart at the edges, so a thumb
+    // aiming for "+" cannot land on "\u2212" and silently decrement a sale.
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: semanticLabel,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          onTap: onTap,
+          child: SizedBox(
+            width: AppHit.min,
+            height: AppHit.min,
+            child: Center(
               // Icons rather than "-" and "+" text: the font's hyphen sits
               // optically high and the plus reads thin and small, so the pair
               // looked like two different, mismatched buttons. `Icons.remove` and
               // `Icons.add` are drawn on the same optical baseline at any scale.
               child: Icon(
                 label == '\u2212' ? Icons.remove_rounded : Icons.add_rounded,
-                size: 17,
-                color: enabled ? cs.onSurface : ac.inkFaint,
+                size: 19,
+                color: enabled ? ac.ink : ac.inkFaint,
               ),
             ),
           ),
@@ -398,10 +569,10 @@ class _StepperButton extends StatelessWidget {
 
 /// A one-off coaching hint the user can dismiss for the session.
 ///
-/// Kept deliberately quiet — a tinted card with a dismiss control — because it
+/// Kept deliberately quiet ? a tinted card with a dismiss control ? because it
 /// is an instruction, not content. The point is to unblock a first-time user and
 /// then get out of the way, so the close affordance is a full 48dp target rather
-/// than a small ✕ that nobody finds.
+/// than a small ? that nobody finds.
 class DismissibleHint extends StatelessWidget {
   final String message;
   final VoidCallback onDismiss;
@@ -586,8 +757,8 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                 // is useful.
                 Text(
                   outOfStock
-                      ? '${p.sizeLength.toStringAsFixed(0)}in × ${p.sizeWidth.toStringAsFixed(0)}in · ${p.thickness.toStringAsFixed(0)}in · Out of stock'
-                      : '${p.sizeLength.toStringAsFixed(0)}in × ${p.sizeWidth.toStringAsFixed(0)}in · ${p.thickness.toStringAsFixed(0)}in · ${p.currentStock.toInt()} in stock',
+                      ? '${p.sizeLength.toStringAsFixed(0)}in ? ${p.sizeWidth.toStringAsFixed(0)}in ? ${p.thickness.toStringAsFixed(0)}in ? Out of stock'
+                      : '${p.sizeLength.toStringAsFixed(0)}in ? ${p.sizeWidth.toStringAsFixed(0)}in ? ${p.thickness.toStringAsFixed(0)}in ? ${p.currentStock.toInt()} in stock',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: outOfStock ? FontWeight.w700 : FontWeight.normal,
@@ -611,7 +782,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           const SizedBox(width: 8),
           // Was a 24x24 container holding a 14px "+". Below the 48dp minimum, and
           // on the row the user taps most often. The `InkWell` is the full 48 tall
-          // with the visible pill centred inside it — padding outside the InkWell
+          // with the visible pill centred inside it ? padding outside the InkWell
           // would leave the real target at 28.
           Material(
             color: Colors.transparent,
@@ -839,7 +1010,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                                   fontWeight: FontWeight.w800,
                                   fontSize: 13,
                                   color: cs.onSurface)),
-                          // Was "Walk-in also available Â· Change customer", which
+                          // Was "Walk-in also available \u00b7 Change customer", which
                           // sat directly beside a "Change" button and read as a
                           // duplicated, half-cut label.
                           Text('Tap to select a customer',
@@ -956,7 +1127,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                     const SizedBox(height: 10),
                     // The "Step 1 / Step 2" explainer was permanent chrome sitting
                     // between the product picker and the cart, so it pushed the
-                    // actual cart — the thing being edited — below the fold on a
+                    // actual cart ? the thing being edited ? below the fold on a
                     // short screen, and it repeated itself on every single sale to
                     // a user who had long since internalised the two steps.
                     //
@@ -970,7 +1141,17 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                   ]),
                 const SizedBox(height: 14),
                 SectionLabel(
-                    title: 'Cart \u00b7 ${salesState.totalItems} items'),
+                    // "1 items" was the literal heading on every single-item
+                    // sale, which is the most common sale there is. Also worth
+                    // a "Clear" escape hatch: previously the only way to empty a
+                    // cart was to tap the ? on every line, one mistake at a
+                    // time.
+                    title: 'Cart \u00b7 ${salesState.totalItems} ${salesState.totalItems == 1 ? 'item' : 'items'}',
+                    actionLabel:
+                        salesState.cart.isEmpty ? null : 'Clear all',
+                    onAction: salesState.cart.isEmpty
+                        ? null
+                        : () => ref.read(salesProvider.notifier).clearCart()),
                 if (salesState.cart.isEmpty)
                   FoamCard(
                     foam: true,

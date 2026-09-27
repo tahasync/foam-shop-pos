@@ -233,11 +233,11 @@ class AppButton extends StatelessWidget {
   }
 }
 
-/// Icon button (`.icon-btn`) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â frosted-glass circle.
+/// Icon button (`.icon-btn`) \u2192 frosted-glass circle.
 ///
 /// Sized to the 48dp minimum touch target by default. The visual glyph and the
 /// icon chip scale with [size], but the *hit area* is always at least
-/// [AppHit.min] ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the pro-rules require a 44pt iOS / 48dp Android target even
+/// [AppHit.min] \u2192 the pro-rules require a 44pt iOS / 48dp Android target even
 /// when the icon itself is small.
 class AppIconButton extends StatelessWidget {
   const AppIconButton({
@@ -259,7 +259,7 @@ class AppIconButton extends StatelessWidget {
   final double size;
   final Widget? badge;
 
-  /// Required for icon-only controls ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â without it a screen reader announces an
+  /// Required for icon-only controls \u2192 without it a screen reader announces an
   /// unlabelled button.
   final String? semanticLabel;
   final String? tooltip;

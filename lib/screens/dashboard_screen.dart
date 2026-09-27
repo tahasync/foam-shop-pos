@@ -44,7 +44,7 @@ class DashboardScreen extends ConsumerWidget {
       safeBottom: false,
       child: as.when(
         // The hero card (and the whole dashboard chrome) renders
-        // unconditionally â€” even while the accounting summary is still
+        // unconditionally — even while the accounting summary is still
         // resolving we show the layout with a zeroed summary, so a fresh
         // all-zero account always sees "Cash in hand: Rs 0" directly under
         // the header, exactly like the KPI tiles below it.

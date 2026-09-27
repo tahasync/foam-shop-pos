@@ -445,7 +445,7 @@ class _RevenueBarChart extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Peak ${buckets[peakIndex].label} Â· $csym ${fmt.format(maxV.toInt())}',
+                  'Peak ${buckets[peakIndex].label} \u00b7 $csym ${fmt.format(maxV.toInt())}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
