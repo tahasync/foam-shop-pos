@@ -268,21 +268,39 @@ class FirestoreService {
       final sale = Sale.fromMap(data);
       if (sale.isVoided) return;
 
+      // Every read must happen before the first write inside a transaction;
+      // Firestore rejects the whole thing with FAILED_PRECONDITION otherwise.
+      // This used to mark the sale voided and *then* read each product inside
+      // the loop below, so voiding a sale always failed with "Could not void
+      // sale" and the stock was never returned. saveSaleTransaction above
+      // already gets the order right.
+      //
+      // Aggregated by product id so two lines for the same product are restocked
+      // once, from a single read, instead of racing two writes off the same
+      // snapshot.
+      final restockByProduct = <String, double>{};
+      for (final li in sale.lineItems) {
+        restockByProduct[li.productId] =
+            (restockByProduct[li.productId] ?? 0) + li.qtyOrArea;
+      }
+      final productIds = restockByProduct.keys.toList();
+      final productRefs = productIds.map((id) => _products.doc(id)).toList();
+      final productSnaps =
+          await Future.wait(productRefs.map((ref) => transaction.get(ref)));
+
       transaction.update(saleRef, {
         'is_voided': true,
         'void_reason': reason,
       });
 
-      for (final li in sale.lineItems) {
-        final productRef = _products.doc(li.productId);
-        final snap = await transaction.get(productRef);
-        if (snap.exists) {
-          final productData = snap.data() as Map<String, dynamic>;
-          final currentStock =
-              (productData['current_stock'] as num?)?.toDouble() ?? 0;
-          transaction.update(
-              productRef, {'current_stock': currentStock + li.qtyOrArea});
-        }
+      for (int i = 0; i < productIds.length; i++) {
+        final snap = productSnaps[i];
+        if (!snap.exists) continue;
+        final productData = snap.data() as Map<String, dynamic>;
+        final currentStock =
+            (productData['current_stock'] as num?)?.toDouble() ?? 0;
+        transaction.update(productRefs[i],
+            {'current_stock': currentStock + restockByProduct[productIds[i]]!});
       }
     });
   }
