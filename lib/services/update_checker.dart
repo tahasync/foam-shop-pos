@@ -65,19 +65,147 @@ bool isNewerVersion(String installed, String remote) {
   return false;
 }
 
+/// Renders GitHub-flavoured release notes as plain text for the update dialog.
+///
+/// The notes are written for a browser, not for a 280dp-wide phone dialog, and
+/// the difference was visible on a real device. Two separate problems, both
+/// caused by handing the raw body straight to a `Text` widget:
+///
+///  1. Markup leaked through. `### Fixed` printed its own hash characters, list
+///     items printed their `-`, and inline `**bold**` / `` `code` `` printed
+///     their delimiters. Only `**` was being stripped, and only globally, so a
+///     bullet's leading marker survived.
+///  2. The source is hard-wrapped at ~80 columns for readability in
+///     CHANGELOG.md. Preserved line breaks split sentences mid-clause — "…
+///     was added to\nrevenue." — because `Text` wraps on the newlines it is
+///     given as though they were paragraph ends.
+///
+/// So this does two jobs: it strips the markup, and it *unwraps* the hard
+/// wraps, re-joining a continued line onto the bullet or paragraph it belongs
+/// to. Section headings are kept, uppercased, because they carry real meaning
+/// ("Fixed", "Added") that a flat list would lose.
 String formatChangelog(String rawNotes) {
-  if (rawNotes.isEmpty) {
+  if (rawNotes.trim().isEmpty) {
     return 'No changelog available for this release.';
   }
-  final clean = rawNotes
-      .replaceAll(RegExp(r'\*\*Full Changelog\*\*:\s*https?://\S+'), '')
-      .replaceAll(RegExp(r'https?://github\.com/\S+'), '')
-      .replaceAll(RegExp(r'\*\*'), '')
-      .trim();
-  if (clean.isEmpty) {
+
+  final normalized =
+      rawNotes.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+
+  final lines = normalized.split('\n');
+
+  // Blocks are flushed in order, so a paragraph is never interleaved with the
+  // bullet above it.
+  final blocks = <String>[];
+  String? openBullet;
+  String? openParagraph;
+
+  void flush() {
+    if (openBullet != null) {
+      final text = _stripInlineMarkdown(openBullet!);
+      if (text.isNotEmpty) blocks.add('• $text');
+      openBullet = null;
+    }
+    if (openParagraph != null) {
+      final text = _stripInlineMarkdown(openParagraph!);
+      if (text.isNotEmpty) blocks.add(text);
+      openParagraph = null;
+    }
+  }
+
+  for (final line in lines) {
+    final trimmedRight = line.trimRight();
+    final trimmed = trimmedRight.trim();
+
+    // Blank line: ends whatever block was open.
+    if (trimmed.isEmpty) {
+      flush();
+      continue;
+    }
+
+    // The generated trailer is GitHub's own boilerplate, not release content.
+    // Dropping only its URL would leave a bare "Full Changelog:" line behind.
+    if (RegExp(r'^\*\*Full Changelog\*\*').hasMatch(trimmed)) {
+      flush();
+      continue;
+    }
+
+    // A heading starts a new block. `#{1,6}` because GitHub release bodies and
+    // the CHANGELOG extraction use `###`.
+    final heading = RegExp(r'^#{1,6}\s+(.*)$').firstMatch(trimmed);
+    if (heading != null) {
+      flush();
+      final title = _stripInlineMarkdown(heading.group(1) ?? '').toUpperCase();
+      if (title.isNotEmpty) blocks.add(title);
+      continue;
+    }
+
+    // A list item starts a new bullet. Everything indented under it is a
+    // continuation and is appended below.
+    final bullet = RegExp(r'^[-*+]\s+(.*)$').firstMatch(trimmed);
+    if (bullet != null) {
+      flush();
+      openBullet = bullet.group(1) ?? '';
+      continue;
+    }
+
+    // A non-indented line with a block already open is a *lazy* continuation:
+    // markdown allows the wrap to break before the indent. Append rather than
+    // start a new paragraph, joining with a space to undo the hard wrap.
+    if (openBullet != null) {
+      openBullet = '${openBullet!} $trimmed';
+      continue;
+    }
+    if (openParagraph != null) {
+      openParagraph = '${openParagraph!} $trimmed';
+      continue;
+    }
+
+    // First line of a paragraph.
+    openParagraph = trimmed;
+  }
+  flush();
+
+  if (blocks.isEmpty) {
     return 'No changelog available for this release.';
   }
-  return clean;
+  return blocks.join('\n\n');
+}
+
+/// Removes inline Markdown delimiters, keeping the text they wrap.
+///
+/// Handles the forms that actually appear in a release body: emphasis, strong
+/// emphasis, inline code, and `[label](url)` links. Backtick spans are stripped
+/// before emphasis so that `` `x` `` inside a `**bold**` run does not unbalance
+/// the surrounding delimiters.
+String _stripInlineMarkdown(String input) {
+  // The generated trailer carries a compare URL; drop the whole line so its
+  // "**Full Changelog**:" label does not survive as stray text.
+  var text = input;
+
+  // `[label](url)` becomes `label`. Must run before the bare-URL removal below,
+  // otherwise the URL is deleted first and the text is left as "label](".
+  text = text.replaceAllMapped(
+      RegExp(r'!?\[([^\]]*)\]\([^)]*\)'), (m) => m.group(1) ?? '');
+
+  // Backticks first: a `code` span inside a **bold** run would otherwise
+  // unbalance the surrounding `**` and leave one of them behind.
+  text = text.replaceAllMapped(RegExp(r'`([^`]*)`'), (m) => m.group(1) ?? '');
+
+  text = text.replaceAllMapped(
+      RegExp(r'\*\*\*(.+?)\*\*\*'), (m) => m.group(1) ?? '');
+  text =
+      text.replaceAllMapped(RegExp(r'\*\*(.+?)\*\*'), (m) => m.group(1) ?? '');
+  text = text.replaceAllMapped(
+      RegExp(r'(?<!\*)\*([^*\n]+)\*(?!\*)'), (m) => m.group(1) ?? '');
+  text = text.replaceAllMapped(RegExp(r'__(.+?)__'), (m) => m.group(1) ?? '');
+
+  // Any remaining bare URL is noise in a phone dialog.
+  text = text.replaceAll(RegExp(r'https?://\S+'), '');
+
+  // Collapse the runs of spaces left behind by removed markers and by the
+  // hard-wrap joins, then trim.
+  return text.replaceAll(RegExp(r'[ \t]{2,}'), ' ').trim();
 }
 
 Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
@@ -170,8 +298,12 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
                           color:
                               Theme.of(context).colorScheme.onSurfaceVariant)),
                   const SizedBox(height: 7),
-                  SizedBox(
-                    height: 200,
+                  // Grow with the notes, up to a cap, instead of a fixed 200.
+                  // A fixed box wasted space on a one-line release and still
+                  // clipped a long one; now short notes stay compact and long
+                  // ones use the available height before scrolling.
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 320),
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
                       child: Text(

@@ -42,8 +42,22 @@ Data is live-synced to Firestore — each user sees only their own data (partiti
   `api.github.com/repos/tahasync/foam-shop-pos/releases/latest`.
 - `isNewerVersion` compares dotted numeric parts and tolerates the `v` prefix
   and unequal segment counts (`1.5` vs `1.5.0`).
-- `formatChangelog` strips GitHub's `**Full Changelog**` link, any other
-  `github.com` URL, and `**` markers before display.
+- `formatChangelog` converts the release body into plain text for a phone-sized
+  dialog: it drops GitHub's `**Full Changelog**` trailer and any remaining URL,
+  strips headings, list markers, `**bold**`, `*italic*`, `` `code` `` and
+  `[label](url)` links, and renders list items as `•` bullets. Section headings
+  are kept and uppercased, because "Fixed" / "Added" carry meaning a flat list
+  would lose.
+- It also **unwraps** the source. `CHANGELOG.md` is hard-wrapped at ~80 columns
+  for readability in the file, and those newlines used to reach the dialog
+  verbatim, so sentences broke mid-clause mid-paragraph. Continuation lines are
+  now rejoined onto the bullet or paragraph they belong to; a genuine blank-line
+  paragraph break is preserved.
+- The changelog body is capped at 320dp and scrolls beyond that, so a one-line
+  release does not reserve a large empty box.
+- Pinned by `test/update_dialog_format_test.dart`, which formats the real
+  `CHANGELOG.md` section so a future change to how the changelog is written
+  cannot silently reintroduce raw Markdown.
 - **Update Now** launches the Releases page with `externalApplication`, so the
   browser handles it rather than an in-app webview.
 - Every failure path — non-200, malformed JSON, no network, platform-channel
@@ -152,7 +166,7 @@ The pipeline uses:
 flutter test
 ```
 
-The suite is 8 files / 151 tests. It covers:
+The suite is 9 files / 169 tests. It covers:
 - Accounting calculations: Cash in Hand, Revenue, COGS, Gross/Net Profit, Baqaya aggregation
 - Regression: costPriceAtSale isolation (not affected by later cost price edits)
 - Regression: inventory changes never affect Cash in Hand, Revenue, or Expenses
@@ -165,6 +179,7 @@ The suite is 8 files / 151 tests. It covers:
 - **UI regression (`test/ui_regression_test.dart`, 43 tests)** — palette-drift guards, WCAG contrast in both themes, 48dp touch targets, the shared bottom inset that keeps content clear of the floating nav, the blur budget, and receipt PDF generation
 - **Change-due regression (`test/change_due_regression_test.dart`, 25 tests)** — overpayment across the dashboard, receipt, billing and status-badge paths, locking in that change is excluded from Cash in Hand and Revenue
 - **Void-reversal regression (`test/void_reversal_regression_test.dart`, 6 tests)** — voiding reverses revenue and restores stock, including a cart with the same product on two lines
+- **Update-dialog formatting (`test/update_dialog_format_test.dart`, 18 tests)** — release notes reach the "What's New" dialog as plain text: no Markdown delimiters, no hard-wrap line breaks mid-sentence, bullets and section headings preserved
 
 The UI regression file exists because `flutter analyze` will happily pass a layout that *looks* wrong. Those tests assert on behaviour — no overflow, correct inset, real touch target, valid PDF bytes — rather than on pixel values.
 
@@ -213,5 +228,5 @@ because it builds and installs a debug APK.
 
 **Production-ready Android app — actively maintained.** Used by foam/mattress shops with subscription-based commercial model. The founding account is free forever; new sign-ups get a 14-day free trial.
 
-The automated test suite (8 test files, 151 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, notification detection, stock-unit handling, change-due/overpayment accounting, sale-void reversal, and a UI regression suite that pins the committed colour palette, touch-target minimums, glass/blur budgets and receipt PDF output.
+The automated test suite (9 test files, 169 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, notification detection, stock-unit handling, change-due/overpayment accounting, sale-void reversal, update-dialog changelog formatting, and a UI regression suite that pins the committed colour palette, touch-target minimums, glass/blur budgets and receipt PDF output.
 

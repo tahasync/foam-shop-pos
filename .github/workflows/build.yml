@@ -13,11 +13,16 @@ jobs:
     # Setup action major versions, current as of 2026-09-28:
     #   actions/checkout            v5   (Node 24)
     #   actions/setup-java          v5   (Node 24)
-    #   actions/upload-artifact     v5   (Node 24)
+    #   actions/upload-artifact     v6   (Node 24 by default)
     #   softprops/action-gh-release v3   (Node 24)
     # All four were bumped off the Node 20 runtime, which GitHub has
     # deprecated. These were runtime-only migrations: no input this workflow
     # uses was renamed or removed. Re-check the major tags when bumping.
+    #
+    # upload-artifact needs v6, not v5: v5's notes claim Node 24 support but
+    # state it "by default" still runs on Node 20. Only v6 changed the default,
+    # so v5 kept the deprecation warning. v7 adds only an opt-in `archive`
+    # parameter and an ESM rewrite, so there is nothing to gain from it yet.
     runs-on: ubuntu-latest
     # NOTE: `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19. When that happens,
     # re-run a build and confirm the Android SDK / JDK toolchain still resolves
@@ -146,7 +151,7 @@ jobs:
           echo "::notice ::APK renamed to: $APK_NAME"
 
       - name: Upload APK to Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
