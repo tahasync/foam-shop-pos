@@ -84,6 +84,11 @@ class ReceiptPalette {
   final PdfColor inkFaint = PdfColor.fromHex('#8A8F8E');
   final PdfColor border = PdfColor.fromHex('#E3E1DC');
   final PdfColor tintSalesBg = PdfColor.fromHex('#EAF3F1');
+  /// Zebra stripe for the itemised table. Kept as its own hex rather than an
+  /// alpha of [tintSalesBg] so the band is predictable on a thermal printer,
+  /// where a translucent fill can come out muddy or vanish entirely.
+  final PdfColor tintRowBg = PdfColor.fromHex('#F5F8F7');
+
   final PdfColor tintSalesFg = PdfColor.fromHex('#0F6B64');
   final PdfColor tintProfitBg = PdfColor.fromHex('#EAF3EC');
   final PdfColor tintProfitFg = PdfColor.fromHex('#2E6B4E');
@@ -120,8 +125,15 @@ Future<pw.ThemeData> _loadReceiptTheme() async {
 /// and font sizes, which is what previously drifted out of sync with the real
 /// layout and left receipts either clipped or trailing a mostly blank sheet.
 pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
-  pw.TextStyle labelStyle(PdfColor c) =>
-      pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: c);
+  // Small-caps labels. `letterSpacing` is what makes an 80mm roll read as a
+  // designed document rather than a default print-out: the wide tracking gives
+  // the tiny type a label-like texture that survives thermal printing.
+  pw.TextStyle labelStyle(PdfColor c) => pw.TextStyle(
+        fontSize: 6.2,
+        fontWeight: pw.FontWeight.bold,
+        letterSpacing: 0.7,
+        color: c,
+      );
 
   pw.Widget metaCell(String label, String value, {bool end = false}) =>
       pw.Column(
@@ -129,10 +141,11 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
             end ? pw.CrossAxisAlignment.end : pw.CrossAxisAlignment.start,
         children: [
           pw.Text(label, style: labelStyle(p.inkFaint)),
-          pw.SizedBox(height: 1.5),
+          pw.SizedBox(height: 2),
           pw.Text(
             value,
             textAlign: end ? pw.TextAlign.right : pw.TextAlign.left,
+            maxLines: 1,
             style: pw.TextStyle(
               fontSize: 8.5,
               fontWeight: pw.FontWeight.bold,
@@ -143,7 +156,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
       );
 
   pw.Widget th(String t, {bool end = false}) => pw.Padding(
-        padding: const pw.EdgeInsets.only(bottom: 4),
+        padding: const pw.EdgeInsets.only(bottom: 5),
         child: pw.Text(
           t,
           textAlign: end ? pw.TextAlign.right : pw.TextAlign.left,
@@ -151,17 +164,39 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
         ),
       );
 
-  pw.Widget td(String v, {bool end = true, bool bold = false}) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 4),
+  // Item names are free text and routinely overflow the 80mm column, which
+  // pushed the money columns off the right edge. Eliding with `maxLines: 2`
+  // keeps a long name readable over two lines while guaranteeing the table's
+  // right-hand column can never be pushed out of the printable area.
+  pw.Widget td(String v, {bool end = true, bool bold = false, int maxLines = 1}) =>
+      pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 4.5),
         child: pw.Text(
           v,
           textAlign: end ? pw.TextAlign.right : pw.TextAlign.left,
+          maxLines: maxLines,
+          overflow: pw.TextOverflow.clip,
           style: pw.TextStyle(
             fontSize: 8.5,
+            lineSpacing: 1.2,
             fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
             color: p.ink,
           ),
         ),
+      );
+
+  // Alternating row tint. On a thermal print this is what actually carries the
+  // grouping: a hairline rule disappears at low DPI, a faint band does not.
+  pw.TableRow itemRow(ReceiptLine i, int index) => pw.TableRow(
+        decoration: index.isOdd
+            ? pw.BoxDecoration(color: p.tintRowBg)
+            : null,
+        children: [
+          td(i.name, end: false, bold: true, maxLines: 2),
+          td(i.qty),
+          td(i.unitPrice),
+          td(i.total, bold: true),
+        ],
       );
 
   pw.Widget totalRow(String label, String value, {bool grand = false}) =>
@@ -194,13 +229,14 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
     mainAxisSize: pw.MainAxisSize.min,
     children: [
-      // Branded teal banner, so the receipt is identifiable at a glance in a
-      // pile of paper.
+      // Branded header. A solid teal block with the store name reversed out of
+      // it is the single strongest signal that this is a real till receipt, and
+      // it survives greyscale thermal printing where fine hairlines do not.
       pw.Container(
-        padding: const pw.EdgeInsets.fromLTRB(10, 11, 10, 11),
+        padding: const pw.EdgeInsets.fromLTRB(10, 10, 10, 9),
         decoration: pw.BoxDecoration(
           color: p.tealDark,
-          borderRadius: pw.BorderRadius.circular(5),
+          borderRadius: pw.BorderRadius.circular(6),
         ),
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
@@ -208,21 +244,32 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
             pw.Text(
               d.storeName,
               textAlign: pw.TextAlign.center,
+              maxLines: 2,
               style: pw.TextStyle(
-                fontSize: 13,
+                fontSize: 13.5,
+                lineSpacing: 1.15,
                 fontWeight: pw.FontWeight.bold,
                 color: p.white,
               ),
             ),
-            pw.SizedBox(height: 2),
+            pw.SizedBox(height: 3),
+            // A rule under the name, in the light tint, gives the block an
+            // internal structure so the two lines do not read as one blob.
+            pw.Container(width: 26, height: 0.7, color: p.tintSalesBg),
+            pw.SizedBox(height: 3),
             pw.Text(
-              'Digital Register',
-              style: pw.TextStyle(fontSize: 7.5, color: p.white),
+              'DIGITAL REGISTER',
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(
+                fontSize: 6.2,
+                letterSpacing: 1.1,
+                color: p.tintSalesBg,
+              ),
             ),
           ],
         ),
       ),
-      pw.SizedBox(height: 10),
+      pw.SizedBox(height: 9),
       // Date / receipt number.
       pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -244,21 +291,31 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
 
       pw.SizedBox(height: 9),
       pw.Container(height: 0.6, color: p.border),
-      pw.SizedBox(height: 9),
+      pw.SizedBox(height: 8),
 
-      pw.RichText(
-        text: pw.TextSpan(
+      // Customer. Given the same small-caps label treatment as DATE / RECEIPT
+      // so the top of the receipt scans as three labelled facts.
+      pw.Container(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        decoration: pw.BoxDecoration(
+          color: p.tintRowBg,
+          borderRadius: pw.BorderRadius.circular(5),
+          border: pw.Border.all(color: p.border, width: 0.5),
+        ),
+        child: pw.Row(
           children: [
-            pw.TextSpan(
-              text: 'Customer: ',
-              style: pw.TextStyle(fontSize: 8.5, color: p.inkSoft),
-            ),
-            pw.TextSpan(
-              text: d.customerName,
-              style: pw.TextStyle(
-                fontSize: 8.5,
-                fontWeight: pw.FontWeight.bold,
-                color: p.ink,
+            pw.Text('CUSTOMER', style: labelStyle(p.inkFaint)),
+            pw.SizedBox(width: 6),
+            pw.Expanded(
+              child: pw.Text(
+                d.customerName,
+                textAlign: pw.TextAlign.right,
+                maxLines: 1,
+                style: pw.TextStyle(
+                  fontSize: 8.5,
+                  fontWeight: pw.FontWeight.bold,
+                  color: p.ink,
+                ),
               ),
             ),
           ],
@@ -267,14 +324,16 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
       pw.SizedBox(height: 9),
 
       // Itemised table. A real column table, not stacked label/value lines, so
-      // qty, price and total can be scanned down the columns.
+      // qty, price and total can be scanned down the columns. The heavy rule
+      // under the header row is what separates "what you bought" from the
+      // metadata above it.
       pw.Table(
         border: pw.TableBorder.symmetric(
           inside: pw.BorderSide(color: p.border, width: 0.4),
         ),
         columnWidths: const {
-          0: pw.FlexColumnWidth(3.0),
-          1: pw.FlexColumnWidth(1.1),
+          0: pw.FlexColumnWidth(2.9),
+          1: pw.FlexColumnWidth(1.0),
           2: pw.FlexColumnWidth(1.6),
           3: pw.FlexColumnWidth(1.8),
         },
@@ -292,15 +351,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
               th('TOTAL'),
             ],
           ),
-          for (final i in d.items)
-            pw.TableRow(
-              children: [
-                td(i.name, end: false, bold: true),
-                td(i.qty),
-                td(i.unitPrice),
-                td(i.total, bold: true),
-              ],
-            ),
+          for (final (index, i) in d.items.indexed) itemRow(i, index),
         ],
       ),
       pw.SizedBox(height: 10),
@@ -331,27 +382,48 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
       ),
       pw.SizedBox(height: 8),
 
-      // Status pill.
+      // Status pill. This is the one thing a customer scans for, so it gets a
+      // solid filled treatment for "paid" and a tinted one for "due" — the
+      // difference has to be legible from arm's length on a scrap of paper.
       pw.Center(
         child: pw.Container(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+          padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: pw.BoxDecoration(
-            color: d.isDue ? p.tintExpenseBg : p.tintProfitBg,
+            color: d.isDue ? p.tintExpenseBg : p.tintSalesFg,
             borderRadius: pw.BorderRadius.circular(9),
           ),
           child: pw.Text(
-            d.isDue ? 'BALANCE DUE' : '\u2713 FULLY PAID',
+            d.isDue ? 'BALANCE DUE' : 'PAID IN FULL',
             style: pw.TextStyle(
-              fontSize: 7.5,
+              fontSize: 7,
+              letterSpacing: 0.7,
               fontWeight: pw.FontWeight.bold,
-              color: d.isDue ? p.tintExpenseFg : p.tintProfitFg,
+              color: d.isDue ? p.tintExpenseFg : p.white,
             ),
           ),
         ),
       ),
-      pw.SizedBox(height: 11),
+      pw.SizedBox(height: 12),
 
-      pw.Container(height: 0.6, color: p.border),
+      // A dashed tear line, the way a thermal roll is actually separated. A
+      // solid rule here printed as a hard edge across the paper and looked like
+      // a mistake; dashes read as "cut here".
+      pw.Row(
+        children: [
+          for (var i = 0; i < 3; i++) ...[
+            pw.Expanded(
+              child: pw.Container(
+                height: 0.6,
+                decoration: pw.BoxDecoration(
+                  color: p.border,
+                  borderRadius: pw.BorderRadius.circular(1),
+                ),
+              ),
+            ),
+            if (i < 2) pw.SizedBox(width: 4),
+          ],
+        ],
+      ),
       pw.SizedBox(height: 9),
 
       pw.Center(
@@ -393,10 +465,13 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p) {
 /// A receipt taller than [kReceiptTallMm] is a bulk order rather than a till
 /// receipt, so it is given a full A4 sheet and paginates normally.
 Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
+  // Load the theme once. The measuring pass and the painting pass must agree on
+  // it — see the comment on [measureContext] below.
+  final theme = await _loadReceiptTheme();
   final pdf = pw.Document(
     title: 'Receipt ${data.receiptNo}',
     author: data.storeName,
-    theme: await _loadReceiptTheme(),
+    theme: theme,
   );
   final palette = ReceiptPalette();
 
@@ -409,7 +484,7 @@ Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
   //
   // `Widget.measure` needs a page *and* a graphics canvas, so the probe page is
   // really added to a throwaway document; only its size is read.
-  final probeDoc = pw.Document(theme: await _loadReceiptTheme());
+  final probeDoc = pw.Document(theme: theme);
   probeDoc.addPage(
     pw.Page(
       pageFormat: PdfPageFormat(
@@ -421,15 +496,33 @@ Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
     ),
   );
   final probePage = probeDoc.document.page(0)!;
-  final measured = pw.Widget.measure(
-    _buildReceipt(data, palette),
+
+  // `Widget.measure` builds its own `Context` that inherits `ThemeData.base()`
+  // — the WinAnsi Helvetica defaults — unless a context is supplied. Left to
+  // its own devices it therefore measured every string with Helvetica metrics
+  // while the page was actually painted in Inter, and Inter's wider letterforms
+  // and larger line height meant the real body was TALLER than the measurement.
+  // The page was sized to the short number, so the overflow fell off the bottom
+  // and the footer and tear line silently vanished from the saved file.
+  //
+  // Handing it a context that inherits the real theme makes the measurement and
+  // the paint use identical font metrics, so the height is the true height.
+  final measureContext = pw.Context(
+    document: pdf.document,
     page: probePage,
     canvas: probePage.getGraphics(),
+  ).inheritFromAll([theme]);
+
+  final measured = pw.Widget.measure(
+    _buildReceipt(data, palette),
+    context: measureContext,
     constraints: pw.BoxConstraints(maxWidth: contentWidth),
   ).y;
 
-  final heightMm =
-      ((measured + (margin * 2)) / PdfPageFormat.mm).clamp(40.0, 2000.0);
+  // A couple of points of headroom absorbs sub-point rounding in the
+  // measurement so the last line can never kiss the page edge.
+  final heightMm = ((measured + (margin * 2) + 4) / PdfPageFormat.mm)
+      .clamp(40.0, 2000.0);
 
   if (heightMm <= kReceiptTallMm) {
     // Fits a normal roll: one page, sized to the content.

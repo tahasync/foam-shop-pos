@@ -991,6 +991,121 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     });
+
+    // The device bug this guards. On the Pixel 9 the field accepted exactly ONE
+    // keystroke and then went deaf: typing "20500" left a single digit behind,
+    // with the field still drawn as focused. Even 3s between key events changed
+    // nothing, so this was the app, not flaky input injection.
+    //
+    // The focus test above cannot catch it because `enterText` sets the whole
+    // value in one shot. Feeding the value through `updateEditingValue` one
+    // character at a time is precisely what the platform IME does, so this
+    // exercises the incremental path that was broken.
+    testWidgets('accepts every digit of a multi-digit price', (tester) async {
+      await _pumpPriceField(tester);
+
+      final field = find.byType(TextField).first;
+      await tester.tap(field);
+      await tester.pumpAndSettle();
+
+      // Clear the pre-filled price the way a user would before retyping.
+      tester.testTextInput.updateEditingValue(const TextEditingValue());
+      await tester.pumpAndSettle();
+
+      var typed = '';
+      for (final digit in '20500'.split('')) {
+        typed += digit;
+        tester.testTextInput.updateEditingValue(TextEditingValue(
+          text: typed,
+          selection: TextSelection.collapsed(offset: typed.length),
+        ));
+        await tester.pumpAndSettle();
+      }
+
+      expect(
+        tester.widget<TextField>(field).controller!.text,
+        '20500',
+        reason: 'every keystroke must land; the field went deaf after the first '
+            'character, so multi-digit prices were impossible to enter',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    // The cart's own controls were all well under the 48dp touch minimum the app
+    // sets for itself in `AppHit`: the remove button was a bare 24x24 InkWell
+    // around a "\u2715" glyph, and both quantity steppers were 24x24 inside a
+    // 32-tall track. On a phone held one-handed at a counter those are the
+    // hardest controls on the screen to hit, and the steppers in particular sit
+    // next to each other — a miss on "+" lands on "\u2212" and quietly changes
+    // the quantity of a real sale.
+    testWidgets('cart remove and stepper controls meet the touch minimum',
+        (tester) async {
+      await _pumpPriceField(tester);
+
+      // Measure the tappable target, not the glyph. The icons are intentionally
+      // 17px, so `find.byIcon(...)` finds the Icon itself and reports 17 — the
+      // thing being asserted here is the hit area wrapped around it. Each target
+      // is the enclosing `InkWell` of the icon, which is exactly what receives
+      // the tap.
+      Size targetFor(IconData icon) {
+        final inkWell = find.ancestor(
+          of: find.byIcon(icon),
+          matching: find.byType(InkWell),
+        );
+        expect(
+          inkWell,
+          findsWidgets,
+          reason: 'icon $icon is not wrapped in a tappable InkWell',
+        );
+        return tester.getSize(inkWell.first);
+      }
+
+      for (final (label, icon) in [
+        ('remove', Icons.close_rounded),
+        ('quantity -', Icons.remove_rounded),
+        ('quantity +', Icons.add_rounded),
+      ]) {
+        final size = targetFor(icon);
+        expect(
+          size.height,
+          greaterThanOrEqualTo(AppHit.min),
+          reason: 'the "$label" hit area is only ${size.height} tall, under the '
+              '48dp touch minimum',
+        );
+        expect(
+          size.width,
+          greaterThanOrEqualTo(AppHit.min),
+          reason: 'the "$label" hit area is only ${size.width} wide, under the '
+              '48dp touch minimum',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    // A price of 0 leaves the line total undefined, and the old caption showed a
+    // bare "\u00d7 1" with no figure at all. The replacement shows an em dash
+    // until there is a real price, so the row never displays a number that
+    // implies a value it does not have.
+    testWidgets('line total stays blank until a price is entered', (tester) async {
+      await _pumpPriceField(tester);
+
+      // The pre-filled price renders a real figure, formatted with thousands
+      // separators, rather than the placeholder.
+      expect(find.textContaining('='), findsWidgets);
+      expect(find.text('\u2014'), findsNothing);
+
+      final field = find.byType(TextField).first;
+      await tester.enterText(field, '');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('\u2014'),
+        findsNWidgets(2),
+        reason: 'with no price there is neither a line total nor a margin to '
+            'show, so both readouts fall back to a dash',
+      );
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('Receipt saving', () {
