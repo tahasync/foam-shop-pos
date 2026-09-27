@@ -34,11 +34,22 @@ class SubscriptionScreen extends ConsumerWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [ac.brandSolid, ac.brandSolidStrong],
+                colors: [ac.brandFill, ac.brandFillDeep],
               ),
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
-                BoxShadow(color: ac.brandSolid.withValues(alpha: 0.4), blurRadius: 24, offset: const Offset(0, 12)),
+                // Neutral, not `brandFill` — see the note in
+                // `account_settings_screen.dart`. A 45%-alpha brand wash under a
+                // 24px blur read as a light leak around the card on the dark
+                // page instead of as depth.
+                BoxShadow(
+                  color: Colors.black.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark ? 0.36 : 0.18,
+                  ),
+                  blurRadius: 18,
+                  spreadRadius: -6,
+                  offset: const Offset(0, 8),
+                ),
               ],
             ),
             child: Stack(

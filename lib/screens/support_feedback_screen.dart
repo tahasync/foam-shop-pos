@@ -147,9 +147,9 @@ class _ChannelCard extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? ac.saleTint : ac.surface,
+          color: selected ? ac.saleTint : ac.glassFill,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? ac.saleFg : ac.outline, width: selected ? 1.5 : 1),
+          border: Border.all(color: selected ? ac.saleFg : ac.glassBorder, width: selected ? 1.5 : 1),
         ),
         child: Column(children: [
           Icon(icon, size: 24, color: selected ? ac.saleFg : ac.inkSoft),

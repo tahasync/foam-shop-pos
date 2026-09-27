@@ -150,6 +150,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       actions: [
         AppIconButton(
           icon: Icons.ios_share_rounded,
+            semanticLabel: 'Export report',
           onTap: () => pushOverlay(context, const ExportScreen()),
         ),
       ],
@@ -231,7 +232,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Widget _buildRevenueChart(BuildContext context, List<Sale> sales, String csym) {
-    final ac = AppColors.of(context);
     final buckets = _revenueBuckets(_period);
     for (final s in sales) {
       if (s.isVoided || s.isQuote) continue;
@@ -247,6 +247,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       return FoamCard(
         padding: EdgeInsets.zero,
         child: EmptyState(
+          compact: true,
           icon: Icons.bar_chart_rounded,
           title: 'No sales in this period',
           subtitle: 'Daily sales revenue will appear here',
@@ -254,83 +255,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       );
     }
 
-    final maxV = buckets.map((b) => b.amount).reduce((a, b) => a > b ? a : b);
-    final maxY = maxV <= 0 ? 100.0 : maxV * 1.25;
-    final isDense = buckets.length > 20;
-
-    return FoamCard(
-      padding: const EdgeInsets.fromLTRB(10, 22, 10, 10),
-      child: SizedBox(
-        height: 150,
-        child: BarChart(
-          BarChartData(
-            maxY: maxY,
-            alignment: BarChartAlignment.spaceAround,
-            barGroups: [
-              for (var i = 0; i < buckets.length; i++)
-                BarChartGroupData(
-                  x: i,
-                  barRods: [
-                    BarChartRodData(
-                      toY: buckets[i].amount,
-                      gradient: LinearGradient(colors: [ac.primary, ac.primaryStrong]),
-                      width: isDense ? 8 : 14,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ],
-                ),
-            ],
-            gridData: const FlGridData(show: false),
-            borderData: FlBorderData(show: false),
-            titlesData: FlTitlesData(
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 22,
-                  interval: isDense ? 2 : 1,
-                  getTitlesWidget: (value, meta) {
-                    final i = value.toInt();
-                    if (i < 0 || i >= buckets.length) return const SizedBox.shrink();
-                    return SideTitleWidget(
-                      meta: meta,
-                      space: 6,
-                      child: Text(
-                        buckets[i].label,
-                        style: TextStyle(
-                          fontSize: isDense ? 8 : 9,
-                          fontWeight: FontWeight.w700,
-                          color: ac.inkFaint,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            barTouchData: BarTouchData(
-              touchTooltipData: BarTouchTooltipData(
-                fitInsideHorizontally: true,
-                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                  final i = group.x.toInt();
-                  if (i < 0 || i >= buckets.length) return null;
-                  return BarTooltipItem(
-                    '${buckets[i].label}\n$csym ${NumberFormat('#,##0').format(rod.toY.toInt())}',
-                    const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    return _RevenueBarChart(buckets: buckets, csym: csym);
   }
 
   Widget _buildDonut(BuildContext context, List<Expense> expenses, DateTimeRange range, String csym) {
@@ -344,6 +269,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       return FoamCard(
         padding: EdgeInsets.zero,
         child: EmptyState(
+          compact: true,
           icon: Icons.pie_chart_outline_rounded,
           title: 'No expenses in this period',
           subtitle: 'Expense breakdown will appear here',
@@ -453,3 +379,221 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 }
 
 String _pct(double v, double total) => total <= 0 ? '0%' : '${((v / total) * 100).round()}%';
+
+/// The revenue trend bar chart.
+///
+/// The previous implementation rendered bare bars on a blank field: no grid,
+/// no value axis, and a fixed 150px box that left a lot of dead space above the
+/// data. This version adds the things a chart actually needs to be readable:
+///
+///  * horizontal gridlines plus a compact left-hand value axis, so a bar's
+///    height can be estimated without tapping,
+///  * a headroom-aware max so the tallest bar never touches the ceiling,
+///  * rounded bars with a subtle top highlight and a muted zero-bar state
+///    (an empty period is visibly "no data", not "a broken chart"),
+///  * a peak callout naming the best bucket, so the takeaway is available
+///    without interaction, and
+///  * a summary for screen readers, because a canvas chart is otherwise silent.
+class _RevenueBarChart extends StatelessWidget {
+  const _RevenueBarChart({required this.buckets, required this.csym});
+
+  final List<_RevenueBucket> buckets;
+  final String csym;
+
+  /// Compact money formatting for the axis, e.g. 120K / 1.4M.
+  static String _axisLabel(double v) {
+    if (v >= 1000000) {
+      final m = v / 1000000;
+      return '${m.toStringAsFixed(m >= 10 ? 0 : 1)}M';
+    }
+    if (v >= 1000) {
+      final k = v / 1000;
+      return '${k.toStringAsFixed(k >= 10 ? 0 : 1)}K';
+    }
+    return v.toInt().toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    final fmt = NumberFormat('#,##0');
+
+    final values = buckets.map((b) => b.amount).toList();
+    final maxV = values.reduce((a, b) => a > b ? a : b);
+    // 18% headroom keeps the tallest bar off the ceiling so it reads as data
+    // rather than as a clipped edge.
+    final maxY = maxV <= 0 ? 100.0 : maxV * 1.18;
+    final gridInterval = maxY <= 0 ? 25.0 : maxY / 4;
+
+    final isDense = buckets.length > 20;
+    final peakIndex = values.indexOf(maxV);
+
+    return FoamCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Peak callout - the takeaway is readable without any interaction.
+          Row(
+            children: [
+              Icon(Icons.trending_up_rounded, size: AppIconSize.sm, color: ac.saleFg),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Peak ${buckets[peakIndex].label} Â· $csym ${fmt.format(maxV.toInt())}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: ac.inkSoft,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            height: 168,
+            child: Semantics(
+              label:
+                  'Revenue trend chart. ${buckets.length} periods. Highest is ${buckets[peakIndex].label} at $csym ${fmt.format(maxV.toInt())}.',
+              child: BarChart(
+                BarChartData(
+                  maxY: maxY,
+                  minY: 0,
+                  alignment: BarChartAlignment.spaceAround,
+                  barGroups: [
+                    for (var i = 0; i < buckets.length; i++)
+                      BarChartGroupData(
+                        x: i,
+                        barRods: [
+                          BarChartRodData(
+                            toY: buckets[i].amount,
+                            width: isDense ? 7 : 14,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(AppRadii.xs),
+                            ),
+                            // A zero bar is drawn as a faint stub so an empty
+                            // period reads as "no sales" rather than a gap.
+                            color: buckets[i].amount > 0
+                                ? ac.saleFg
+                                : ac.glassNested,
+                            gradient: buckets[i].amount > 0
+                                ? LinearGradient(
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                    colors: [
+                                      ac.saleFg,
+                                      ac.saleFg.withValues(alpha: 0.55),
+                                    ],
+                                  )
+                                : null,
+                          ),
+                        ],
+                      ),
+                  ],
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: gridInterval,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: ac.glassHairline,
+                      strokeWidth: 1,
+                      // Dashed grid so it never competes with the bars.
+                      dashArray: const [4, 6],
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 42,
+                        interval: gridInterval,
+                        getTitlesWidget: (value, meta) {
+                          if (value == 0) return const SizedBox.shrink();
+                          return SideTitleWidget(
+                            meta: meta,
+                            space: 6,
+                            child: Text(
+                              _axisLabel(value),
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: ac.inkFaint,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 26,
+                        interval: isDense ? 2 : 1,
+                        getTitlesWidget: (value, meta) {
+                          final i = value.toInt();
+                          if (i < 0 || i >= buckets.length) {
+                            return const SizedBox.shrink();
+                          }
+                          return SideTitleWidget(
+                            meta: meta,
+                            space: 8,
+                            child: Text(
+                              buckets[i].label,
+                              style: TextStyle(
+                                fontSize: isDense ? 8.5 : 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: ac.inkFaint,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  barTouchData: BarTouchData(
+                    // Only respond to a deliberate tap or drag, never to a
+                    // stray brush during a scroll.
+                    handleBuiltInTouches: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      getTooltipColor: (_) => ac.brandFillDeep,
+                      tooltipBorderRadius: BorderRadius.circular(AppRadii.sm),
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final i = group.x.toInt();
+                        if (i < 0 || i >= buckets.length) return null;
+                        return BarTooltipItem(
+                          '${buckets[i].label}\n$csym ${fmt.format(rod.toY.toInt())}',
+                          TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

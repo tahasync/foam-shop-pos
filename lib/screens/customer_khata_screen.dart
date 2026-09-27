@@ -14,13 +14,16 @@ import '../widgets/initial_avatar.dart';
 import '../providers/shop_provider.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
-import '../widgets/design_system/elevation.dart';
 import '../widgets/add_customer_sheet.dart';
 import 'customer_recovery_screen.dart';
 import 'supplier_khata_screen.dart';
 
 class CustomerKhataScreen extends ConsumerStatefulWidget {
-  const CustomerKhataScreen({super.key});
+  /// Bottom space reserved for the floating nav pill. Supplied by
+  /// `HomeScreen.contentBottomInset` so every tab agrees.
+  final double bottomInset;
+
+  const CustomerKhataScreen({super.key, this.bottomInset = 120});
   @override
   ConsumerState<CustomerKhataScreen> createState() => _CustomerKhataScreenState();
 }
@@ -50,7 +53,7 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
     final salesAsync = ref.watch(salesStreamProvider);
     final paymentsAsync = ref.watch(paymentsStreamProvider);
     final csym = ref.watch(currencySymbolProvider);
-    final bottom = MediaQuery.of(context).padding.bottom;
+    final bottom = widget.bottomInset;
 
     String _fmt(double v) => '$csym ${NumberFormat('#,##0').format(v.toInt())}';
 
@@ -114,28 +117,29 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
         ? null
         : combined.where((b) => _query.isEmpty || b.customer.name.toLowerCase().contains(_query)).toList();
 
-    return Scaffold(
-      body: SafeArea(
-        top: true,
-        bottom: false,
-        child: Column(children: [
+    return GlassScaffold(
+      safeBottom: false,
+      child: Column(children: [
           AppBarRow(
             showBrand: false,
             title: 'Khata',
             trailing: [
               AppIconButton(
                 icon: Icons.currency_exchange_rounded,
+                semanticLabel: 'Customer recovery',
                 onTap: () => Navigator.push(context, slideUpRoute(const CustomerRecoveryScreen())),
               ),
               const SizedBox(width: 8),
               AppIconButton(
+                semanticLabel: 'Supplier khata',
                 icon: Icons.business_rounded,
                 onTap: () => Navigator.push(context, slideUpRoute(const SupplierKhataScreen())),
               ),
               const SizedBox(width: 8),
               AppIconButton(
                 icon: Icons.add_rounded,
-                background: ac.brandSolid,
+                semanticLabel: 'Add customer',
+                background: ac.brandFill,
                 foreground: Colors.white,
                 onTap: _addCustomer,
               ),
@@ -156,29 +160,24 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
                             subtitle: 'Try a different search term',
                           ))
                     : ListView(
-                        padding: EdgeInsets.fromLTRB(18, 0, 18, 120 + bottom),
+                        padding: EdgeInsets.fromLTRB(18, 0, 18, bottom),
                         children: [
-                          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Expanded(
-                              child: KpiTile(
-                                label: 'Total receivable',
-                                value: _fmt(totalReceivable),
-                                sub: 'From $dueCount customer${dueCount == 1 ? '' : 's'}',
-                                icon: Icons.account_balance_wallet_rounded,
-                                tint: ac.expenseTint,
-                                iconColor: ac.expenseFg,
-                              ),
+                          AppKpiRow(tiles: [
+                            KpiTile(
+                              label: 'Total receivable',
+                              value: _fmt(totalReceivable),
+                              sub: 'From $dueCount customer${dueCount == 1 ? '' : 's'}',
+                              icon: Icons.account_balance_wallet_rounded,
+                              tint: ac.expenseTint,
+                              iconColor: ac.expenseFg,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: KpiTile(
-                                label: 'Collected today',
-                                value: _fmt(collectedToday),
-                                sub: '${todayPayments.length} payment${todayPayments.length == 1 ? '' : 's'}',
-                                icon: Icons.savings_rounded,
-                                tint: ac.saleTint,
-                                iconColor: ac.saleFg,
-                              ),
+                            KpiTile(
+                              label: 'Collected today',
+                              value: _fmt(collectedToday),
+                              sub: '${todayPayments.length} payment${todayPayments.length == 1 ? '' : 's'}',
+                              icon: Icons.savings_rounded,
+                              tint: ac.saleTint,
+                              iconColor: ac.saleFg,
                             ),
                           ]),
                           const SizedBox(height: 14),
@@ -190,10 +189,9 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
                           const SectionLabel(title: 'Customer ledger'),
                           for (final item in filtered) _buildRow(item, cs, ac, csym),
                         ],
-                      ),
-          ),
+                ),
+            ),
         ]),
-      ),
     );
   }
 
@@ -210,21 +208,16 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
           (item.lastSale == null || item.lastPayment!.isAfter(item.lastSale!));
       sub = isPayment ? 'Last payment $ago' : 'Last sale $ago';
     }
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 9),
       padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: ac.outline),
-        boxShadow: appElevationShadows(context),
-      ),
-      foregroundDecoration: darkTopEdgeHighlight(context),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => Navigator.push(context,
-            slideUpRoute(_CustDetail(customer: item.customer))),
-        child: Row(children: [
+      radius: 18,
+      level: AppGlassLevel.raised,
+      gloss: false,
+      tint: due ? ac.expenseFg.withValues(alpha: 0.06) : null,
+      onTap: () => Navigator.push(context,
+          slideUpRoute(_CustDetail(customer: item.customer))),
+      child: Row(children: [
           InitialAvatar(
             name: item.customer.name,
             size: 42,
@@ -255,8 +248,8 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
             Text(due ? 'Due' : 'Clear',
                 style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: ac.inkFaint)),
           ]),
-        ]),
-      ),
+        ],
+        ),
     );
   }
 }
@@ -370,6 +363,7 @@ class _CustDetail extends ConsumerWidget {
                     icon: Icons.receipt_long_rounded,
                     title: 'No transactions',
                     subtitle: 'Sales and payments for this customer will appear here',
+                    compact: true,
                   ),
                 )
               else

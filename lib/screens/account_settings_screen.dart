@@ -48,16 +48,26 @@ class AccountSettingsScreen extends ConsumerWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.of(context).brandSolid,
-                  AppColors.of(context).brandSolidStrong,
+                  AppColors.of(context).brandFill,
+                  AppColors.of(context).brandFillDeep,
                 ],
               ),
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
+                // Neutral, not `brandFill`.
+                //
+                // A 40%-alpha wash of the brand colour under a 24px blur put a
+                // wide blue halo around this card — the same "glowing slab"
+                // effect the buttons had. On the near-black dark page it read
+                // as a light leak rather than as depth. A short black shadow
+                // grounds the card in both themes.
                 BoxShadow(
-                  color: AppColors.of(context).brandSolid.withValues(alpha: 0.4),
-                  blurRadius: 24,
-                  offset: const Offset(0, 12),
+                  color: Colors.black.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark ? 0.36 : 0.18,
+                  ),
+                  blurRadius: 18,
+                  spreadRadius: -6,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),

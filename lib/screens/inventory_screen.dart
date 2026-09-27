@@ -18,7 +18,6 @@ import '../utils/animations.dart';
 import '../widgets/scale_button.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
-import '../widgets/design_system/elevation.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   final bool initialLowStockFilter;
@@ -70,14 +69,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     _csym = ref.watch(currencySymbolProvider);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       floatingActionButton: Padding(
         padding: EdgeInsets.only(bottom: widget.fabBottomClearance),
         child: AppFab(
           icon: Icons.add_rounded,
+          semanticLabel: 'Add product',
           onTap: _addProduct,
         ),
       ),
-      body: productsAsync.when(
+      body: GlassBackground(
+        child: productsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
               child: Padding(
@@ -113,6 +115,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 trailing: [
                   AppIconButton(
                     icon: Icons.filter_list_rounded,
+                      semanticLabel: 'Filter inventory',
                     onTap: () => setState(() =>
                         _typeFilter = _typeFilter == 'Low Stock' ? 'All' : 'Low Stock'),
                   ),
@@ -122,13 +125,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 child: Column(children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-                    child: Container(
+                    child: GlassContainer(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: ac.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: ac.outline),
-                      ),
+                      radius: 16,
+                      level: AppGlassLevel.raised,
+                      gloss: false,
                       child: Row(children: [
                         Container(
                           width: 30,
@@ -181,7 +182,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             )
                           : ListView.builder(
                               key: ValueKey(_typeFilter),
-                              padding: const EdgeInsets.fromLTRB(18, 0, 18, 80),
+                              padding: EdgeInsets.fromLTRB(18, 0, 18, widget.fabBottomClearance),
                               itemCount: filtered.length,
                               itemBuilder: (_, i) => _ProdCard(
                                 product: filtered[i],
@@ -196,6 +197,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             ]),
           );
         },
+      ),
       ),
     );
   }
@@ -1018,16 +1020,13 @@ class _ProdCard extends StatelessWidget {
 
     return ScaleButton(
       onTap: onTap,
-      child: Container(
+      child: GlassContainer(
         padding: const EdgeInsets.all(13),
         margin: const EdgeInsets.only(bottom: 9),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: low ? ac.expenseFg.withValues(alpha: 0.35) : ac.outline),
-          boxShadow: appElevationShadows(context),
-        ),
-        foregroundDecoration: darkTopEdgeHighlight(context),
+        radius: 18,
+        level: AppGlassLevel.raised,
+        gloss: false,
+        tint: low ? ac.expenseFg.withValues(alpha: 0.07) : null,
         child: Row(children: [
           Container(
             width: 42,

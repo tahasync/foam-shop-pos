@@ -79,104 +79,113 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
     final ac = AppColors.of(context);
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: ac.brandSolid,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(color: ac.brandSolid.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 10)),
-                    ],
-                  ),
-                  child: const Icon(Icons.storefront_rounded, size: 28, color: Colors.white),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Set Up Your Shop',
-                  style: AppTheme.display(context, size: 24),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Shown once after your first Google sign-in. Used across receipts, reports, and every screen.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: ac.inkSoft, height: 1.6),
-                ),
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: 280,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AppField(label: 'Shop name *', controller: _nameCtrl, onChanged: (_) => setState(() {})),
-                      AppField(label: 'Location', controller: _locCtrl, onChanged: (_) => setState(() {})),
-                      AppField(
-                        label: 'Phone (optional)',
-                        controller: _phoneCtrl,
-                        keyboardType: TextInputType.phone,
-                        onChanged: (_) => setState(() {}),
+      body: GlassBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GlassContainer(
+                    radius: 22,
+                    padding: EdgeInsets.zero,
+                    child: SizedBox(
+                      width: 68,
+                      height: 68,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [ac.brandFill, ac.brandFillDeep],
+                          ),
+                          borderRadius: BorderRadius.circular(21),
+                        ),
+                        child: const Icon(Icons.storefront_rounded, size: 30, color: Colors.white),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(left: 2, bottom: 6),
-                              child: Text(
-                                'CURRENCY',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ac.inkSoft, letterSpacing: 0.03),
-                              ),
-                            ),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                              decoration: BoxDecoration(
-                                color: ac.surface,
-                                borderRadius: BorderRadius.circular(13),
-                                border: Border.all(color: ac.outline, width: 1.5),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _selectedCurrency,
-                                  isExpanded: true,
-                                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: ac.ink),
-                                  dropdownColor: cs.surfaceContainerHigh,
-                                  items: _currencies.map((c) => DropdownMenuItem(
-                                    value: c,
-                                    child: Text(c),
-                                  )).toList(),
-                                  onChanged: (v) {
-                                    if (v != null) setState(() => _selectedCurrency = v);
-                                  },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Set Up Your Shop',
+                    style: AppTheme.display(context, size: 24),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Shown once after your first Google sign-in. Used across receipts, reports, and every screen.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: ac.inkSoft, height: 1.6),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: 280,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppField(label: 'Shop name *', controller: _nameCtrl, onChanged: (_) => setState(() {})),
+                        AppField(label: 'Location', controller: _locCtrl, onChanged: (_) => setState(() {})),
+                        AppField(
+                          label: 'Phone (optional)',
+                          controller: _phoneCtrl,
+                          keyboardType: TextInputType.phone,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(left: 2, bottom: 6),
+                                child: Text(
+                                  'CURRENCY',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ac.inkSoft, letterSpacing: 0.03),
                                 ),
                               ),
-                            ),
-                          ],
+                              SizedBox(
+                                width: double.infinity,
+                                child: GlassContainer(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  radius: 13,
+                                  level: AppGlassLevel.raised,
+                                  gloss: false,
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _selectedCurrency,
+                                      isExpanded: true,
+                                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: ac.ink),
+                                      dropdownColor: cs.surfaceContainerHigh,
+                                      items: _currencies.map((c) => DropdownMenuItem(
+                                        value: c,
+                                        child: Text(c),
+                                      )).toList(),
+                                      onChanged: (v) {
+                                        if (v != null) setState(() => _selectedCurrency = v);
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      AppButton(
-                        label: _saving ? 'Saving\u2026' : 'Continue \u2192',
-                        onTap: _canSubmit ? _submit : null,
-                      ),
-                      const SizedBox(height: 12),
-                      Center(
-                        child: Text(
-                          'Editable anytime in Settings',
-                          style: TextStyle(fontSize: 10.5, color: ac.inkFaint),
+                        AppButton(
+                          label: _saving ? 'Saving\u2026' : 'Continue \u2192',
+                          onTap: _canSubmit ? _submit : null,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+                        Center(
+                          child: Text(
+                            'Editable anytime in Settings',
+                            style: TextStyle(fontSize: 10.5, color: ac.inkFaint),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

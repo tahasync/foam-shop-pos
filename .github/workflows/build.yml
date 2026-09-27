@@ -95,7 +95,9 @@ jobs:
             # Fall back to the version declared in pubspec.yaml (strip any +build suffix)
             VERSION_NAME=$(grep -E '^version:' pubspec.yaml | head -1 | sed -E 's/^version:[[:space:]]*//; s/\+.*$//')
           fi
-          APK_NAME="Foam Shop Pos v${VERSION_NAME}.apk"
+          # NOTE: no spaces in the filename — the GitHub release upload step
+          # rewrites spaces to dots, which produced "Foam.Shop.Pos.v2.0.0.apk".
+          APK_NAME="Foam-Shop-Pos-v${VERSION_NAME}.apk"
           cp build/app/outputs/flutter-apk/app-release.apk "$APK_NAME"
           echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
           echo "::notice ::APK renamed to: $APK_NAME"

@@ -14,7 +14,8 @@ Data is live-synced to Firestore — each user sees only their own data (partiti
 - **Backend:** Firebase Auth (Google Sign-In), Cloud Firestore, Crashlytics, Performance
 - **Exports:** `pdf` + `printing`, `excel`, `csv`
 - **Notifications:** `flutter_local_notifications` (local-only, zero-cost, no server)
-- **UI:** `flutter_animate`, `shimmer`, `fl_chart`, `flutter_svg`
+- **UI:** `flutter_animate`, `fl_chart`, `flutter_svg`, `google_fonts`
+- **Design system:** hand-rolled glass layer — `app_tokens.dart` (radii, spacing, motion, 48dp hit targets) and `GlassContainer` on an explicit `AppGlassLevel`
 - **CI/CD:** GitHub Actions — deterministic APK builds on `v*` tags
 
 ## Features
@@ -25,7 +26,7 @@ Data is live-synced to Firestore — each user sees only their own data (partiti
 - **Customer Khata** — per-customer item-level ledger sorted by most recent activity, payment collection, balance card
 - **Supplier Khata** — purchase ledger with payment tracking
 - **Expenses** — category-based expense tracking
-- **Exports** — CSV, styled XLSX (teal header + frozen rows), branded PDF with receipt printing
+- **Exports** — CSV, styled XLSX (brand-navy header + frozen rows), branded PDF receipt on 80mm thermal-roll paper
 - **Reports** — 30-day periodic profit/loss with consistent COGS calculations
 - **Subscription gate** — 14-day trial, blocking expired screen, founding account exemption
 - **Notifications** — on-device low-stock alerts and overdue baqaya reminders (local-only, no server cost)
@@ -35,7 +36,7 @@ Data is live-synced to Firestore — each user sees only their own data (partiti
 
 ## Color palette
 
-All UI color is defined in one place — the `AppColors` `ThemeExtension` in `lib/theme/app_theme.dart` — which supplies both the `ColorScheme` for standard Material widgets and semantic tokens for the design system. Five core colors drive both themes:
+All UI color is defined in one place — the `AppColors` `ThemeExtension` in `lib/theme/app_theme.dart` — which supplies both the `ColorScheme` for standard Material widgets and semantic tokens for the design system. Structural concerns (radii, spacing, motion durations, minimum hit targets, icon and numeric type scales) live separately in `lib/theme/app_tokens.dart` and deliberately introduce **no new colours**. Five core colors drive both themes:
 
 | Token | Hex | Role |
 |---|---|---|
@@ -93,6 +94,8 @@ flutter run --dart-define-from-file=env/firebase_config.json
 
 ## Release process
 
+**Current version: `1.5.0` (`pubspec.yaml` → `version: 1.5.0+3`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+
 **See [RELEASE.md](RELEASE.md) for the full release workflow.** The supported way to produce a release APK locally is:
 
 ```bash
@@ -108,15 +111,15 @@ The script runs clean → deps → analyze → test → build in sequence. Any f
 
 ## CI/CD
 
-Every push to `main` runs analyze + tests + builds a debug APK. Every `v*` tag builds a signed release APK, generates a changelog from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam Shop Pos v<version>.apk`, where the version comes from the tag (falls back to the `version:` in `pubspec.yaml` for non-tag builds).
+Every push to `main` runs analyze + tests + builds a debug APK. Every `v*` tag builds a signed release APK, generates a changelog from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam-Shop-Pos-v<version>.apk`, where the version comes from the tag (falls back to the `version:` in `pubspec.yaml` for non-tag builds).
 
 ```bash
-git tag v2.0.0
-git push origin v2.0.0
+git tag v1.5.0
+git push origin v1.5.0
 ```
 
 The pipeline uses:
-- Flutter 3.44.6 pinned (deterministic)
+- Flutter 3.44.8 pinned (deterministic)
 - `pubspec.lock` committed for reproducible dependency resolution
 - Base64-encoded Firebase config for reliable secret injection
 - `google-services.json` validated against `applicationId` before build
@@ -128,7 +131,7 @@ The pipeline uses:
 flutter test
 ```
 
-The test suite covers:
+The suite is 4 files / 64 tests. It covers:
 - Accounting calculations: Cash in Hand, Revenue, COGS, Gross/Net Profit, Baqaya aggregation
 - Regression: costPriceAtSale isolation (not affected by later cost price edits)
 - Regression: inventory changes never affect Cash in Hand, Revenue, or Expenses
@@ -136,10 +139,13 @@ The test suite covers:
 - Notification detection logic
 - Subscription trial label behavior
 - Core model instantiation and COGS formula with per-sale negotiated pricing
+- **UI regression (`test/ui_regression_test.dart`, 43 tests)** — palette-drift guards, WCAG contrast in both themes, 48dp touch targets, the shared bottom inset that keeps content clear of the floating nav, the blur budget, and receipt PDF generation
+
+The UI regression file exists because `flutter analyze` will happily pass a layout that *looks* wrong. Those tests assert on behaviour — no overflow, correct inset, real touch target, valid PDF bytes — rather than on pixel values.
 
 ## Status
 
 **Production-ready Android app — actively maintained.** Used by foam/mattress shops with subscription-based commercial model. The founding account is free forever; new sign-ups get a 14-day free trial.
 
-The automated test suite (3 test files, 19 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, and notification detection. Not a full UI coverage suite — focused on the highest-regression-risk areas given the app's bug history.
+The automated test suite (4 test files, 64 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, notification detection, and a UI regression suite that pins the committed colour palette, touch-target minimums, glass/blur budgets and receipt PDF output.
 

@@ -20,18 +20,45 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
+  /// True once [initialize] has completed. [GoogleSignIn.instance] must have
+  /// `initialize()` awaited exactly once before any other method is called —
+  /// calling `authenticate()` on an uninitialised singleton is undefined
+  /// behaviour and surfaces to the user as a bare "Sign in failed".
+  bool _initialized = false;
+
+  bool get isInitialized => _initialized;
+
   Future<void> initialize() async {
     _googleSignIn = GoogleSignIn.instance;
-    final clientId = DefaultFirebaseOptions.webClientId;
+    if (_initialized) return;
+
+    final clientId = DefaultFirebaseOptions.webClientId.trim();
+
     if (clientId.isEmpty) {
+      // Not fatal on Android: when the google-services Gradle plugin is applied,
+      // the plugin reads the web OAuth client id from the generated
+      // `default_web_client_id` string resource, so serverClientId is optional.
       developer.log(
-        '[Auth] FIREBASE_WEB_CLIENT_ID not set — Google Sign-In will fail at use time. '
-        'Build with: flutter run --dart-define-from-file=env/firebase_config.json',
+        '[Auth] FIREBASE_WEB_CLIENT_ID not set — relying on google-services.json '
+        'default_web_client_id. For other platforms build with: '
+        'flutter run --dart-define-from-file=env/firebase_config.json',
         name: 'auth',
       );
-      return;
     }
-    await _googleSignIn!.initialize(serverClientId: clientId);
+
+    try {
+      await _googleSignIn!.initialize(
+        serverClientId: clientId.isEmpty ? null : clientId,
+      );
+      _initialized = true;
+    } catch (e, stack) {
+      developer.log(
+        '[Auth] GoogleSignIn.initialize() failed: $e',
+        stackTrace: stack,
+        name: 'auth',
+      );
+      rethrow;
+    }
   }
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -49,16 +76,37 @@ class AuthService {
       );
       throw result.reason ?? 'Too many attempts. Please wait.';
     }
-    final GoogleSignInAccount account =
-        await _googleSignIn!.authenticate();
-    final GoogleSignInAuthentication auth = account.authentication;
+    // Guard against authenticate() ever being reached on an uninitialised
+    // GoogleSignIn singleton (e.g. initialize() failed at startup).
+    if (!_initialized) {
+      await initialize();
+    }
 
-    final credential = GoogleAuthProvider.credential(
-      idToken: auth.idToken,
-    );
+    final GoogleSignInAccount account;
+    try {
+      account = await _googleSignIn!.authenticate();
+    } on GoogleSignInException catch (e, stack) {
+      logSecureError(e, stack, tag: 'auth');
+      throw AuthSignInException(describeGoogleSignInError(e));
+    }
+
+    final GoogleSignInAuthentication auth = account.authentication;
+    final idToken = auth.idToken;
+    if (idToken == null || idToken.isEmpty) {
+      throw const AuthSignInException(
+        'Google sign-in returned no ID token. Please try again.',
+      );
+    }
+
+    final credential = GoogleAuthProvider.credential(idToken: idToken);
 
     _rateLimiter.reset(deviceId: 'device_sign_in', accountId: deviceId);
-    return await _auth.signInWithCredential(credential);
+    try {
+      return await _auth.signInWithCredential(credential);
+    } on FirebaseAuthException catch (e, stack) {
+      logSecureError(e, stack, tag: 'auth');
+      throw AuthSignInException(_describeFirebaseAuthError(e));
+    }
   }
 
   Future<void> signOut() async {
@@ -76,4 +124,58 @@ class RateLimitError implements Exception {
   const RateLimitError(this.message);
   @override
   String toString() => message;
+}
+
+/// A sign-in failure that already carries a user-safe, actionable message.
+class AuthSignInException implements Exception {
+  final String message;
+  const AuthSignInException(this.message);
+  @override
+  String toString() => message;
+}
+
+/// Translates a platform [GoogleSignInException] into an actionable message.
+///
+/// The most common real-world cause is a signing-certificate mismatch: Google
+/// validates the SHA-1 of the certificate the running APK was signed with
+/// against the Android OAuth client registered in the Firebase/Cloud project.
+/// A debug build signed by an unregistered keystore fails here with
+/// `clientConfigurationError` (Google error 10 / DEVELOPER_ERROR).
+String describeGoogleSignInError(GoogleSignInException e) {
+  switch (e.code) {
+    case GoogleSignInExceptionCode.clientConfigurationError:
+      return 'Google Sign-In is not configured for this build.\n\n'
+          'This app was signed with a certificate that is not registered in '
+          'the Firebase project. Add the build\'s SHA-1 fingerprint under '
+          'Firebase Console → Project settings → Your Android app → SHA keys, '
+          'then rebuild.';
+    case GoogleSignInExceptionCode.canceled:
+    case GoogleSignInExceptionCode.interrupted:
+      return 'Sign-in was cancelled. Please try again.';
+    case GoogleSignInExceptionCode.uiUnavailable:
+      return 'The Google Sign-In screen is unavailable right now. '
+          'Check your internet connection and try again.';
+    case GoogleSignInExceptionCode.providerConfigurationError:
+      return 'Google Sign-In provider is not set up for this project. '
+          'Please contact support.';
+    case GoogleSignInExceptionCode.userMismatch:
+      return 'The selected account is not allowed to sign in to this app.';
+    default:
+      return 'Google sign-in failed. Please try again.';
+  }
+}
+
+String _describeFirebaseAuthError(FirebaseAuthException e) {
+  switch (e.code) {
+    case 'invalid-credential':
+    case 'account-exists-with-different-credential':
+      return 'This Google account could not be linked. Please try again.';
+    case 'operation-not-allowed':
+      return 'Google sign-in is disabled for this project. '
+          'Enable it in the Firebase console.';
+    case 'web-context-canceled':
+      return 'Sign-in was cancelled.';
+    default:
+      return 'Could not complete sign-in. Please try again.';
+  }
 }

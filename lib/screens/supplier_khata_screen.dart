@@ -13,7 +13,6 @@ import '../utils/animations.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/initial_avatar.dart';
 import '../widgets/design_system/design_system.dart';
-import '../widgets/design_system/elevation.dart';
 
 class SupplierKhataScreen extends ConsumerWidget {
   const SupplierKhataScreen({super.key});
@@ -52,6 +51,7 @@ class SupplierKhataScreen extends ConsumerWidget {
       actions: [
         AppIconButton(
           icon: Icons.person_add_rounded,
+            semanticLabel: 'Add supplier',
           onTap: () => _addSupplier(context, ref),
         ),
       ],
@@ -104,20 +104,15 @@ class SupplierKhataScreen extends ConsumerWidget {
     final sub = item.supplier.phone.isNotEmpty
         ? item.supplier.phone
         : (due ? 'Payable' : 'Clear');
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 9),
       padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: ac.outline),
-        boxShadow: appElevationShadows(context),
-      ),
-      foregroundDecoration: darkTopEdgeHighlight(context),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => Navigator.push(context, slideUpRoute(_SupDetail(supplier: item.supplier))),
-        child: Row(children: [
+      radius: 18,
+      level: AppGlassLevel.raised,
+      gloss: false,
+      tint: due ? ac.purchaseFg.withValues(alpha: 0.06) : null,
+      onTap: () => Navigator.push(context, slideUpRoute(_SupDetail(supplier: item.supplier))),
+      child: Row(children: [
           InitialAvatar(
             name: item.supplier.name,
             size: 42,
@@ -148,7 +143,7 @@ class SupplierKhataScreen extends ConsumerWidget {
             Text(due ? 'Payable' : 'Clear',
                 style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: due ? ac.purchaseFg : ac.inkFaint)),
           ]),
-        ]),
+        ],
       ),
     );
   }
@@ -266,6 +261,7 @@ class _SupDetail extends ConsumerWidget {
                     icon: Icons.receipt_long_rounded,
                     title: 'No transactions',
                     subtitle: 'Purchases and payments for this supplier will appear here',
+                    compact: true,
                   ),
                 )
               else

@@ -13,25 +13,34 @@ class SubscriptionExpiredScreen extends StatelessWidget {
     final ac = AppColors.of(context);
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: ac.dangerSolid,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(color: ac.dangerSolid.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 10)),
-                    ],
+      backgroundColor: Colors.transparent,
+      body: GlassBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GlassContainer(
+                    radius: 22,
+                    padding: EdgeInsets.zero,
+                    child: SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [ac.dangerSolid, ac.dangerSolid.withValues(alpha: 0.7)],
+                          ),
+                          borderRadius: BorderRadius.circular(21),
+                        ),
+                        child: const Icon(Icons.lock_outline_rounded, size: 28, color: Colors.white),
+                      ),
+                    ),
                   ),
-                  child: const Icon(Icons.lock_outline_rounded, size: 28, color: Colors.white),
-                ),
                 const SizedBox(height: 20),
                 Text(
                   'Subscription Expired',
@@ -67,6 +76,7 @@ class SubscriptionExpiredScreen extends StatelessWidget {
                   ],
                 ),
               ],
+              ),
             ),
           ),
         ),

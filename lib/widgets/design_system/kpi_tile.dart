@@ -1,21 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../initial_avatar.dart' show InitialAvatar;
+import '../../theme/app_tokens.dart';
 import 'foam_card.dart';
 
-/// A KPI tile matching `.kpi` in the mockup: tinted icon chip, uppercase label,
-/// Fraunces value and a faint sub-label.
+/// A KPI tile — tinted icon chip, uppercase label, tabular-figure value and a
+/// faint sub-label.
+///
+/// Bug fixed here: tiles were laid out in a `Row` with
+/// `CrossAxisAlignment.start`, so two tiles whose labels wrapped to different
+/// line counts ended up visibly different heights and the row looked broken.
+/// [AppKpiRow] now stretches the row with an [IntrinsicHeight] so every tile in
+/// a row shares exactly the same box.
 class KpiTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final String sub;
-  final IconData icon;
-  final Color tint;
-  final Color iconColor;
-  final Color? valueColor;
-  final bool foam;
-  final bool span2;
-
   const KpiTile({
     super.key,
     required this.label,
@@ -26,97 +22,112 @@ class KpiTile extends StatelessWidget {
     required this.iconColor,
     this.valueColor,
     this.foam = true,
-    this.span2 = false,
+    this.onTap,
   });
+
+  final String label;
+  final String value;
+  final String sub;
+  final IconData icon;
+  final Color tint;
+  final Color iconColor;
+  final Color? valueColor;
+  final bool foam;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
+
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, size: 15, color: iconColor),
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: tint,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            border: Border.all(color: iconColor.withValues(alpha: 0.14)),
+          ),
+          child: Icon(icon, size: AppIconSize.sm - 1, color: iconColor),
         ),
-        const SizedBox(height: 10),
-        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ac.inkSoft)),
-        const SizedBox(height: 3),
+        const SizedBox(height: AppSpacing.md),
         Text(
-          value,
-          style: AppTheme.display(context, size: 21, color: valueColor),
+          label,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: ac.inkSoft,
+            height: 1.25,
+          ),
         ),
-        const SizedBox(height: 2),
-        Text(sub, style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
+        const SizedBox(height: AppSpacing.xs),
+        // `FittedBox` guarantees a long figure (e.g. "Rs 1,234,567") shrinks to
+        // fit rather than overflowing the card — the number is the point of the
+        // tile, so it must never be clipped.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: AppTheme.display(
+              context,
+              size: AppTypeScale.kpi,
+              color: valueColor,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xxs),
+        Text(
+          sub,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 10.5, color: ac.inkFaint),
+        ),
       ],
     );
 
-    final tile = Container(
-      constraints: const BoxConstraints(minHeight: 104),
+    return FoamCard(
+      foam: foam,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      onTap: onTap,
+      // Announced as one unit: "Revenue, Rs 176,000, 3 sales".
+      semanticLabel: '$label, $value, $sub',
       child: content,
     );
-
-    return span2 ? FoamCard(foam: foam, padding: const EdgeInsets.all(15), child: tile)
-        : FoamCard(foam: foam, padding: const EdgeInsets.all(15), child: tile);
   }
 }
 
-/// A horizontal tile that renders an avatar on the left, label + value pair on
-/// the right (used for supplier rows and khata-style list items).
-class RowAvatar extends StatelessWidget {
-  final String initials;
-  final Color background;
-  final Color foreground;
-  final double size;
+/// A row of two KPI tiles that always share one height.
+///
+/// The previous pattern (`Row(crossAxisAlignment: start, [Expanded, SizedBox,
+/// Expanded])`) let tiles size independently. `IntrinsicHeight` forces the row to
+/// the tallest child's height and `crossAxisAlignment: stretch` makes each tile
+/// fill it, so the pair always reads as one deliberate block.
+class AppKpiRow extends StatelessWidget {
+  const AppKpiRow({super.key, required this.tiles, this.gap = AppSpacing.md});
 
-  const RowAvatar({
-    super.key,
-    required this.initials,
-    required this.background,
-    required this.foreground,
-    this.size = 42,
-  });
+  final List<Widget> tiles;
+  final double gap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(size * 0.31),
+    if (tiles.isEmpty) return const SizedBox.shrink();
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < tiles.length; i++) ...[
+            if (i > 0) SizedBox(width: gap),
+            Expanded(child: tiles[i]),
+          ],
+        ],
       ),
-      child: Center(
-        child: Text(
-          initials,
-          style: TextStyle(
-            color: foreground,
-            fontWeight: FontWeight.w800,
-            fontSize: size * 0.34,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Simple initials avatar using the shared [InitialAvatar] widget.
-class InitialsAvatar extends StatelessWidget {
-  final String name;
-  final double size;
-  const InitialsAvatar({super.key, required this.name, this.size = 42});
-
-  @override
-  Widget build(BuildContext context) {
-    return InitialAvatar(
-      name: name,
-      size: size,
-      borderRadius: size * 0.31,
-      fontSize: size * 0.34,
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
     );
   }
 }

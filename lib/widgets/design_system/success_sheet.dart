@@ -98,6 +98,16 @@ class SuccessSheet extends StatelessWidget {
                   Navigator.of(context).pop();
                   onPrimary?.call();
                 },
+                // Explicit, because the implicit default resolves to
+                // `colorScheme.primary`, which in dark mode is the *lightened*
+                // foreground token. That gave the primary action on this sheet
+                // (Save Sale, Done, Continue) a pale mauve wash with mismatched
+                // label colour. `brandFill` is the token meant to sit behind
+                // white content.
+                style: FilledButton.styleFrom(
+                  backgroundColor: ac.brandFill,
+                  foregroundColor: Colors.white,
+                ),
                 child: Text(primaryLabel),
               ),
             ),

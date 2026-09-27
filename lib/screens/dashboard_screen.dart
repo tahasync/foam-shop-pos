@@ -14,7 +14,6 @@ import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/animations.dart';
 import '../widgets/design_system/design_system.dart';
-import '../widgets/design_system/elevation.dart';
 import 'account_settings_screen.dart';
 import 'billing_screen.dart';
 import 'expense_sheet_screen.dart';
@@ -24,17 +23,28 @@ import 'reports_screen.dart';
 class DashboardScreen extends ConsumerWidget {
   final VoidCallback? onLowStockTap;
   final VoidCallback? onNewSale;
-  const DashboardScreen({super.key, this.onLowStockTap, this.onNewSale});
+
+  /// Bottom space reserved for the floating nav pill. Supplied by
+  /// `HomeScreen.contentBottomInset` so every tab agrees.
+  final double bottomInset;
+
+  const DashboardScreen({
+    super.key,
+    this.onLowStockTap,
+    this.onNewSale,
+    this.bottomInset = 120,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final as = ref.watch(accountingSummaryProvider);
-    final bottom = MediaQuery.of(context).padding.bottom;
+    final bottom = bottomInset;
 
-    return Scaffold(
-      body: as.when(
+    return GlassScaffold(
+      safeBottom: false,
+      child: as.when(
         // The hero card (and the whole dashboard chrome) renders
-        // unconditionally — even while the accounting summary is still
+        // unconditionally â€” even while the accounting summary is still
         // resolving we show the layout with a zeroed summary, so a fresh
         // all-zero account always sees "Cash in hand: Rs 0" directly under
         // the header, exactly like the KPI tiles below it.
@@ -128,10 +138,7 @@ class DashboardScreen extends ConsumerWidget {
               location.trim().isEmpty ? dateStr : '$dateStr \u00b7 $location';
           final shopName = profile?.shopName ?? 'Digital Register';
 
-          return SafeArea(
-            top: true,
-            bottom: false,
-            child: Column(
+          return Column(
               children: [
                 AppBarRow(
                   title: shopName,
@@ -139,6 +146,7 @@ class DashboardScreen extends ConsumerWidget {
                   trailing: [
                     AppIconButton(
                       icon: Icons.notifications_none_rounded,
+                        semanticLabel: 'Notification settings',
                       onTap: () => _push(context, const NotificationSettingsScreen()),
                       badge: d.lowStockCount > 0
                           ? Container(
@@ -154,6 +162,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     AppIconButton(
+                        semanticLabel: 'Account settings',
                       icon: Icons.person_rounded,
                       background: ac.primaryContainer,
                       foreground: ac.onPrimaryContainer,
@@ -171,7 +180,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 Expanded(
                   child: ListView(
-                    padding: EdgeInsets.fromLTRB(18, 0, 18, 120 + bottom),
+                    padding: EdgeInsets.fromLTRB(18, 0, 18, bottom),
                     children: [
                       HeroCard(
                         eyebrow: 'Cash in hand',
@@ -206,54 +215,48 @@ class DashboardScreen extends ConsumerWidget {
                             valueColor: ac.purchaseFg),
                       ]),
                       SectionLabel(title: 'Business snapshot'),
-                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(
-                          child: KpiTile(
-                            label: 'Revenue',
-                            value: _fmt(d.revenue),
-                            sub: '$saleCount ${saleCount == 1 ? 'sale' : 'sales'}',
-                            icon: Icons.trending_up_rounded,
-                            tint: ac.saleTint,
-                            iconColor: ac.saleFg,
-                          ),
+                      // AppKpiRow forces both tiles to one height. The previous
+                      // `Row(crossAxisAlignment: start)` let them size
+                      // independently, which is what made this grid look
+                      // misaligned whenever one label wrapped to two lines.
+                      AppKpiRow(tiles: [
+                        KpiTile(
+                          label: 'Revenue',
+                          value: _fmt(d.revenue),
+                          sub: '$saleCount ${saleCount == 1 ? 'sale' : 'sales'}',
+                          icon: Icons.trending_up_rounded,
+                          tint: ac.saleTint,
+                          iconColor: ac.saleFg,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: KpiTile(
-                            label: 'COGS',
-                            value: _fmt(d.cogs),
-                            sub: 'Cost of goods sold',
-                            icon: Icons.receipt_rounded,
-                            tint: ac.purchaseTint,
-                            iconColor: ac.purchaseFg,
-                          ),
-                        ),
-                      ]),
-                      const SizedBox(height: 12),
-                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(
-                          child: KpiTile(
-                            label: 'Gross Profit',
-                            value: _fmt(d.grossProfit),
-                            sub: 'Revenue \u2212 COGS',
-                            icon: Icons.account_balance_rounded,
-                            tint: ac.profitTint,
-                            iconColor: ac.profitFg,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: KpiTile(
-                            label: 'Expenses',
-                            value: _fmt(d.totalExpenses),
-                            sub: '${expenses.length} record${expenses.length == 1 ? '' : 's'}',
-                            icon: Icons.trending_down_rounded,
-                            tint: ac.expenseTint,
-                            iconColor: ac.expenseFg,
-                          ),
+                        KpiTile(
+                          label: 'COGS',
+                          value: _fmt(d.cogs),
+                          sub: 'Cost of goods sold',
+                          icon: Icons.receipt_rounded,
+                          tint: ac.purchaseTint,
+                          iconColor: ac.purchaseFg,
                         ),
                       ]),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.md),
+                      AppKpiRow(tiles: [
+                        KpiTile(
+                          label: 'Gross Profit',
+                          value: _fmt(d.grossProfit),
+                          sub: 'Revenue \u2212 COGS',
+                          icon: Icons.account_balance_rounded,
+                          tint: ac.profitTint,
+                          iconColor: ac.profitFg,
+                        ),
+                        KpiTile(
+                          label: 'Expenses',
+                          value: _fmt(d.totalExpenses),
+                          sub: '${expenses.length} record${expenses.length == 1 ? '' : 's'}',
+                          icon: Icons.trending_down_rounded,
+                          tint: ac.expenseTint,
+                          iconColor: ac.expenseFg,
+                        ),
+                      ]),
+                      const SizedBox(height: AppSpacing.md),
                       KpiTile(
                         label: 'Inventory value on hand',
                         value: _fmt(d.inventoryValue),
@@ -261,7 +264,6 @@ class DashboardScreen extends ConsumerWidget {
                         icon: Icons.inventory_2_rounded,
                         tint: ac.inventoryTint,
                         iconColor: ac.inventoryFg,
-                        span2: true,
                       ),
                       SectionLabel(title: 'Quick actions'),
                       Row(children: [
@@ -303,6 +305,7 @@ class DashboardScreen extends ConsumerWidget {
                             icon: Icons.receipt_long_rounded,
                             title: 'No activity yet',
                             subtitle: 'Sales, expenses and payments will appear here',
+                            compact: true,
                           ),
                         )
                       else
@@ -320,8 +323,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
               ],
-            ),
-          );
+            );
   }
 
   AccountingSummary _zeroSummary() => AccountingSummary(
@@ -357,17 +359,17 @@ class _QuickAction extends StatelessWidget {
     return TapScale(
       onTap: onTap,
       child: Column(children: [
-        Container(
+        SizedBox(
           width: 52,
           height: 52,
-          decoration: BoxDecoration(
-            color: ac.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: ac.outline),
-            boxShadow: appElevationShadows(context),
+          child: GlassContainer(
+            padding: EdgeInsets.zero,
+            radius: 16,
+            level: AppGlassLevel.raised,
+            gloss: false,
+            tint: ac.primary.withValues(alpha: 0.18),
+            child: Icon(icon, size: 20, color: ac.primary),
           ),
-          foregroundDecoration: darkTopEdgeHighlight(context),
-          child: Icon(icon, size: 20, color: ac.primary),
         ),
         const SizedBox(height: 7),
         Text(label,

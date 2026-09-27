@@ -1,7 +1,7 @@
 name: foam_shop_register
 description: "Foam Shop - Digital Register"
 publish_to: 'none'
-version: 1.0.4+1
+version: 1.5.0+3
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -23,7 +23,6 @@ dependencies:
   share_plus: ^13.3.0
   path_provider: ^2.1.6
   google_fonts: ^8.2.0
-  shimmer: ^3.0.0
   flutter_animate: ^4.5.2
   flutter_svg: ^2.0.0
   shared_preferences: ^2.3.3
@@ -34,6 +33,14 @@ dependencies:
   url_launcher: ^6.3.2
   permission_handler: ^11.3.0
   flutter_local_notifications: ^18.0.1
+
+dependency_overrides:
+  # path_provider_android 2.3.x pulls in the `jni` package, whose Android module
+  # requires a native CMake/NDK build that fails on this machine with
+  # "Cannot query the value of this provider because it has no value available".
+  # 2.2.12 is the last release before that dependency and is already cached
+  # locally, so this resolves offline and drops the jni native module entirely.
+  path_provider_android: 2.2.12
 
 dev_dependencies:
   flutter_test:

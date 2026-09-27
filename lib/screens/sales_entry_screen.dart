@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/sale.dart';
 import '../models/customer.dart';
@@ -218,11 +218,9 @@ class _StepperButton extends StatelessWidget {
         height: 24,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: ac.surface,
+          color: ac.glassFill,
           borderRadius: BorderRadius.circular(7),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 1)),
-          ],
+          border: Border.all(color: ac.glassBorder),
         ),
         child: Text(label,
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: onTap == null ? ac.inkFaint : cs.onSurface)),
@@ -232,7 +230,11 @@ class _StepperButton extends StatelessWidget {
 }
 
 class SalesEntryScreen extends ConsumerStatefulWidget {
-  const SalesEntryScreen({super.key});
+  /// Bottom space reserved for the floating nav pill. Supplied by
+  /// `HomeScreen.contentBottomInset` so every tab agrees.
+  final double bottomInset;
+
+  const SalesEntryScreen({super.key, this.bottomInset = 120});
   @override
   ConsumerState<SalesEntryScreen> createState() => _SalesEntryScreenState();
 }
@@ -464,13 +466,11 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     final paid = double.tryParse(_paidCtrl.text) ?? 0;
     final balance = (salesState.subtotal - paid).clamp(0, double.infinity);
     final csym = ref.watch(currencySymbolProvider);
-    final bottom = MediaQuery.of(context).padding.bottom;
+    final bottom = widget.bottomInset;
 
-    return Scaffold(
-      body: SafeArea(
-        top: true,
-        bottom: false,
-        child: Column(children: [
+    return GlassScaffold(
+      safeBottom: false,
+      child: Column(children: [
           AppBarRow(
             showBrand: false,
             title: 'New Sale',
@@ -484,18 +484,13 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           ),
           Expanded(
             child: Builder(builder: (context) => ListView(
-              padding: EdgeInsets.fromLTRB(18, 0, 18, 100 + bottom),
+              padding: EdgeInsets.fromLTRB(18, 0, 18, bottom),
               children: [
-                Container(
+                GlassContainer(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: ac.surface,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: ac.outline),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 14, offset: const Offset(0, 6)),
-                    ],
-                  ),
+                  radius: 18,
+                  level: AppGlassLevel.raised,
+                  gloss: false,
                   child: Row(children: [
                     InitialAvatar(
                       name: salesState.customerName,
@@ -506,20 +501,37 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                       foregroundColor: ac.onPrimaryContainer,
                     ),
                     const SizedBox(width: 11),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(salesState.customerName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: cs.onSurface)),
-                      Text('Walk-in also available \u00b7 Change customer',
+                      // Was "Walk-in also available Â· Change customer", which
+                      // sat directly beside a "Change" button and read as a
+                      // duplicated, half-cut label.
+                      Text('Tap to select a customer',
                           style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
                     ])),
+                    const SizedBox(width: 12),
                     AppButton(
                       label: 'Change',
                       variant: AppButtonVariant.outline,
                       fullWidth: false,
-                      height: 38,
-                      fontSize: 12.5,
+                      // Sized as a first-class control, not a caption.
+                      //
+                      // This was 38 tall with a 12.5px label in 16px of padding:
+                      // under the 48dp minimum touch target, and tight enough
+                      // that "Change" touched the rounded edge, so it read as a
+                      // stray word rather than a button.
+                      //
+                      // 52 rather than 48 on purpose. The chip sits beside a
+                      // 40px avatar and the whole card is also a tap target, so
+                      // at exactly 48 the two controls read as the same size
+                      // and the row lost its hierarchy. 52 makes the action
+                      // unambiguously the larger, primary-ish element.
+                      height: 52,
+                      fontSize: 14.5,
+                      horizontalPadding: 24,
                       onTap: _changeCustomer,
                     ),
                   ]),
@@ -530,35 +542,22 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                   loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
                   error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
                   data: (products) => Column(children: [
-                    Stack(children: [
-                      AppSearchField(
-                        controller: _searchCtrl,
-                        hintText: 'Search products\u2026',
-                        onChanged: (_) => setState(() {}),
-                      ),
-                      if (_searchCtrl.text.isNotEmpty)
-                        Positioned(
-                          right: 8,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(
-                            child: GestureDetector(
-                              onTap: () { _searchCtrl.clear(); setState(() {}); },
-                              child: Container(
-                                width: 18, height: 18,
-                                decoration: BoxDecoration(color: ac.saleTint, shape: BoxShape.circle),
-                                child: Icon(Icons.close_rounded, size: 12, color: ac.saleFg)),
-                            ),
-                          ),
-                        ),
-                    ]),
+                    // The clear button is now part of AppSearchField. The old
+                    // hand-rolled Positioned overlay was painted on top of the
+                    // glass pill and was missing from the field semantics.
+                    AppSearchField(
+                      controller: _searchCtrl,
+                      hintText: 'Search products\u2026',
+                      onChanged: (_) => setState(() {}),
+                      onClear: () => setState(() {}),
+                    ),
                     if (_searchCtrl.text.isNotEmpty)
                       Container(
                         margin: const EdgeInsets.only(top: 8),
                         decoration: BoxDecoration(
-                          color: ac.surface,
+                          color: ac.glassFill,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: ac.outline),
+                          border: Border.all(color: ac.glassBorder),
                           boxShadow: [
                             BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 8)),
                           ],
@@ -632,19 +631,15 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                       icon: Icons.shopping_cart_outlined,
                       title: 'No items added yet.',
                       subtitle: 'Tap a product above to add',
+                      compact: true,
                     ),
                   )
                 else
-                  Container(
+                  GlassContainer(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: ac.surface,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: ac.outline),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 10)),
-                      ],
-                    ),
+                    radius: 22,
+                    level: AppGlassLevel.raised,
+                    gloss: false,
                     child: Column(children: [
                       for (var i = 0; i < salesState.cart.length; i++) ...[
                         if (i > 0) Container(height: 1, color: ac.outlineStrong),
@@ -757,7 +752,6 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
             ),
           ),
         ]),
-      ),
     );
   }
 }
@@ -790,28 +784,12 @@ class _CustomerPickerSheetState extends State<_CustomerPickerSheet> {
         Text('Select Customer',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: cs.onSurface)),
         const SizedBox(height: 12),
-        Stack(children: [
-          AppSearchField(
-            controller: _searchCtrl,
-            hintText: 'Search customers\u2026',
-            onChanged: (v) => setState(() => _query = v.toLowerCase()),
-          ),
-          if (_searchCtrl.text.isNotEmpty)
-            Positioned(
-              right: 8,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: GestureDetector(
-                  onTap: () { _searchCtrl.clear(); setState(() => _query = ''); },
-                  child: Container(
-                    width: 18, height: 18,
-                    decoration: BoxDecoration(color: ac.saleTint, shape: BoxShape.circle),
-                    child: Icon(Icons.close_rounded, size: 12, color: ac.saleFg)),
-                ),
-              ),
-            ),
-        ]),
+        AppSearchField(
+          controller: _searchCtrl,
+          hintText: 'Search customers\u2026',
+          onChanged: (v) => setState(() => _query = v.toLowerCase()),
+          onClear: () => setState(() => _query = ''),
+        ),
         const SizedBox(height: 4),
         Consumer(builder: (context, ref, _) {
           final customersAsync = ref.watch(customersStreamProvider);

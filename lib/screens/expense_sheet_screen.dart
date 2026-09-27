@@ -34,10 +34,12 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
       title: 'Expenses',
       actions: [
         AppIconButton(icon: Icons.filter_list_rounded, onTap: _showFilter),
+          AppIconButton(icon: Icons.filter_list_rounded, semanticLabel: 'Filter expenses', onTap: _showFilter),
         const SizedBox(width: 8),
         AppIconButton(
+            semanticLabel: 'Add expense',
           icon: Icons.add_rounded,
-          background: ac.brandSolid,
+          background: ac.brandFill,
           foreground: Colors.white,
           onTap: _addExpense,
         ),
@@ -111,7 +113,6 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
 
   Widget _dateButton(BuildContext context, DateTime date, ValueChanged<DateTime> onPicked) {
     final ac = AppColors.of(context);
-    final cs = Theme.of(context).colorScheme;
     return InkWell(
       borderRadius: BorderRadius.circular(13),
       onTap: () async {
@@ -123,9 +124,9 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerLowest,
+          color: ac.glassFill,
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: ac.outline, width: 1.5),
+          border: Border.all(color: ac.glassBorder, width: 1.5),
         ),
         child: Row(children: [
           Icon(Icons.calendar_today_rounded, size: 18, color: ac.inkFaint),
@@ -138,7 +139,6 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
 
   Widget _filterDateButton(BuildContext context, String prefix, DateTime? date, ValueChanged<DateTime> onPicked) {
     final ac = AppColors.of(context);
-    final cs = Theme.of(context).colorScheme;
     return InkWell(
       borderRadius: BorderRadius.circular(13),
       onTap: () async {
@@ -149,9 +149,9 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerLowest,
+          color: ac.glassFill,
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: ac.outline, width: 1.5),
+          border: Border.all(color: ac.glassBorder, width: 1.5),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text(prefix, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ac.inkSoft)),

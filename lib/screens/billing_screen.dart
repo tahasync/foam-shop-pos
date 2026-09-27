@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import '../models/sale.dart';
 import '../providers/sale_provider.dart';
@@ -16,9 +18,26 @@ import '../utils/animations.dart';
 import '../utils/currency.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
-import '../widgets/stitched_divider.dart';
 
 const _filters = ['All', 'Paid', 'Due', 'Void'];
+
+/// A filesystem-safe, collision-free name for a receipt PDF.
+///
+/// This used to be inline `sale.id.substring(0, 8)` calls, which throw a
+/// `RangeError` for any id shorter than the requested length and would take
+/// down the whole share sheet rather than just that one option.
+String _safeIdPrefix(String id, int length) {
+  final clean = id.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '');
+  if (clean.isEmpty) return 'sale';
+  return clean.length <= length ? clean : clean.substring(0, length);
+}
+
+String _receiptFileName(Sale sale) =>
+    'receipt_${_safeIdPrefix(sale.id, 8)}.pdf';
+
+/// Short human-facing receipt number, e.g. `INV-0142`.
+String _receiptNumber(Sale sale) =>
+    'INV-${_safeIdPrefix(sale.id, 4).toUpperCase()}';
 
 class BillingScreen extends ConsumerStatefulWidget {
   const BillingScreen({super.key});
@@ -173,6 +192,8 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
           SheetOption(
               icon: Icons.print_rounded, title: 'Print receipt', onTap: () => Navigator.pop(ctx, _ReceiptAction.print)),
           SheetOption(
+              icon: Icons.save_alt_rounded, title: 'Save PDF', onTap: () => Navigator.pop(ctx, _ReceiptAction.save)),
+          SheetOption(
               icon: Icons.share_rounded, title: 'Share PDF', onTap: () => Navigator.pop(ctx, _ReceiptAction.share)),
           SheetOption(
               icon: Icons.visibility_rounded, title: 'Receipt preview', onTap: () => Navigator.pop(ctx, _ReceiptAction.preview)),
@@ -191,10 +212,16 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
         final bytes = await _buildPdfBytes(context, ref, sale);
         if (bytes != null && context.mounted) await Printing.layoutPdf(onLayout: (_) => bytes);
         break;
+      case _ReceiptAction.save:
+        final bytes = await _buildPdfBytes(context, ref, sale);
+        if (bytes != null && context.mounted) {
+          await _savePdf(context, bytes, sale);
+        }
+        break;
       case _ReceiptAction.share:
         final bytes = await _buildPdfBytes(context, ref, sale);
         if (bytes != null && context.mounted) {
-          await Printing.sharePdf(bytes: bytes, filename: 'receipt_${sale.id.substring(0, 8)}.pdf');
+          await Printing.sharePdf(bytes: bytes, filename: _receiptFileName(sale));
         }
         break;
       case _ReceiptAction.preview:
@@ -267,12 +294,14 @@ Future<Uint8List?> _buildPdfBytes(BuildContext context, WidgetRef ref, Sale sale
     final profile = ref.read(shopProfileProvider).asData?.value;
     final storeName = profile?.shopName ?? 'Digital Register';
     final location = profile?.location ?? '';
+    final phone = profile?.phone ?? '';
     final currencyCode = profile?.currency ?? 'PKR';
     return await generateReceiptPdfBytes(
       storeName: storeName,
       location: location,
+      phone: phone,
       currencyCode: currencyCode,
-      receiptId: 'INV-${sale.id.substring(0, 4).toUpperCase()}',
+      receiptId: _receiptNumber(sale),
       date: '${sale.date.day}/${sale.date.month}/${sale.date.year}',
       customerName: customer?.name ?? sale.customerName ?? sale.customerId,
       items: sale.lineItems.map((li) {
@@ -297,7 +326,40 @@ Future<Uint8List?> _buildPdfBytes(BuildContext context, WidgetRef ref, Sale sale
   }
 }
 
-enum _ReceiptAction { print, share, preview, voidSale }
+enum _ReceiptAction { print, save, share, preview, voidSale }
+
+/// Writes the receipt into the device's Downloads folder and reports where it
+/// landed.
+///
+/// There was no save path at all before: the only options were print and share,
+/// so keeping a copy of a receipt meant photographing the screen.
+Future<void> _savePdf(BuildContext context, Uint8List bytes, Sale sale) async {
+  final name = _receiptFileName(sale);
+  try {
+    final dir = await _downloadsDirectory();
+    final file = File('${dir.path}/$name');
+    await file.writeAsBytes(bytes, flush: true);
+    if (!context.mounted) return;
+    showAppToast(context, 'Saved to ${dir.path}/$name');
+  } catch (e, st) {
+    // A device with no writable Downloads folder (or no storage permission)
+    // must not lose the receipt: fall back to the share sheet, where the user
+    // can still send it somewhere.
+    logSecureError(e, st, tag: 'receipt_save');
+    if (!context.mounted) return;
+    await Printing.sharePdf(bytes: bytes, filename: name);
+  }
+}
+
+/// Android exposes a real Downloads directory; iOS sandboxes everything, so the
+/// app's own documents directory is the closest equivalent.
+Future<Directory> _downloadsDirectory() async {
+  if (Platform.isAndroid) {
+    final dir = await getDownloadsDirectory();
+    if (dir != null) return dir;
+  }
+  return getApplicationDocumentsDirectory();
+}
 
 class ReceiptPreviewScreen extends ConsumerWidget {
   final Sale sale;
@@ -305,7 +367,6 @@ class ReceiptPreviewScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
     final fmt = NumberFormat('#,##0');
     final products = ref.watch(productsStreamProvider).asData?.value ?? [];
     final profile = ref.watch(shopProfileProvider).asData?.value;
@@ -317,13 +378,15 @@ class ReceiptPreviewScreen extends ConsumerWidget {
     final paperItems = sale.lineItems.map((li) {
       final prod = products.where((p) => p.id == li.productId).firstOrNull;
       final name = prod?.name ?? li.name ?? li.productId;
+      // Whole numbers lose the trailing ".0" — "1" reads better on a receipt
+      // than "1.0" for a single unit, but a cut area of 12.5 must keep it.
       final qty = li.qtyOrArea == li.qtyOrArea.roundToDouble()
           ? li.qtyOrArea.toInt().toString()
           : li.qtyOrArea.toStringAsFixed(1);
-      final unit = prod?.unitLabel ?? 'pcs';
       return _PaperItem(
         name: name,
-        meta: '$qty $unit \u00d7 $csym ${fmt.format(li.salePrice.toInt())}',
+        qty: qty,
+        unitPrice: fmt.format(li.salePrice.toInt()),
         total: fmt.format(li.lineTotal.toInt()),
       );
     }).toList();
@@ -332,30 +395,27 @@ class ReceiptPreviewScreen extends ConsumerWidget {
       if (location.isNotEmpty) location,
       if (phone.isNotEmpty) phone,
     ];
-    final meta = metaParts.isEmpty
-        ? ''
-        : '${metaParts.join(' \u00b7 ')}\n';
-    final dateLine =
-        '${DateFormat('d MMM y, h:mm a').format(sale.date)} \u00b7 Receipt #INV-${sale.id.substring(0, 4).toUpperCase()}';
+    final dateLine = DateFormat('d MMM y · h:mm a').format(sale.date);
+    final receiptNo = _receiptNumber(sale);
+    final footer =
+        location.isNotEmpty ? '$storeName · $location' : storeName;
 
     final isDue = sale.balance > 0;
-    final dueValue = isDue ? sale.balance : (sale.paid - sale.amount).abs();
-    final footer =
-        '$storeName${location.isNotEmpty ? ' \u00b7 $location' : ''}';
 
     return FullScreenOverlay(
       title: 'Receipt Preview',
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _TornPaper(
-          paperBg: cs.surface,
+        _ReceiptPaper(
           storeName: storeName,
-          meta: '$meta$dateLine',
+          date: dateLine,
+          receiptNo: receiptNo,
+          metaLine: metaParts.join(' · '),
+          customerName: sale.customerName ?? sale.customerId,
           items: paperItems,
           total: '$csym ${fmt.format(sale.amount.toInt())}',
           paid: '$csym ${fmt.format(sale.paid.toInt())}',
           isDue: isDue,
-          dueLabel: isDue ? 'Balance Due' : 'Change',
-          dueValue: '$csym ${fmt.format(dueValue.toInt())}',
+          dueValue: '$csym ${fmt.format(sale.balance.toInt())}',
           footer: footer,
         ),
         const SizedBox(height: 18),
@@ -374,12 +434,26 @@ class ReceiptPreviewScreen extends ConsumerWidget {
           const SizedBox(width: 10),
           Expanded(
             child: AppButton(
-              label: 'Share PDF',
+              label: 'Save PDF',
+              icon: Icons.save_alt_rounded,
+              variant: AppButtonVariant.outline,
+              onTap: () async {
+                final bytes = await _buildPdfBytes(context, ref, sale);
+                if (bytes != null && context.mounted) {
+                  await _savePdf(context, bytes, sale);
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: AppButton(
+              label: 'Share',
               icon: Icons.share_rounded,
               onTap: () async {
                 final bytes = await _buildPdfBytes(context, ref, sale);
                 if (bytes != null && context.mounted) {
-                  await Printing.sharePdf(bytes: bytes, filename: 'receipt_${sale.id.substring(0, 8)}.pdf');
+                  await Printing.sharePdf(bytes: bytes, filename: _receiptFileName(sale));
                 }
               },
             ),
@@ -392,32 +466,56 @@ class ReceiptPreviewScreen extends ConsumerWidget {
 
 class _PaperItem {
   final String name;
-  final String meta;
+  final String qty;
+  final String unitPrice;
   final String total;
-  const _PaperItem({required this.name, required this.meta, required this.total});
+  const _PaperItem({
+    required this.name,
+    required this.qty,
+    required this.unitPrice,
+    required this.total,
+  });
 }
 
-class _TornPaper extends StatelessWidget {
-  final Color paperBg;
+/// The on-screen receipt.
+///
+/// Rewritten to mirror `generateReceiptPdfBytes` and
+/// `design/foam-shop-receipt-report-mockup.html`, because the two used to
+/// disagree completely: the preview was a torn-paper design with a decorative
+/// barcode, while the shared/printed PDF was a plain A4 sheet. A customer who
+/// saw the preview and then received the shared file saw two different
+/// documents for the same sale.
+///
+/// Glitches this fixes:
+///  * The preview printed "Change" with a non-zero figure on a fully-paid sale
+///    (`(paid - amount).abs()`) directly above a "FULLY PAID" badge.
+///  * `Fraunces` was named as the shop-name font but is not bundled, so it
+///    silently fell back to a different serif.
+///  * The barcode was a hardcoded pseudo-random pattern carrying no data — it
+///    looked scannable and verified nothing.
+class _ReceiptPaper extends StatelessWidget {
   final String storeName;
-  final String meta;
+  final String date;
+  final String receiptNo;
+  final String metaLine;
+  final String customerName;
   final List<_PaperItem> items;
   final String total;
   final String paid;
   final bool isDue;
-  final String dueLabel;
   final String dueValue;
   final String footer;
 
-  const _TornPaper({
-    required this.paperBg,
+  const _ReceiptPaper({
     required this.storeName,
-    required this.meta,
+    required this.date,
+    required this.receiptNo,
+    required this.metaLine,
+    required this.customerName,
     required this.items,
     required this.total,
     required this.paid,
     required this.isDue,
-    required this.dueLabel,
     required this.dueValue,
     required this.footer,
   });
@@ -426,171 +524,407 @@ class _TornPaper extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
-    final paper = Container(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+    final tnum = const [FontFeature.tabularFigures()];
+
+    return Container(
       decoration: BoxDecoration(
         color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 24, offset: const Offset(0, 12)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(storeName,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontFamily: 'Fraunces',
-                fontFamilyFallback: const ['serif'],
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: cs.onSurface)),
-        const SizedBox(height: 4),
-        Text(meta, textAlign: TextAlign.center, style: TextStyle(fontSize: 10, height: 1.4, color: ac.inkFaint)),
-        const StitchedDivider(thickness: 1.5, margin: EdgeInsets.only(top: 14, bottom: 12)),
-        for (final item in items)
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ReceiptHeader(storeName: storeName),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(item.name, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: cs.onSurface)),
-                  Text(item.meta, style: TextStyle(fontSize: 9.5, color: ac.inkFaint)),
-                ]),
-              ),
-              const SizedBox(width: 8),
-              Text(item.total,
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _MetaCell(label: 'DATE', value: date)),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: _MetaCell(
+                        label: 'RECEIPT #',
+                        value: receiptNo,
+                        alignEnd: true,
+                      ),
+                    ),
+                  ],
+                ),
+                if (metaLine.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(metaLine,
+                      style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
+                ],
+                const SizedBox(height: 14),
+                RichText(
+                  text: TextSpan(children: [
+                    TextSpan(
+                      text: 'Customer: ',
+                      style: TextStyle(fontSize: 12, color: ac.inkSoft),
+                    ),
+                    TextSpan(
+                      text: customerName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 14),
+                _ItemTable(items: items, tnum: tnum),
+                const SizedBox(height: 14),
+                _TotalsCard(
+                  total: total,
+                  paid: paid,
+                  isDue: isDue,
+                  dueValue: dueValue,
+                  tnum: tnum,
+                ),
+                const SizedBox(height: 12),
+                _StatusBadge(isDue: isDue),
+                const SizedBox(height: 16),
+                Container(height: 1, color: ac.outline),
+                const SizedBox(height: 14),
+                Text(
+                  'Thank you for your business!',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                      fontSize: 11, color: cs.onSurface, fontFeatures: const [FontFeature.tabularFigures()])),
-            ]),
-          ),
-        const StitchedDivider(thickness: 1.5, margin: EdgeInsets.symmetric(vertical: 12)),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('Total', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: cs.onSurface)),
-          Text(total,
-              style: TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w800, color: cs.onSurface, fontFeatures: const [FontFeature.tabularFigures()])),
-        ]),
-        const SizedBox(height: 8),
-        MiniRow(label: 'Paid', value: paid),
-        const StitchedDivider(thickness: 1.5, margin: EdgeInsets.symmetric(vertical: 12)),
-        MiniRow(label: dueLabel, value: dueValue, valueColor: isDue ? ac.expenseFg : ac.saleFg),
-        const SizedBox(height: 8),
-        Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: isDue ? ac.expenseTint : ac.saleTint,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              isDue ? 'BALANCE DUE' : 'FULLY PAID',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.03,
-                color: isDue ? ac.expenseFg : ac.saleFg,
-              ),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: ac.saleFg,
+                  ),
+                ),
+                if (footer.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    footer,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10, color: ac.inkFaint),
+                  ),
+                ],
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 34,
-          width: double.infinity,
-          child: CustomPaint(painter: _BarcodePainter(color: cs.onSurface.withValues(alpha: 0.75))),
-        ),
-        const SizedBox(height: 12),
-        Text('Thank you for your business!',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: ac.inkFaint)),
-        if (footer.isNotEmpty)
-          Text(footer,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
-      ]),
+        ],
+      ),
     );
+  }
+}
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Positioned(
-          top: 3,
-          left: -4,
-          right: -4,
-          height: 11,
-          child: CustomPaint(painter: _TornEdgePainter(paperBg: paperBg, flipped: false)),
+/// Branded teal banner at the top of the receipt.
+class _ReceiptHeader extends StatelessWidget {
+  final String storeName;
+  const _ReceiptHeader({required this.storeName});
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [ac.brandFill, ac.brandFillDeep],
         ),
-        paper,
-        Positioned(
-          bottom: 3,
-          left: -4,
-          right: -4,
-          height: 11,
-          child: CustomPaint(painter: _TornEdgePainter(paperBg: paperBg, flipped: true)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            storeName,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.01,
+            ),
+          ),
+          const SizedBox(height: 3),
+          const Text(
+            'Digital Register',
+            style: TextStyle(color: Colors.white70, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small uppercase label above a value, used for DATE / RECEIPT #.
+class _MetaCell extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool alignEnd;
+
+  const _MetaCell({
+    required this.label,
+    required this.value,
+    this.alignEnd = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final ac = AppColors.of(context);
+    return Column(
+      crossAxisAlignment:
+          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.06,
+            color: ac.inkFaint,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: cs.onSurface,
+          ),
         ),
       ],
     );
   }
 }
 
-class _TornEdgePainter extends CustomPainter {
-  final Color paperBg;
-  final bool flipped;
-  const _TornEdgePainter({required this.paperBg, required this.flipped});
+/// The itemised table: real columns with a header rule, so qty/price/total can
+/// be scanned vertically instead of read as stacked label/value pairs.
+class _ItemTable extends StatelessWidget {
+  final List<_PaperItem> items;
+  final List<FontFeature> tnum;
+
+  const _ItemTable({required this.items, required this.tnum});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = paperBg;
-    final w = size.width;
-    const step = 14.0;
-    final half = step / 2;
-    final path = Path();
-    if (flipped) {
-      path.moveTo(0, size.height);
-      for (double x = 0; x <= w + step; x += step) {
-        path.lineTo(x, 0);
-        path.lineTo((x + half).clamp(0, w), size.height);
-      }
-    } else {
-      path.moveTo(0, 0);
-      for (double x = 0; x <= w + step; x += step) {
-        path.lineTo(x, size.height);
-        path.lineTo((x + half).clamp(0, w), 0);
-      }
-    }
-    path.close();
-    canvas.drawPath(path, paint);
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final ac = AppColors.of(context);
+
+    Widget th(String label, {bool left = false}) => Expanded(
+          flex: 0,
+          child: Text(
+            label,
+            textAlign: left ? TextAlign.left : TextAlign.right,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.05,
+              color: ac.inkFaint,
+            ),
+          ),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(flex: 32, child: th('ITEM', left: true)),
+            Expanded(flex: 10, child: th('QTY')),
+            Expanded(flex: 15, child: th('PRICE')),
+            Expanded(flex: 17, child: th('TOTAL')),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Container(height: 1.4, color: cs.onSurface),
+        for (final item in items) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 32,
+                  child: Text(
+                    item.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 10,
+                  child: Text(
+                    item.qty,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        fontSize: 11.5, color: ac.inkSoft, fontFeatures: tnum),
+                  ),
+                ),
+                Expanded(
+                  flex: 15,
+                  child: Text(
+                    item.unitPrice,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        fontSize: 11.5, color: ac.inkSoft, fontFeatures: tnum),
+                  ),
+                ),
+                Expanded(
+                  flex: 17,
+                  child: Text(
+                    item.total,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                      fontFeatures: tnum,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(height: 1, color: ac.outline),
+        ],
+      ],
+    );
   }
-
-  @override
-  bool shouldRepaint(_TornEdgePainter old) => old.paperBg != paperBg || old.flipped != flipped;
 }
 
-class _BarcodePainter extends CustomPainter {
-  final Color color;
-  const _BarcodePainter({required this.color});
+/// The tinted totals card. Separated from the item table so the figures the
+/// customer actually cares about read as one block.
+class _TotalsCard extends StatelessWidget {
+  final String total;
+  final String paid;
+  final bool isDue;
+  final String dueValue;
+  final List<FontFeature> tnum;
+
+  const _TotalsCard({
+    required this.total,
+    required this.paid,
+    required this.isDue,
+    required this.dueValue,
+    required this.tnum,
+  });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    var seed = 20260728;
-    int next() {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      return seed;
-    }
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final ac = AppColors.of(context);
 
-    double x = 0;
-    while (x < size.width) {
-      final bw = 1 + (next() % 20) / 10.0;
-      if (x + bw > size.width) break;
-      canvas.drawRect(Rect.fromLTWH(x, 0, bw, size.height), paint);
-      x += bw + 2 + (next() % 30) / 10.0;
-    }
+    Widget row(String label, String value) => Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: TextStyle(fontSize: 12, color: ac.inkSoft)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
+                fontFeatures: tnum,
+              ),
+            ),
+          ],
+        );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: ac.saleTint,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          row('Amount', total),
+          const SizedBox(height: 4),
+          row('Paid', paid),
+          const SizedBox(height: 8),
+          Container(
+            height: 1,
+            color: ac.saleFg.withValues(alpha: 0.18),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                isDue ? 'Balance Due' : 'Balance',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: ac.saleFg,
+                ),
+              ),
+              Text(
+                isDue ? dueValue : 'Rs 0',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: ac.saleFg,
+                  fontFeatures: tnum,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
+}
+
+/// Colour-coded paid/due pill.
+class _StatusBadge extends StatelessWidget {
+  final bool isDue;
+  const _StatusBadge({required this.isDue});
 
   @override
-  bool shouldRepaint(_BarcodePainter old) => old.color != color;
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+          color: isDue ? ac.expenseTint : ac.saleTint,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          isDue ? 'BALANCE DUE' : '\u2713 FULLY PAID',
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.03,
+            color: isDue ? ac.expenseFg : ac.saleFg,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _LoadingBox extends StatelessWidget {

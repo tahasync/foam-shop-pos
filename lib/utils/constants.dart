@@ -8,7 +8,6 @@ class AppConstants {
   ];
 
   static const int trialDays = 14;
-  static const int subscriptionWarningDays = 5;
   static const String supportWhatsAppNumber = '+92 3177407596';
   static const String supportEmail = 'taha-codes@outlook.com';
 }

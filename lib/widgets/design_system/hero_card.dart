@@ -1,161 +1,207 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_tokens.dart';
+import 'glass_container.dart';
 
 class HeroPill {
+  const HeroPill({required this.label, required this.value});
+
   final String label;
   final String value;
-  const HeroPill({required this.label, required this.value});
 }
 
-/// The glass hero balance card (`.g-teal` in the mockup): frosted teal-glass
-/// surface, generous radius, floating stat pills. Soft highlights come from
-/// the tinted glass rather than a hard gradient band.
+/// The hero balance card - the single most important surface on the dashboard.
+///
+/// Now a solid tinted panel rather than glass:
+///  * a `GlassContainer` at the `base` level, so the headline number sits on an
+///    opaque surface instead of a frosted one,
+///  * nested pills for the stat row instead of a hand-rolled gradient, and
+///  * a `FittedBox` on the headline amount so a seven-figure balance shrinks
+///    rather than overflowing.
 class HeroCard extends StatelessWidget {
-  final String eyebrow;
-  final String amount;
-  final String? chip;
-  final List<HeroPill> pills;
-  final double amountSize;
-
   const HeroCard({
     super.key,
     required this.eyebrow,
     required this.amount,
     this.chip,
     this.pills = const [],
-    this.amountSize = 36,
+    this.amountSize = AppTypeScale.hero,
   });
+
+  final String eyebrow;
+  final String amount;
+  final String? chip;
+  final List<HeroPill> pills;
+  final double amountSize;
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final amountColor = isDark ? Colors.white : ac.brandSolidStrong;
 
-    final highlight = Color.alphaBlend(
-      isDark ? const Color(0x4D7C83AD) : Colors.white.withValues(alpha: 0.55),
-      Colors.transparent,
-    );
-
-    final amountColor = isDark ? Colors.white : const Color(0xFF182346);
-
-    return Container(
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            isDark ? const Color(0x203D5387) : const Color(0xB3E3E7F1),
-            isDark ? const Color(0x16182346) : const Color(0x66DEE3F0),
-          ],
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      child: GlassContainer(
+        radius: AppRadii.xxl,
+        level: AppGlassLevel.base,
+        // A lightly tinted panel, so the headline reads as the hero while still
+        // being unmistakably glass rather than a painted card.
+        tint: ac.primary.withValues(alpha: isDark ? 0.16 : 0.08),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.xxl,
+          AppSpacing.xl,
+          AppSpacing.xl,
         ),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: isDark ? const Color(0x2E7C83AD) : const Color(0x993D5387),
-        ),
-        boxShadow: [
+        shadow: [
           BoxShadow(
-            color: ac.brandSolid.withValues(alpha: isDark ? 0.28 : 0.18),
-            blurRadius: 30,
-            offset: const Offset(0, 14),
+            color: ac.brandFill.withValues(alpha: isDark ? 0.34 : 0.16),
+            blurRadius: 34,
+            spreadRadius: -10,
+            offset: const Offset(0, 16),
           ),
         ],
-      ),
-      child: Stack(
-        children: [
-          const Positioned(
-            top: -90,
-            right: -60,
-            child: SizedBox(
-              width: 220,
-              height: 220,
-              child: DecoratedBox(
-                decoration: BoxDecoration(shape: BoxShape.circle),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          eyebrow,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: amountColor.withValues(alpha: 0.7),
-                            letterSpacing: 0.08,
-                          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        eyebrow.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.09,
+                          color: ac.inkSoft,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      // Never let a large balance overflow the card.
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
                           amount,
+                          maxLines: 1,
                           style: AppTheme.display(
                             context,
                             size: amountSize,
                             color: amountColor,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  if (chip != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: highlight.withValues(alpha: 0.28),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: highlight.withValues(alpha: 0.4)),
                       ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.arrow_upward_rounded,
-                            size: 11, color: amountColor),
-                        const SizedBox(width: 5),
-                        Text(chip!,
-                            style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                color: amountColor)),
-                      ]),
-                    ),
+                    ],
+                  ),
+                ),
+                if (chip != null) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  _TrendChip(label: chip!),
+                ],
+              ],
+            ),
+            if (pills.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                children: [
+                  for (var i = 0; i < pills.length; i++) ...[
+                    if (i > 0) const SizedBox(width: AppSpacing.sm),
+                    Expanded(child: _StatPill(label: pills[i].label, value: pills[i].value)),
+                  ],
                 ],
               ),
-              if (pills.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                Row(children: [
-                  for (var i = 0; i < pills.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                        decoration: BoxDecoration(
-                          color: highlight.withValues(alpha: 0.22),
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: highlight.withValues(alpha: 0.12)),
-                        ),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(pills[i].label.toUpperCase(),
-                              style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  color: amountColor.withValues(alpha: 0.6),
-                                  letterSpacing: 0.05)),
-                          const SizedBox(height: 3),
-                          Text(pills[i].value,
-                              style: AppTheme.display(context, size: 14.5, color: amountColor)),
-                        ]),
-                      ),
-                    ),
-                  ],
-                ]),
-              ],
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+/// The small trend badge beside the headline.
+class _TrendChip extends StatelessWidget {
+  const _TrendChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+      decoration: BoxDecoration(
+        color: ac.glassNested,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: ac.saleFg.withValues(alpha: 0.24)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.arrow_upward_rounded, size: AppIconSize.xs - 1, color: ac.saleFg),
+          const SizedBox(width: AppSpacing.xs),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                color: ac.saleFg,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A nested glass stat pill inside the hero.
+class _StatPill extends StatelessWidget {
+  const _StatPill({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    return GlassContainer(
+      level: AppGlassLevel.nested,
+      radius: AppRadii.lg,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.06,
+              color: ac.inkFaint,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: AppTheme.display(context, size: AppTypeScale.stat, color: ac.ink),
+            ),
           ),
         ],
       ),

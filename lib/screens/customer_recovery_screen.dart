@@ -14,7 +14,6 @@ import '../theme/app_theme.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/initial_avatar.dart';
 import '../widgets/design_system/design_system.dart';
-import '../widgets/design_system/elevation.dart';
 
 class CustomerRecoveryScreen extends ConsumerStatefulWidget {
   const CustomerRecoveryScreen({super.key});
@@ -97,6 +96,7 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
                         ? NoResults(title: 'No customers match', subtitle: 'Try a different search term')
                         : EmptyState(
                             celebrate: true,
+                            compact: true,
                             icon: Icons.check_circle_rounded,
                             title: 'No outstanding baqaya!',
                             subtitle: 'All customers are settled — great work.',
@@ -134,20 +134,14 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
       sub = 'Due';
     }
 
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 9),
       padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: ac.outline),
-        boxShadow: appElevationShadows(context),
-      ),
-      foregroundDecoration: darkTopEdgeHighlight(context),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => _collectPayment(context, ref, item.customer, item.outstanding),
-        child: Row(children: [
+      radius: 18,
+      level: AppGlassLevel.raised,
+      gloss: false,
+      onTap: () => _collectPayment(context, ref, item.customer, item.outstanding),
+      child: Row(children: [
           InitialAvatar(
             name: item.customer.name,
             size: 42,
@@ -177,7 +171,7 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
                     color: ac.expenseFg)),
             Text('Collect', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: ac.inkFaint)),
           ]),
-        ]),
+        ],
       ),
     );
   }
