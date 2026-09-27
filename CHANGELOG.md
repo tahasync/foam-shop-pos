@@ -56,10 +56,23 @@ source formatting from drifting.
   real changes in noise. The gate is `dart format --output=none
   --set-exit-if-changed lib test`, and it runs only after an explicit
   `flutter pub get` step — that ordering is load-bearing, see *Fixed* above.
+- **Four CI actions were running on a deprecated Node.js 20 runtime.** GitHub is
+  force-running them on Node 24, and `actions/setup-java@v4` is additionally
+  marked as no longer receiving updates. Bumped to `actions/checkout@v5`,
+  `actions/setup-java@v5`, `actions/upload-artifact@v5` and
+  `softprops/action-gh-release@v3`. All four moves were runtime-only migrations:
+  no input this workflow passes was renamed or removed, and `upload-artifact`'s
+  new `archive` parameter is left unset so uploads stay zipped as before.
 - **31 regression tests** pinning both bugs: `test/change_due_regression_test.dart`
   (25) covers overpayment across the dashboard, receipt, billing and badge paths,
   and `test/void_reversal_regression_test.dart` (6) covers the void reversal
   including the duplicate-product-line case. Suite is now **151 tests**.
+
+### Known upcoming
+- **`ubuntu-latest` moves to Ubuntu 26 on 2026-10-19.** Nothing is wrong today,
+  but the runner image will change under this workflow. If a build after that
+  date fails to resolve the Android SDK or JDK, pin `runs-on: ubuntu-24.04`. A
+  comment at the job level records this.
 
 ### Verified
 Both fixes were confirmed end-to-end on a Pixel 4 AVD against live Firestore, not

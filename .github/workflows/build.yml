@@ -10,13 +10,25 @@ permissions:
 
 jobs:
   build:
+    # Setup action major versions, current as of 2026-09-28:
+    #   actions/checkout            v5   (Node 24)
+    #   actions/setup-java          v5   (Node 24)
+    #   actions/upload-artifact     v5   (Node 24)
+    #   softprops/action-gh-release v3   (Node 24)
+    # All four were bumped off the Node 20 runtime, which GitHub has
+    # deprecated. These were runtime-only migrations: no input this workflow
+    # uses was renamed or removed. Re-check the major tags when bumping.
     runs-on: ubuntu-latest
+    # NOTE: `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19. When that happens,
+    # re-run a build and confirm the Android SDK / JDK toolchain still resolves
+    # before trusting a release built on the new image. Pin to `ubuntu-24.04`
+    # if it does not.
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -134,7 +146,7 @@ jobs:
           echo "::notice ::APK renamed to: $APK_NAME"
 
       - name: Upload APK to Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -172,7 +184,7 @@ jobs:
 
       - name: Attach APK to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ env.APK_NAME }}
           body_path: changelog.txt
