@@ -30,15 +30,19 @@ class Product {
     required this.currentStock,
     required this.lowStockThreshold,
     this.isArchived = false,
-  }) : assert(name.trim().isNotEmpty, 'Product name is required'),
-       assert(name.length <= _maxNameLength, 'Product name exceeds $_maxNameLength characters'),
-       assert(type.length <= _maxTypeLength, 'Product type exceeds $_maxTypeLength characters'),
-       assert(!sizeLength.isNaN && !sizeLength.isInfinite, 'Invalid size length'),
-       assert(!sizeWidth.isNaN && !sizeWidth.isInfinite, 'Invalid size width'),
-       assert(!thickness.isNaN && !thickness.isInfinite, 'Invalid thickness'),
-       assert(!density.isNaN && !density.isInfinite, 'Invalid density'),
-       assert(!currentStock.isNaN && !currentStock.isInfinite, 'Invalid stock'),
-       assert(!costPrice.isNaN && !costPrice.isInfinite, 'Invalid cost price');
+  })  : assert(name.trim().isNotEmpty, 'Product name is required'),
+        assert(name.length <= _maxNameLength,
+            'Product name exceeds $_maxNameLength characters'),
+        assert(type.length <= _maxTypeLength,
+            'Product type exceeds $_maxTypeLength characters'),
+        assert(
+            !sizeLength.isNaN && !sizeLength.isInfinite, 'Invalid size length'),
+        assert(!sizeWidth.isNaN && !sizeWidth.isInfinite, 'Invalid size width'),
+        assert(!thickness.isNaN && !thickness.isInfinite, 'Invalid thickness'),
+        assert(!density.isNaN && !density.isInfinite, 'Invalid density'),
+        assert(
+            !currentStock.isNaN && !currentStock.isInfinite, 'Invalid stock'),
+        assert(!costPrice.isNaN && !costPrice.isInfinite, 'Invalid cost price');
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -65,24 +69,36 @@ class Product {
       id: map['id'] as String? ?? '',
       name: name.trim(),
       type: (map['type'] as String?)?.trim() ?? '',
-      sizeLength: ((map['size_length'] as num?)?.toDouble() ?? 0).clamp(0, 9999),
+      sizeLength:
+          ((map['size_length'] as num?)?.toDouble() ?? 0).clamp(0, 9999),
       sizeWidth: ((map['size_width'] as num?)?.toDouble() ?? 0).clamp(0, 9999),
       thickness: ((map['thickness'] as num?)?.toDouble() ?? 0).clamp(0, 9999),
       density: ((map['density'] as num?)?.toDouble() ?? 0).clamp(0, 9999),
       unitType: (map['unit_type'] as String?) ?? 'per_sqft',
       unitPrice: ((map['unit_price'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
       costPrice: ((map['cost_price'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
-      currentStock: ((map['current_stock'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
-      lowStockThreshold: ((map['low_stock_threshold'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
+      currentStock:
+          ((map['current_stock'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
+      lowStockThreshold:
+          ((map['low_stock_threshold'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
       isArchived: map['is_archived'] as bool? ?? false,
     );
   }
 
   Product copyWith({
-    String? id, String? name, String? type,
-    double? sizeLength, double? sizeWidth, double? thickness, double? density,
-    String? unitType, double? unitPrice, double? costPrice,
-    double? currentStock, double? lowStockThreshold, bool? isArchived,
+    String? id,
+    String? name,
+    String? type,
+    double? sizeLength,
+    double? sizeWidth,
+    double? thickness,
+    double? density,
+    String? unitType,
+    double? unitPrice,
+    double? costPrice,
+    double? currentStock,
+    double? lowStockThreshold,
+    bool? isArchived,
   }) =>
       Product(
         id: id ?? this.id,

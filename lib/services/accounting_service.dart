@@ -118,8 +118,10 @@ class AccountingService {
       // Opt-in only. Turn on when investigating a profit figure that does not
       // reconcile: a non-zero count means either a product was saved without a
       // buy price, or a sale was recorded at or below cost.
-      developer.log('[COGS] missingCostLines=$missingCostLines '
-          'lossMakingLines=$lossMakingLines', name: 'accounting');
+      developer.log(
+          '[COGS] missingCostLines=$missingCostLines '
+          'lossMakingLines=$lossMakingLines',
+          name: 'accounting');
     }
 
     final grossProfit = sanitize(revenue) - sanitize(cogs);
@@ -156,13 +158,11 @@ class AccountingService {
         if (p.customerId.isNotEmpty) customerIds.add(p.customerId);
       }
       for (final cid in customerIds) {
-        final cSales = sales.where(
-            (s) => s.customerId == cid && !s.isVoided && !s.isQuote);
+        final cSales = sales
+            .where((s) => s.customerId == cid && !s.isVoided && !s.isQuote);
         final cPayments = payments.where((p) => p.customerId == cid);
-        final total =
-            cSales.fold(0.0, (s, x) => s + sanitize(x.amount));
-        final paid =
-            cSales.fold(0.0, (s, x) => s + sanitize(x.paid));
+        final total = cSales.fold(0.0, (s, x) => s + sanitize(x.amount));
+        final paid = cSales.fold(0.0, (s, x) => s + sanitize(x.paid));
         final recv =
             cPayments.fold(0.0, (s, x) => s + sanitize(x.amountCollected));
         final bal = sanitize(total) - sanitize(paid) - sanitize(recv);
@@ -181,15 +181,16 @@ class AccountingService {
       }
       for (final sid in supplierIds) {
         final sPurchases = purchases.where((p) => p.supplierId == sid);
-        final sPayments =
-            supplierPayments.where((sp) => sp.supplierId == sid);
+        final sPayments = supplierPayments.where((sp) => sp.supplierId == sid);
         final total =
             sPurchases.fold(0.0, (s, p) => s + sanitize(p.costAmount));
         final paidAtPurchase =
             sPurchases.fold(0.0, (s, p) => s + sanitize(p.paid));
         final paidToSupplier =
             sPayments.fold(0.0, (s, sp) => s + sanitize(sp.amountPaid));
-        final bal = sanitize(total) - sanitize(paidAtPurchase) - sanitize(paidToSupplier);
+        final bal = sanitize(total) -
+            sanitize(paidAtPurchase) -
+            sanitize(paidToSupplier);
         if (bal > 0) totalSupplierBaqaya += bal;
       }
     }
@@ -205,18 +206,18 @@ class AccountingService {
     }
 
     if (logCogsDiagnostics && zeroCostProducts > 0) {
-      developer.log('[COGS] $zeroCostProducts product(s) have costPrice=0 — '
-          'their inventory value contributes 0', name: 'accounting');
+      developer.log(
+          '[COGS] $zeroCostProducts product(s) have costPrice=0 — '
+          'their inventory value contributes 0',
+          name: 'accounting');
     }
 
     final lowStockCount = products.where((p) => p.isLowStock).length;
     final totalProducts = products.length;
     final categoryCount = products.map((p) => p.type).toSet().length;
 
-    final negativeStockProducts = products
-        .where((p) => p.currentStock < 0)
-        .map((p) => p.name)
-        .toList();
+    final negativeStockProducts =
+        products.where((p) => p.currentStock < 0).map((p) => p.name).toList();
 
     return AccountingSummary(
       revenue: revenue,
@@ -257,8 +258,10 @@ class AccountingService {
     final newRevenue = sanitize(summary.revenue) - sanitize(sale.amount);
     final newCogs = sanitize(summary.cogs) - sanitize(cogsAdjustment);
     final newGrossProfit = sanitize(newRevenue) - sanitize(newCogs);
-    final newNetProfit = sanitize(newGrossProfit) - sanitize(summary.totalExpenses);
-    final newCashFromSales = sanitize(summary.cashFromSales) - sanitize(sale.paid);
+    final newNetProfit =
+        sanitize(newGrossProfit) - sanitize(summary.totalExpenses);
+    final newCashFromSales =
+        sanitize(summary.cashFromSales) - sanitize(sale.paid);
     final newCashInHand = sanitize(summary.cashInHand) - sanitize(sale.paid);
 
     return AccountingSummary(
@@ -313,17 +316,24 @@ class AccountingService {
     required DateTime startDate,
     required DateTime endDate,
   }) {
-    final endOfDay = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999);
-    final filteredSales = sales.where((s) =>
-        !s.date.isBefore(startDate) && !s.date.isAfter(endOfDay)).toList();
-    final filteredPurchases = purchases.where((p) =>
-        !p.date.isBefore(startDate) && !p.date.isAfter(endOfDay)).toList();
-    final filteredExpenses = expenses.where((e) =>
-        !e.date.isBefore(startDate) && !e.date.isAfter(endOfDay)).toList();
-    final filteredPayments = payments.where((p) =>
-        !p.date.isBefore(startDate) && !p.date.isAfter(endOfDay)).toList();
-    final filteredSupplierPayments = supplierPayments.where((sp) =>
-        !sp.date.isBefore(startDate) && !sp.date.isAfter(endOfDay)).toList();
+    final endOfDay =
+        DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999);
+    final filteredSales = sales
+        .where((s) => !s.date.isBefore(startDate) && !s.date.isAfter(endOfDay))
+        .toList();
+    final filteredPurchases = purchases
+        .where((p) => !p.date.isBefore(startDate) && !p.date.isAfter(endOfDay))
+        .toList();
+    final filteredExpenses = expenses
+        .where((e) => !e.date.isBefore(startDate) && !e.date.isAfter(endOfDay))
+        .toList();
+    final filteredPayments = payments
+        .where((p) => !p.date.isBefore(startDate) && !p.date.isAfter(endOfDay))
+        .toList();
+    final filteredSupplierPayments = supplierPayments
+        .where(
+            (sp) => !sp.date.isBefore(startDate) && !sp.date.isAfter(endOfDay))
+        .toList();
 
     return compute(
       sales: filteredSales,
@@ -336,18 +346,22 @@ class AccountingService {
     );
   }
 
-  double calculateProductCostAfterRestock(Product product, double restockQty, double restockUnitCost) {
+  double calculateProductCostAfterRestock(
+      Product product, double restockQty, double restockUnitCost) {
     if (restockQty <= 0) return product.costPrice;
     if (product.currentStock <= 0) return restockUnitCost;
-    final totalCurrentValue = sanitize(product.currentStock) * sanitize(product.costPrice);
+    final totalCurrentValue =
+        sanitize(product.currentStock) * sanitize(product.costPrice);
     final totalNewValue = sanitize(restockQty) * sanitize(restockUnitCost);
     final totalUnits = sanitize(product.currentStock) + sanitize(restockQty);
     if (totalUnits <= 0) return 0;
     return (totalCurrentValue + totalNewValue) / totalUnits;
   }
 
-  Product restockProduct(Product product, double restockQty, double restockUnitCost) {
-    final newCost = calculateProductCostAfterRestock(product, restockQty, restockUnitCost);
+  Product restockProduct(
+      Product product, double restockQty, double restockUnitCost) {
+    final newCost =
+        calculateProductCostAfterRestock(product, restockQty, restockUnitCost);
     return product.copyWith(
       currentStock: product.currentStock + restockQty,
       costPrice: newCost,

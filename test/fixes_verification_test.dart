@@ -53,7 +53,9 @@ void main() {
 
   // ── Fix 1: subscriptionLabel fallback when trialEndsAt is null ──
   group('Fix 1 — subscriptionLabel fallback', () {
-    test('returns Trial label when trialEndsAt is null (falls back to createdAt + 14d)', () {
+    test(
+        'returns Trial label when trialEndsAt is null (falls back to createdAt + 14d)',
+        () {
       final profile = ShopProfile(
         shopName: 'Test Shop',
         location: 'Test City',
@@ -99,12 +101,32 @@ void main() {
       });
 
       final products = [
-        Product(id: 'p1', name: 'Foam A', type: 'Sheet', sizeLength: 10, sizeWidth: 10,
-            thickness: 1, density: 10, unitType: 'per_sqft', unitPrice: 100,
-            costPrice: 50, currentStock: 2, lowStockThreshold: 5), // LOW
-        Product(id: 'p2', name: 'Foam B', type: 'Sheet', sizeLength: 10, sizeWidth: 10,
-            thickness: 1, density: 10, unitType: 'per_sqft', unitPrice: 100,
-            costPrice: 50, currentStock: 20, lowStockThreshold: 5), // OK
+        Product(
+            id: 'p1',
+            name: 'Foam A',
+            type: 'Sheet',
+            sizeLength: 10,
+            sizeWidth: 10,
+            thickness: 1,
+            density: 10,
+            unitType: 'per_sqft',
+            unitPrice: 100,
+            costPrice: 50,
+            currentStock: 2,
+            lowStockThreshold: 5), // LOW
+        Product(
+            id: 'p2',
+            name: 'Foam B',
+            type: 'Sheet',
+            sizeLength: 10,
+            sizeWidth: 10,
+            thickness: 1,
+            density: 10,
+            unitType: 'per_sqft',
+            unitPrice: 100,
+            costPrice: 50,
+            currentStock: 20,
+            lowStockThreshold: 5), // OK
       ];
 
       // We can't check notification actually fired (platform dependency),

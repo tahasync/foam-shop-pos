@@ -6,21 +6,25 @@ class ScaleButton extends StatefulWidget {
   final VoidCallback? onTap;
   final double scale;
 
-  const ScaleButton({super.key, required this.child, this.onTap, this.scale = 0.97});
+  const ScaleButton(
+      {super.key, required this.child, this.onTap, this.scale = 0.97});
 
   @override
   State<ScaleButton> createState() => _ScaleButtonState();
 }
 
-class _ScaleButtonState extends State<ScaleButton> with SingleTickerProviderStateMixin {
+class _ScaleButtonState extends State<ScaleButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(duration: const Duration(milliseconds: 100), vsync: this);
-    _anim = Tween<double>(begin: 1.0, end: widget.scale).animate(CurvedAnimation(
+    _ctrl = AnimationController(
+        duration: const Duration(milliseconds: 100), vsync: this);
+    _anim =
+        Tween<double>(begin: 1.0, end: widget.scale).animate(CurvedAnimation(
       parent: _ctrl,
       curve: Curves.easeInOut,
     ));
@@ -46,7 +50,8 @@ class _ScaleButtonState extends State<ScaleButton> with SingleTickerProviderStat
       onTapCancel: () => _ctrl.reverse(),
       child: AnimatedBuilder(
         animation: _anim,
-        builder: (_, child) => Transform.scale(scale: _anim.value, child: child),
+        builder: (_, child) =>
+            Transform.scale(scale: _anim.value, child: child),
         child: widget.child,
       ),
     );

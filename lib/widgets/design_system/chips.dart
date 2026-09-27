@@ -12,7 +12,8 @@ class ChipRow extends StatelessWidget {
     required this.selected,
     required this.onSelected,
     this.selectedColor,
-    this.padding = const EdgeInsets.symmetric(vertical: AppSpacing.xxs, horizontal: AppSpacing.xxs),
+    this.padding = const EdgeInsets.symmetric(
+        vertical: AppSpacing.xxs, horizontal: AppSpacing.xxs),
   });
 
   final List<String> values;
@@ -129,6 +130,7 @@ class ActiveGlassPill extends StatelessWidget {
     );
   }
 }
+
 /// Segmented control - a frosted pill of options with a sliding active segment.
 ///
 /// Fixes applied:
@@ -210,7 +212,8 @@ class SegmentedControl extends StatelessWidget {
                                   fontWeight: i == selectedIndex
                                       ? FontWeight.w800
                                       : FontWeight.w600,
-                                  color: i == selectedIndex ? ac.ink : ac.inkSoft,
+                                  color:
+                                      i == selectedIndex ? ac.ink : ac.inkSoft,
                                 ),
                                 child: Text(
                                   options[i],

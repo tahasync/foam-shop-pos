@@ -32,11 +32,15 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
     super.dispose();
   }
 
-  bool get _canDelete => _confirmCtrl.text.trim().toUpperCase() == 'DELETE' && !_deleting;
+  bool get _canDelete =>
+      _confirmCtrl.text.trim().toUpperCase() == 'DELETE' && !_deleting;
 
   Future<void> _delete() async {
     if (!_canDelete) return;
-    setState(() { _deleting = true; _error = null; });
+    setState(() {
+      _deleting = true;
+      _error = null;
+    });
 
     try {
       final auth = FirebaseAuth.instance;
@@ -51,21 +55,30 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
 
       final googleAccount = await googleSignIn.authenticate();
       final googleAuth = await googleAccount.authentication;
-      final credential = GoogleAuthProvider.credential(idToken: googleAuth.idToken);
+      final credential =
+          GoogleAuthProvider.credential(idToken: googleAuth.idToken);
       await user.reauthenticateWithCredential(credential);
 
       final batchSize = 500;
       final collections = [
-        'products', 'customers', 'suppliers', 'sales',
-        'purchases', 'expenses', 'payments', 'supplier_payments',
-        'opening_balances', 'settings',
+        'products',
+        'customers',
+        'suppliers',
+        'sales',
+        'purchases',
+        'expenses',
+        'payments',
+        'supplier_payments',
+        'opening_balances',
+        'settings',
       ];
 
       for (final col in collections) {
         var hasMore = true;
         while (hasMore) {
           final snapshot = await db
-              .collection('users').doc(uid)
+              .collection('users')
+              .doc(uid)
               .collection(col)
               .limit(batchSize)
               .get();
@@ -93,13 +106,23 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
         Navigator.of(context).pop(true);
       }
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'requires-recent-login' || e.code == 'credential-already-in-use') {
-        setState(() { _deleting = false; _error = 'Re-authentication failed. Please sign out and try again.'; });
+      if (e.code == 'requires-recent-login' ||
+          e.code == 'credential-already-in-use') {
+        setState(() {
+          _deleting = false;
+          _error = 'Re-authentication failed. Please sign out and try again.';
+        });
       } else {
-        setState(() { _deleting = false; _error = e.message ?? 'Authentication error. Please try again.'; });
+        setState(() {
+          _deleting = false;
+          _error = e.message ?? 'Authentication error. Please try again.';
+        });
       }
     } catch (e) {
-      setState(() { _deleting = false; _error = '$e'; });
+      setState(() {
+        _deleting = false;
+        _error = '$e';
+      });
     }
   }
 
@@ -114,8 +137,10 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(color: ac.expenseTint, borderRadius: BorderRadius.circular(12)),
-            child: Icon(Icons.warning_amber_rounded, size: 20, color: ac.expenseFg),
+            decoration: BoxDecoration(
+                color: ac.expenseTint, borderRadius: BorderRadius.circular(12)),
+            child: Icon(Icons.warning_amber_rounded,
+                size: 20, color: ac.expenseFg),
           ),
           const SizedBox(height: 12),
           Text(
@@ -140,7 +165,10 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text('Export your data first (recommended)',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ac.saleFg)),
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: ac.saleFg)),
               ),
             ]),
           ),
@@ -154,14 +182,20 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: ac.expenseTint, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                  color: ac.expenseTint,
+                  borderRadius: BorderRadius.circular(10)),
               child: Row(children: [
-                Icon(Icons.error_outline_rounded, size: 16, color: ac.expenseFg),
+                Icon(Icons.error_outline_rounded,
+                    size: 16, color: ac.expenseFg),
                 const SizedBox(width: 8),
-                Expanded(child: Text(_error!, style: TextStyle(fontSize: 11, color: ac.expenseFg))),
+                Expanded(
+                    child: Text(_error!,
+                        style: TextStyle(fontSize: 11, color: ac.expenseFg))),
                 GestureDetector(
                     onTap: () => setState(() => _error = null),
-                    child: Icon(Icons.close_rounded, size: 14, color: ac.expenseFg)),
+                    child: Icon(Icons.close_rounded,
+                        size: 14, color: ac.expenseFg)),
               ]),
             ),
             const SizedBox(height: 14),

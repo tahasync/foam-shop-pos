@@ -59,7 +59,9 @@ class AccountSettingsScreen extends ConsumerWidget {
                 // grounds the card in both themes.
                 BoxShadow(
                   color: Colors.black.withValues(
-                    alpha: Theme.of(context).brightness == Brightness.dark ? 0.36 : 0.18,
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.36
+                        : 0.18,
                   ),
                   blurRadius: 18,
                   spreadRadius: -6,
@@ -122,7 +124,9 @@ class AccountSettingsScreen extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 1.5),
                         ),
                         alignment: Alignment.center,
                         child: Text(
@@ -154,28 +158,33 @@ class AccountSettingsScreen extends ConsumerWidget {
                               '$shopName \u00b7 Owner',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 11.5),
                             ),
                             if (subLabel != null) ...[
                               const SizedBox(height: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
-                                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  const Icon(Icons.schedule_rounded, size: 10, color: Colors.white),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    trialChipLabel(subLabel),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ]),
+                                child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.schedule_rounded,
+                                          size: 10, color: Colors.white),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        trialChipLabel(subLabel),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ]),
                               ),
                             ],
                           ],
@@ -196,13 +205,17 @@ class AccountSettingsScreen extends ConsumerWidget {
                   icon: Icons.home_rounded,
                   title: 'Shop profile',
                   subtitle: 'Name, location, phone, currency',
-                  onTap: () => _editShopProfile(context, ref, profile, openingBal),
+                  onTap: () =>
+                      _editShopProfile(context, ref, profile, openingBal),
                 ),
                 MenuRow(
                   icon: Icons.credit_card_rounded,
                   title: 'Billing & subscription',
-                  subtitle: subLabel != null ? trialChipLabel(subLabel) : 'Subscription',
-                  onTap: () => Navigator.push(context, slideUpRoute(const SubscriptionScreen())),
+                  subtitle: subLabel != null
+                      ? trialChipLabel(subLabel)
+                      : 'Subscription',
+                  onTap: () => Navigator.push(
+                      context, slideUpRoute(const SubscriptionScreen())),
                 ),
               ],
             ),
@@ -216,40 +229,53 @@ class AccountSettingsScreen extends ConsumerWidget {
                   icon: Icons.notifications_none_rounded,
                   title: 'Notification settings',
                   subtitle: 'Phone number & alert types',
-                  onTap: () => Navigator.push(context, slideUpRoute(const NotificationSettingsScreen())),
+                  onTap: () => Navigator.push(context,
+                      slideUpRoute(const NotificationSettingsScreen())),
                 ),
                 MenuRow(
                   icon: Icons.schedule_rounded,
                   title: 'Notification history',
-                  onTap: () => Navigator.push(context, slideUpRoute(const NotificationHistoryScreen())),
+                  onTap: () => Navigator.push(
+                      context, slideUpRoute(const NotificationHistoryScreen())),
                 ),
                 MenuRow(
                   icon: Icons.wb_sunny_rounded,
                   title: 'Dark mode',
                   trailing: SegmentedButton<ThemeMode>(
                     segments: const [
-                      ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.wb_sunny_outlined, size: 16)),
-                      ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto, size: 16)),
-                      ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.nights_stay_outlined, size: 16)),
+                      ButtonSegment(
+                          value: ThemeMode.light,
+                          icon: Icon(Icons.wb_sunny_outlined, size: 16)),
+                      ButtonSegment(
+                          value: ThemeMode.system,
+                          icon: Icon(Icons.brightness_auto, size: 16)),
+                      ButtonSegment(
+                          value: ThemeMode.dark,
+                          icon: Icon(Icons.nights_stay_outlined, size: 16)),
                     ],
                     selected: {themeMode},
                     showSelectedIcon: false,
                     emptySelectionAllowed: false,
-                    onSelectionChanged: (v) => ref.read(themeModeProvider.notifier).setMode(v.first),
+                    onSelectionChanged: (v) =>
+                        ref.read(themeModeProvider.notifier).setMode(v.first),
                     style: SegmentedButton.styleFrom(
-                      selectedBackgroundColor: AppColors.of(context).primaryContainer,
+                      selectedBackgroundColor:
+                          AppColors.of(context).primaryContainer,
                       backgroundColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 4),
                       visualDensity: VisualDensity.compact,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
                 ),
                 MenuRow(
                   icon: Icons.help_outline_rounded,
                   title: 'Support & Feedback',
-                  onTap: () => Navigator.push(context, slideUpRoute(const SupportFeedbackScreen())),
+                  onTap: () => Navigator.push(
+                      context, slideUpRoute(const SupportFeedbackScreen())),
                 ),
               ],
             ),
@@ -285,10 +311,15 @@ class AccountSettingsScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Sign Out'),
-        content: const Text('Local data will be cleared. Cloud copy stays safe.'),
+        content:
+            const Text('Local data will be cleared. Cloud copy stays safe.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sign Out')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Sign Out')),
         ],
       ),
     );
@@ -315,11 +346,13 @@ class AccountSettingsScreen extends ConsumerWidget {
     }
   }
 
-  void _editShopProfile(BuildContext context, WidgetRef ref, ShopProfile? current, OpeningBalance? openingBal) {
+  void _editShopProfile(BuildContext context, WidgetRef ref,
+      ShopProfile? current, OpeningBalance? openingBal) {
     final nameCtrl = TextEditingController(text: current?.shopName ?? '');
     final locCtrl = TextEditingController(text: current?.location ?? '');
     final phoneCtrl = TextEditingController(text: current?.phone ?? '');
-    final capitalCtrl = TextEditingController(text: (openingBal?.capitalAmount ?? 0).toStringAsFixed(0));
+    final capitalCtrl = TextEditingController(
+        text: (openingBal?.capitalAmount ?? 0).toStringAsFixed(0));
     final currencies = ['PKR', 'USD', 'EUR', 'GBP', 'INR', 'AED', 'SAR'];
     String selectedCurrency = current?.currency ?? 'PKR';
     bool saving = false;
@@ -338,7 +371,10 @@ class AccountSettingsScreen extends ConsumerWidget {
               const SizedBox(height: 14),
               AppField(label: 'Shop Name *', controller: nameCtrl),
               AppField(label: 'Shop Location / City *', controller: locCtrl),
-              AppField(label: 'Phone (optional)', controller: phoneCtrl, keyboardType: TextInputType.phone),
+              AppField(
+                  label: 'Phone (optional)',
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone),
               Padding(
                 padding: const EdgeInsets.only(bottom: 14),
                 child: Column(
@@ -349,7 +385,10 @@ class AccountSettingsScreen extends ConsumerWidget {
                       child: Text(
                         'CURRENCY',
                         style: TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.of(ctx).inkSoft, letterSpacing: 0.03),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.of(ctx).inkSoft,
+                            letterSpacing: 0.03),
                       ),
                     ),
                     Container(
@@ -358,15 +397,23 @@ class AccountSettingsScreen extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: AppColors.of(ctx).surface,
                         borderRadius: BorderRadius.circular(13),
-                        border: Border.all(color: AppColors.of(ctx).outline, width: 1.5),
+                        border: Border.all(
+                            color: AppColors.of(ctx).outline, width: 1.5),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: selectedCurrency,
                           isExpanded: true,
-                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: AppColors.of(ctx).ink),
-                          dropdownColor: Theme.of(ctx).colorScheme.surfaceContainerHigh,
-                          items: currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                          style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.of(ctx).ink),
+                          dropdownColor:
+                              Theme.of(ctx).colorScheme.surfaceContainerHigh,
+                          items: currencies
+                              .map((c) =>
+                                  DropdownMenuItem(value: c, child: Text(c)))
+                              .toList(),
                           onChanged: (v) {
                             if (v != null) setSD(() => selectedCurrency = v);
                           },
@@ -397,10 +444,12 @@ class AccountSettingsScreen extends ConsumerWidget {
                     onTap: saving
                         ? null
                         : () async {
-                            if (nameCtrl.text.trim().isEmpty || locCtrl.text.trim().isEmpty) return;
+                            if (nameCtrl.text.trim().isEmpty ||
+                                locCtrl.text.trim().isEmpty) return;
                             setSD(() => saving = true);
                             try {
-                              final service = ref.read(firestoreServiceProvider);
+                              final service =
+                                  ref.read(firestoreServiceProvider);
                               final profile = ShopProfile(
                                 shopName: nameCtrl.text.trim(),
                                 location: locCtrl.text.trim(),
@@ -409,7 +458,8 @@ class AccountSettingsScreen extends ConsumerWidget {
                                 createdAt: current?.createdAt ?? DateTime.now(),
                               );
                               await service.setShopProfile(profile);
-                              final cap = double.tryParse(capitalCtrl.text) ?? (openingBal?.capitalAmount ?? 0);
+                              final cap = double.tryParse(capitalCtrl.text) ??
+                                  (openingBal?.capitalAmount ?? 0);
                               if (cap >= 0) {
                                 await service.setOpeningBalance(OpeningBalance(
                                     id: openingBal?.id ?? service.generateId(),
@@ -425,7 +475,8 @@ class AccountSettingsScreen extends ConsumerWidget {
                               if (ctx.mounted) {
                                 ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
                                   content: Text('Could not save: $e'),
-                                  backgroundColor: Theme.of(ctx).colorScheme.error,
+                                  backgroundColor:
+                                      Theme.of(ctx).colorScheme.error,
                                 ));
                               }
                               setSD(() => saving = false);

@@ -11,9 +11,9 @@ class Expense {
     required this.category,
     this.description = '',
     required this.amount,
-  }) : assert(category.trim().isNotEmpty, 'Expense category is required'),
-       assert(amount > 0, 'Expense amount must be positive'),
-       assert(description.length <= 500, 'Description too long');
+  })  : assert(category.trim().isNotEmpty, 'Expense category is required'),
+        assert(amount > 0, 'Expense amount must be positive'),
+        assert(description.length <= 500, 'Description too long');
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -29,7 +29,8 @@ class Expense {
       throw const FormatException('Invalid expense: missing category');
     }
     final date = map['date'];
-    if (date is! String) throw const FormatException('Invalid expense: missing date');
+    if (date is! String)
+      throw const FormatException('Invalid expense: missing date');
     return Expense(
       id: map['id'] as String? ?? '',
       date: DateTime.parse(date),

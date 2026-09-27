@@ -380,79 +380,114 @@ class AppColors extends ThemeExtension<AppColors> {
 
   @override
   ThemeExtension<AppColors> copyWith({
-    Color? saleTint, Color? purchaseTint, Color? expenseTint,
-    Color? profitTint, Color? inventoryTint, Color? khataTint, Color? cashTint,
-    Color? saleFg, Color? purchaseFg, Color? expenseFg,
-    Color? profitFg, Color? inventoryFg, Color? khataFg, Color? cashFg,
-    Color? ink, Color? inkSoft, Color? inkFaint,
-    Color? surface, Color? surface2, Color? surfaceHigh, Color? surfaceHighest,
-    Color? outline, Color? outlineStrong, Color? controlBorder,
-    Color? primary, Color? primaryStrong, Color? primaryContainer,
+    Color? saleTint,
+    Color? purchaseTint,
+    Color? expenseTint,
+    Color? profitTint,
+    Color? inventoryTint,
+    Color? khataTint,
+    Color? cashTint,
+    Color? saleFg,
+    Color? purchaseFg,
+    Color? expenseFg,
+    Color? profitFg,
+    Color? inventoryFg,
+    Color? khataFg,
+    Color? cashFg,
+    Color? ink,
+    Color? inkSoft,
+    Color? inkFaint,
+    Color? surface,
+    Color? surface2,
+    Color? surfaceHigh,
+    Color? surfaceHighest,
+    Color? outline,
+    Color? outlineStrong,
+    Color? controlBorder,
+    Color? primary,
+    Color? primaryStrong,
+    Color? primaryContainer,
     Color? onPrimaryContainer,
-    Color? accent, Color? onAccent, Color? accentContainer,
-    Color? brandSolid, Color? brandSolidStrong, Color? dangerSolid,
-    Color? brandFill, Color? brandFillDeep, Color? dangerFill,
+    Color? accent,
+    Color? onAccent,
+    Color? accentContainer,
+    Color? brandSolid,
+    Color? brandSolidStrong,
+    Color? dangerSolid,
+    Color? brandFill,
+    Color? brandFillDeep,
+    Color? dangerFill,
     Color? dangerFillDeep,
-    Color? glassFill, Color? glassFillStrong,
-    Color? glassBorder, double? glassBlur,
-    Color? glassHairline, Color? glassSpecular, Color? glassElevated,
-    Color? glassPress, Color? glassScrim, Color? glassShadow,
-    Color? glassInnerGlow, Color? glassNested,
-  }) => AppColors(
-    saleTint: saleTint ?? this.saleTint,
-    purchaseTint: purchaseTint ?? this.purchaseTint,
-    expenseTint: expenseTint ?? this.expenseTint,
-    profitTint: profitTint ?? this.profitTint,
-    inventoryTint: inventoryTint ?? this.inventoryTint,
-    khataTint: khataTint ?? this.khataTint,
-    cashTint: cashTint ?? this.cashTint,
-    saleFg: saleFg ?? this.saleFg,
-    purchaseFg: purchaseFg ?? this.purchaseFg,
-    expenseFg: expenseFg ?? this.expenseFg,
-    profitFg: profitFg ?? this.profitFg,
-    inventoryFg: inventoryFg ?? this.inventoryFg,
-    khataFg: khataFg ?? this.khataFg,
-    cashFg: cashFg ?? this.cashFg,
-    ink: ink ?? this.ink,
-    inkSoft: inkSoft ?? this.inkSoft,
-    inkFaint: inkFaint ?? this.inkFaint,
-    surface: surface ?? this.surface,
-    surface2: surface2 ?? this.surface2,
-    surfaceHigh: surfaceHigh ?? this.surfaceHigh,
-    surfaceHighest: surfaceHighest ?? this.surfaceHighest,
-    outline: outline ?? this.outline,
-    outlineStrong: outlineStrong ?? this.outlineStrong,
-    controlBorder: controlBorder ?? this.controlBorder,
-    primary: primary ?? this.primary,
-    primaryStrong: primaryStrong ?? this.primaryStrong,
-    primaryContainer: primaryContainer ?? this.primaryContainer,
-    onPrimaryContainer: onPrimaryContainer ?? this.onPrimaryContainer,
-    accent: accent ?? this.accent,
-    onAccent: onAccent ?? this.onAccent,
-    accentContainer: accentContainer ?? this.accentContainer,
-    brandSolid: brandSolid ?? this.brandSolid,
-    brandSolidStrong: brandSolidStrong ?? this.brandSolidStrong,
-    brandFill: brandFill ?? this.brandFill,
-    brandFillDeep: brandFillDeep ?? this.brandFillDeep,
-    dangerFill: dangerFill ?? this.dangerFill,
-    dangerFillDeep: dangerFillDeep ?? this.dangerFillDeep,
-    dangerSolid: dangerSolid ?? this.dangerSolid,
-    glassFill: glassFill ?? this.glassFill,
-    glassFillStrong: glassFillStrong ?? this.glassFillStrong,
-    glassBorder: glassBorder ?? this.glassBorder,
-    glassBlur: glassBlur ?? this.glassBlur,
-    glassHairline: glassHairline ?? this.glassHairline,
-    glassSpecular: glassSpecular ?? this.glassSpecular,
-    glassElevated: glassElevated ?? this.glassElevated,
-    glassPress: glassPress ?? this.glassPress,
-    glassScrim: glassScrim ?? this.glassScrim,
-    glassShadow: glassShadow ?? this.glassShadow,
-    glassInnerGlow: glassInnerGlow ?? this.glassInnerGlow,
-    glassNested: glassNested ?? this.glassNested,
-  );
+    Color? glassFill,
+    Color? glassFillStrong,
+    Color? glassBorder,
+    double? glassBlur,
+    Color? glassHairline,
+    Color? glassSpecular,
+    Color? glassElevated,
+    Color? glassPress,
+    Color? glassScrim,
+    Color? glassShadow,
+    Color? glassInnerGlow,
+    Color? glassNested,
+  }) =>
+      AppColors(
+        saleTint: saleTint ?? this.saleTint,
+        purchaseTint: purchaseTint ?? this.purchaseTint,
+        expenseTint: expenseTint ?? this.expenseTint,
+        profitTint: profitTint ?? this.profitTint,
+        inventoryTint: inventoryTint ?? this.inventoryTint,
+        khataTint: khataTint ?? this.khataTint,
+        cashTint: cashTint ?? this.cashTint,
+        saleFg: saleFg ?? this.saleFg,
+        purchaseFg: purchaseFg ?? this.purchaseFg,
+        expenseFg: expenseFg ?? this.expenseFg,
+        profitFg: profitFg ?? this.profitFg,
+        inventoryFg: inventoryFg ?? this.inventoryFg,
+        khataFg: khataFg ?? this.khataFg,
+        cashFg: cashFg ?? this.cashFg,
+        ink: ink ?? this.ink,
+        inkSoft: inkSoft ?? this.inkSoft,
+        inkFaint: inkFaint ?? this.inkFaint,
+        surface: surface ?? this.surface,
+        surface2: surface2 ?? this.surface2,
+        surfaceHigh: surfaceHigh ?? this.surfaceHigh,
+        surfaceHighest: surfaceHighest ?? this.surfaceHighest,
+        outline: outline ?? this.outline,
+        outlineStrong: outlineStrong ?? this.outlineStrong,
+        controlBorder: controlBorder ?? this.controlBorder,
+        primary: primary ?? this.primary,
+        primaryStrong: primaryStrong ?? this.primaryStrong,
+        primaryContainer: primaryContainer ?? this.primaryContainer,
+        onPrimaryContainer: onPrimaryContainer ?? this.onPrimaryContainer,
+        accent: accent ?? this.accent,
+        onAccent: onAccent ?? this.onAccent,
+        accentContainer: accentContainer ?? this.accentContainer,
+        brandSolid: brandSolid ?? this.brandSolid,
+        brandSolidStrong: brandSolidStrong ?? this.brandSolidStrong,
+        brandFill: brandFill ?? this.brandFill,
+        brandFillDeep: brandFillDeep ?? this.brandFillDeep,
+        dangerFill: dangerFill ?? this.dangerFill,
+        dangerFillDeep: dangerFillDeep ?? this.dangerFillDeep,
+        dangerSolid: dangerSolid ?? this.dangerSolid,
+        glassFill: glassFill ?? this.glassFill,
+        glassFillStrong: glassFillStrong ?? this.glassFillStrong,
+        glassBorder: glassBorder ?? this.glassBorder,
+        glassBlur: glassBlur ?? this.glassBlur,
+        glassHairline: glassHairline ?? this.glassHairline,
+        glassSpecular: glassSpecular ?? this.glassSpecular,
+        glassElevated: glassElevated ?? this.glassElevated,
+        glassPress: glassPress ?? this.glassPress,
+        glassScrim: glassScrim ?? this.glassScrim,
+        glassShadow: glassShadow ?? this.glassShadow,
+        glassInnerGlow: glassInnerGlow ?? this.glassInnerGlow,
+        glassNested: glassNested ?? this.glassNested,
+      );
 
   @override
-  ThemeExtension<AppColors> lerp(covariant ThemeExtension<AppColors>? other, double t) => this;
+  ThemeExtension<AppColors> lerp(
+          covariant ThemeExtension<AppColors>? other, double t) =>
+      this;
 }
 
 class AppTheme {
@@ -597,35 +632,57 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: cs,
-      textTheme: inter.copyWith(
-        displayLarge: inter.displayLarge?.copyWith(
-            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
-        displayMedium: inter.displayMedium?.copyWith(
-            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
-        displaySmall: inter.displaySmall?.copyWith(
-            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
-        headlineLarge: inter.headlineLarge?.copyWith(
-            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
-        headlineMedium: inter.headlineMedium?.copyWith(
-            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
-        headlineSmall: inter.headlineSmall?.copyWith(
-            fontFamily: 'Inter', fontWeight: FontWeight.w800, letterSpacing: -0.02),
-        titleLarge: manrope.titleLarge?.copyWith(
-            fontFamily: 'Manrope', fontWeight: FontWeight.w700, letterSpacing: -0.01),
-        titleMedium: manrope.titleMedium?.copyWith(
-            fontFamily: 'Manrope', fontWeight: FontWeight.w700, letterSpacing: -0.01),
-        titleSmall: manrope.titleSmall?.copyWith(
-            fontFamily: 'Manrope', fontWeight: FontWeight.w700, letterSpacing: -0.01),
-        labelLarge: manrope.labelLarge?.copyWith(
-            fontFamily: 'Manrope', fontWeight: FontWeight.w700, letterSpacing: -0.01),
-        labelMedium: manrope.labelMedium?.copyWith(
-            fontFamily: 'Manrope', fontWeight: FontWeight.w700),
-        labelSmall: manrope.labelSmall?.copyWith(
-            fontFamily: 'Manrope', fontWeight: FontWeight.w700),
-      ).apply(
-        bodyColor: cs.onSurface,
-        displayColor: cs.onSurface,
-      ),
+      textTheme: inter
+          .copyWith(
+            displayLarge: inter.displayLarge?.copyWith(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.02),
+            displayMedium: inter.displayMedium?.copyWith(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.02),
+            displaySmall: inter.displaySmall?.copyWith(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.02),
+            headlineLarge: inter.headlineLarge?.copyWith(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.02),
+            headlineMedium: inter.headlineMedium?.copyWith(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.02),
+            headlineSmall: inter.headlineSmall?.copyWith(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.02),
+            titleLarge: manrope.titleLarge?.copyWith(
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.01),
+            titleMedium: manrope.titleMedium?.copyWith(
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.01),
+            titleSmall: manrope.titleSmall?.copyWith(
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.01),
+            labelLarge: manrope.labelLarge?.copyWith(
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.01),
+            labelMedium: manrope.labelMedium
+                ?.copyWith(fontFamily: 'Manrope', fontWeight: FontWeight.w700),
+            labelSmall: manrope.labelSmall
+                ?.copyWith(fontFamily: 'Manrope', fontWeight: FontWeight.w700),
+          )
+          .apply(
+            bodyColor: cs.onSurface,
+            displayColor: cs.onSurface,
+          ),
       scaffoldBackgroundColor: cs.surface,
       extensions: [appColors],
       cardTheme: CardThemeData(
@@ -653,9 +710,13 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(double.infinity, 50),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           textStyle: manrope.labelLarge?.copyWith(
-              fontFamily: 'Manrope', fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: -0.01),
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              letterSpacing: -0.01),
           elevation: 0,
           backgroundColor: cs.primary,
           foregroundColor: cs.onPrimary,
@@ -665,12 +726,16 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(double.infinity, 50),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           side: BorderSide(color: cs.outlineVariant, width: 1.5),
           backgroundColor: cs.surfaceContainerLowest,
           foregroundColor: cs.primary,
           textStyle: manrope.labelLarge?.copyWith(
-              fontFamily: 'Manrope', fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: -0.01),
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              letterSpacing: -0.01),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -703,23 +768,29 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadii.md),
           borderSide: BorderSide(color: cs.error, width: 1.6),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        labelStyle: inter.bodySmall?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w600),
-        hintStyle: inter.bodyMedium?.copyWith(color: appColors.inkFaint, fontWeight: FontWeight.w500),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        labelStyle: inter.bodySmall
+            ?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w600),
+        hintStyle: inter.bodyMedium
+            ?.copyWith(color: appColors.inkFaint, fontWeight: FontWeight.w500),
         helperStyle: inter.bodySmall?.copyWith(color: appColors.inkFaint),
-        errorStyle: inter.bodySmall?.copyWith(color: cs.error, fontWeight: FontWeight.w600),
+        errorStyle: inter.bodySmall
+            ?.copyWith(color: cs.error, fontWeight: FontWeight.w600),
         // Errors belong next to the field that caused them.
         helperMaxLines: 2,
         errorMaxLines: 2,
       ),
-      dividerTheme: DividerThemeData(color: cs.outlineVariant, thickness: 1, space: 0),
+      dividerTheme:
+          DividerThemeData(color: cs.outlineVariant, thickness: 1, space: 0),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: Colors.transparent,
         elevation: 0,
         selectedItemColor: cs.primary,
         unselectedItemColor: cs.onSurfaceVariant,
         type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: manrope.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+        selectedLabelStyle:
+            manrope.labelSmall?.copyWith(fontWeight: FontWeight.w700),
         unselectedLabelStyle: manrope.labelSmall,
       ),
       dropdownMenuTheme: DropdownMenuThemeData(
@@ -730,11 +801,13 @@ class AppTheme {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
-        textStyle: TextStyle(color: cs.onSurface, fontSize: 14, fontWeight: FontWeight.w500),
+        textStyle: TextStyle(
+            color: cs.onSurface, fontSize: 14, fontWeight: FontWeight.w500),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: cs.onSurface,
-        contentTextStyle: TextStyle(color: cs.surface, fontWeight: FontWeight.w700, fontSize: 12.5),
+        contentTextStyle: TextStyle(
+            color: cs.surface, fontWeight: FontWeight.w700, fontSize: 12.5),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -751,7 +824,8 @@ class AppTheme {
 
   /// Inter display style for numerals/headings used across the design system
   /// (herro amounts, KPI values, big totals) — tabular figures by default.
-  static TextStyle display(BuildContext context, {double size = 21, FontWeight weight = FontWeight.w800, Color? color}) {
+  static TextStyle display(BuildContext context,
+      {double size = 21, FontWeight weight = FontWeight.w800, Color? color}) {
     final cs = Theme.of(context).colorScheme;
     return TextStyle(
       fontFamily: 'Inter',

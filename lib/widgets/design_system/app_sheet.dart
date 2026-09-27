@@ -107,59 +107,59 @@ class AppSheetContent extends StatelessWidget {
       // ran across the entire screen area on every sheet open. Separation from
       // the page below comes from the scrim and the shadow instead.
       child: Container(
-          // `glassElevated` rather than a hand-picked near-opaque white: the
-          // sheet now isolates its content in both themes from one token.
-          decoration: BoxDecoration(
-            color: ac.glassElevated,
-            border: Border(
-              top: BorderSide(color: ac.glassHairline),
-              left: BorderSide(color: ac.glassHairline),
-              right: BorderSide(color: ac.glassHairline),
-            ),
-          ),
-          foregroundDecoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                isDark ? ac.glassInnerGlow : ac.glassSpecular,
-                const Color(0x00FFFFFF),
-              ],
-              stops: const [0.0, 0.05],
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (showHandle) ...[
-                const SizedBox(height: AppSpacing.md),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: ac.inkFaint.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-              ],
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.xl,
-                    AppSpacing.lg,
-                    AppSpacing.xl,
-                    // Clear the keyboard as well as the home indicator.
-                    MediaQuery.viewInsetsOf(context).bottom +
-                        MediaQuery.paddingOf(context).bottom +
-                        AppSpacing.xxl,
-                  ),
-                  child: child,
-                ),
-              ),
-            ],
+        // `glassElevated` rather than a hand-picked near-opaque white: the
+        // sheet now isolates its content in both themes from one token.
+        decoration: BoxDecoration(
+          color: ac.glassElevated,
+          border: Border(
+            top: BorderSide(color: ac.glassHairline),
+            left: BorderSide(color: ac.glassHairline),
+            right: BorderSide(color: ac.glassHairline),
           ),
         ),
+        foregroundDecoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              isDark ? ac.glassInnerGlow : ac.glassSpecular,
+              const Color(0x00FFFFFF),
+            ],
+            stops: const [0.0, 0.05],
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showHandle) ...[
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: ac.inkFaint.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+            ],
+            Flexible(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.lg,
+                  AppSpacing.xl,
+                  // Clear the keyboard as well as the home indicator.
+                  MediaQuery.viewInsetsOf(context).bottom +
+                      MediaQuery.paddingOf(context).bottom +
+                      AppSpacing.xxl,
+                ),
+                child: child,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

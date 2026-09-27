@@ -2,7 +2,8 @@ import 'dart:developer' as developer;
 
 /// Maps a raw exception onto a message that is safe to show a user, and logs the
 /// original for Crashlytics.
-String sanitizeErrorMessage(Object error, {String fallback = 'Something went wrong. Please try again.'}) {
+String sanitizeErrorMessage(Object error,
+    {String fallback = 'Something went wrong. Please try again.'}) {
   final msg = error.toString();
 
   final safeMessages = [
@@ -25,7 +26,9 @@ String sanitizeErrorMessage(Object error, {String fallback = 'Something went wro
     if (msg.contains(safe)) return msg;
   }
 
-  if (msg.contains('Firebase') || msg.contains('PlatformException') || msg.contains('firestore')) {
+  if (msg.contains('Firebase') ||
+      msg.contains('PlatformException') ||
+      msg.contains('firestore')) {
     developer.log('[SafeError] Firebase error masked: $msg', name: 'security');
     return fallback;
   }
@@ -44,14 +47,16 @@ String sanitizeErrorMessage(Object error, {String fallback = 'Something went wro
       msg.contains('was called before being initialized') ||
       msg.contains('Null check operator used on a null value');
   if (isNullSafetyFault) {
-    developer.log('[SafeError] Null safety error masked: $msg', name: 'security');
+    developer.log('[SafeError] Null safety error masked: $msg',
+        name: 'security');
     return fallback;
   }
 
   return msg;
 }
 
-void logSecureError(Object error, StackTrace? stack, {String tag = 'security'}) {
+void logSecureError(Object error, StackTrace? stack,
+    {String tag = 'security'}) {
   developer.log(
     '[ERROR][$tag] ${error.toString()}',
     stackTrace: stack,

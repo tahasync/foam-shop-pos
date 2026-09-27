@@ -12,32 +12,73 @@ void main() {
   final service = AccountingService();
 
   group('AccountingService.compute', () {
-    test('Cash in Hand formula with opening capital, sales, recoveries, purchases, expenses', () {
+    test(
+        'Cash in Hand formula with opening capital, sales, recoveries, purchases, expenses',
+        () {
       final result = service.compute(
         sales: [
-          Sale(id: 's1', date: DateTime(2024, 1, 15), customerId: 'c1', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 2, salePrice: 500, costPriceAtSale: 300),
-          ], paid: 800),
+          Sale(
+              id: 's1',
+              date: DateTime(2024, 1, 15),
+              customerId: 'c1',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 2,
+                    salePrice: 500,
+                    costPriceAtSale: 300),
+              ],
+              paid: 800),
         ],
         purchases: [
-          Purchase(id: 'pu1', date: DateTime(2024, 1, 10), supplierId: 'su1', productId: 'p1',
-              qtyOrArea: 10, costAmount: 5000, paid: 3000, balance: 2000),
+          Purchase(
+              id: 'pu1',
+              date: DateTime(2024, 1, 10),
+              supplierId: 'su1',
+              productId: 'p1',
+              qtyOrArea: 10,
+              costAmount: 5000,
+              paid: 3000,
+              balance: 2000),
         ],
         expenses: [
-          Expense(id: 'e1', date: DateTime(2024, 1, 12), category: 'Rent', amount: 2000),
+          Expense(
+              id: 'e1',
+              date: DateTime(2024, 1, 12),
+              category: 'Rent',
+              amount: 2000),
         ],
         payments: [
-          Payment(id: 'pay1', date: DateTime(2024, 1, 16), customerId: 'c1', amountCollected: 200),
+          Payment(
+              id: 'pay1',
+              date: DateTime(2024, 1, 16),
+              customerId: 'c1',
+              amountCollected: 200),
         ],
         supplierPayments: [
-          SupplierPayment(id: 'sp1', date: DateTime(2024, 1, 14), supplierId: 'su1', amountPaid: 1000),
+          SupplierPayment(
+              id: 'sp1',
+              date: DateTime(2024, 1, 14),
+              supplierId: 'su1',
+              amountPaid: 1000),
         ],
         products: [
-          Product(id: 'p1', name: 'Foam Sheet', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
-              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 500, costPrice: 300,
-              currentStock: 18, lowStockThreshold: 5),
+          Product(
+              id: 'p1',
+              name: 'Foam Sheet',
+              type: 'Sheet',
+              sizeLength: 72,
+              sizeWidth: 36,
+              thickness: 4,
+              density: 16,
+              unitType: 'per_sqft',
+              unitPrice: 500,
+              costPrice: 300,
+              currentStock: 18,
+              lowStockThreshold: 5),
         ],
-        openingBal: OpeningBalance(id: 'ob1', date: DateTime(2024, 1, 1), capitalAmount: 10000),
+        openingBal: OpeningBalance(
+            id: 'ob1', date: DateTime(2024, 1, 1), capitalAmount: 10000),
       );
 
       // Cash in Hand = openingCapital + cashFromSales + cashFromRecoveries
@@ -49,32 +90,88 @@ void main() {
     test('Revenue, COGS, Gross Profit, Net Profit with worked example', () {
       final result = service.compute(
         sales: [
-          Sale(id: 's1', date: DateTime(2024, 2, 1), customerId: 'c1', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 10, salePrice: 500, costPriceAtSale: 300),
-          ], paid: 5000),
-          Sale(id: 's2', date: DateTime(2024, 2, 5), customerId: 'c2', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 5, salePrice: 400, costPriceAtSale: 300),
-          ], paid: 2000),
+          Sale(
+              id: 's1',
+              date: DateTime(2024, 2, 1),
+              customerId: 'c1',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 10,
+                    salePrice: 500,
+                    costPriceAtSale: 300),
+              ],
+              paid: 5000),
+          Sale(
+              id: 's2',
+              date: DateTime(2024, 2, 5),
+              customerId: 'c2',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 5,
+                    salePrice: 400,
+                    costPriceAtSale: 300),
+              ],
+              paid: 2000),
           // Quote should be excluded
-          Sale(id: 's3', date: DateTime(2024, 2, 10), customerId: 'c3', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 3, salePrice: 500, costPriceAtSale: 300),
-          ], paid: 0, isQuote: true),
+          Sale(
+              id: 's3',
+              date: DateTime(2024, 2, 10),
+              customerId: 'c3',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 3,
+                    salePrice: 500,
+                    costPriceAtSale: 300),
+              ],
+              paid: 0,
+              isQuote: true),
           // Voided should be excluded
-          Sale(id: 's4', date: DateTime(2024, 2, 12), customerId: 'c4', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 2, salePrice: 500, costPriceAtSale: 300),
-          ], paid: 1000, isVoided: true),
+          Sale(
+              id: 's4',
+              date: DateTime(2024, 2, 12),
+              customerId: 'c4',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 2,
+                    salePrice: 500,
+                    costPriceAtSale: 300),
+              ],
+              paid: 1000,
+              isVoided: true),
         ],
         purchases: [],
         expenses: [
-          Expense(id: 'e1', date: DateTime(2024, 2, 3), category: 'Utilities', amount: 1500),
-          Expense(id: 'e2', date: DateTime(2024, 2, 7), category: 'Transport', amount: 800),
+          Expense(
+              id: 'e1',
+              date: DateTime(2024, 2, 3),
+              category: 'Utilities',
+              amount: 1500),
+          Expense(
+              id: 'e2',
+              date: DateTime(2024, 2, 7),
+              category: 'Transport',
+              amount: 800),
         ],
         payments: [],
         supplierPayments: [],
         products: [
-          Product(id: 'p1', name: 'Foam Sheet', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
-              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 500, costPrice: 300,
-              currentStock: 85, lowStockThreshold: 5),
+          Product(
+              id: 'p1',
+              name: 'Foam Sheet',
+              type: 'Sheet',
+              sizeLength: 72,
+              sizeWidth: 36,
+              thickness: 4,
+              density: 16,
+              unitType: 'per_sqft',
+              unitPrice: 500,
+              costPrice: 300,
+              currentStock: 85,
+              lowStockThreshold: 5),
         ],
         openingBal: null,
       );
@@ -98,28 +195,73 @@ void main() {
       // Customer D (payment only, no sale): no sales -> no baqaya
       final result = service.compute(
         sales: [
-          Sale(id: 's1', date: DateTime(2024, 3, 1), customerId: 'cA', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 1, salePrice: 1000, costPriceAtSale: 600),
-          ], paid: 300),
-          Sale(id: 's2', date: DateTime(2024, 3, 5), customerId: 'cB', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 1, salePrice: 2000, costPriceAtSale: 600),
-          ], paid: 500),
-          Sale(id: 's3', date: DateTime(2024, 3, 10), customerId: 'cC', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 1, salePrice: 500, costPriceAtSale: 300),
-          ], paid: 500),
+          Sale(
+              id: 's1',
+              date: DateTime(2024, 3, 1),
+              customerId: 'cA',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 1,
+                    salePrice: 1000,
+                    costPriceAtSale: 600),
+              ],
+              paid: 300),
+          Sale(
+              id: 's2',
+              date: DateTime(2024, 3, 5),
+              customerId: 'cB',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 1,
+                    salePrice: 2000,
+                    costPriceAtSale: 600),
+              ],
+              paid: 500),
+          Sale(
+              id: 's3',
+              date: DateTime(2024, 3, 10),
+              customerId: 'cC',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 1,
+                    salePrice: 500,
+                    costPriceAtSale: 300),
+              ],
+              paid: 500),
           // Customer D - payment only, no sale ever
         ],
         purchases: [],
         expenses: [],
         payments: [
-          Payment(id: 'pay1', date: DateTime(2024, 3, 8), customerId: 'cB', amountCollected: 300),
-          Payment(id: 'pay2', date: DateTime(2024, 3, 12), customerId: 'cD', amountCollected: 100),
+          Payment(
+              id: 'pay1',
+              date: DateTime(2024, 3, 8),
+              customerId: 'cB',
+              amountCollected: 300),
+          Payment(
+              id: 'pay2',
+              date: DateTime(2024, 3, 12),
+              customerId: 'cD',
+              amountCollected: 100),
         ],
         supplierPayments: [],
         products: [
-          Product(id: 'p1', name: 'Foam', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
-              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 500, costPrice: 300,
-              currentStock: 100, lowStockThreshold: 5),
+          Product(
+              id: 'p1',
+              name: 'Foam',
+              type: 'Sheet',
+              sizeLength: 72,
+              sizeWidth: 36,
+              thickness: 4,
+              density: 16,
+              unitType: 'per_sqft',
+              unitPrice: 500,
+              costPrice: 300,
+              currentStock: 100,
+              lowStockThreshold: 5),
         ],
         openingBal: null,
       );
@@ -131,15 +273,26 @@ void main() {
       expect(result.totalCustomerBaqaya, 1900.0);
     });
 
-    test('costPriceAtSale is snapshotted and unaffected by later cost price edits', () {
+    test(
+        'costPriceAtSale is snapshotted and unaffected by later cost price edits',
+        () {
       // Sale happens with costPriceAtSale=300 (old cost)
       // Later, product cost_price is changed to 500
       // The COGS from the old sale should still use 300, not 500
       final result = service.compute(
         sales: [
-          Sale(id: 's1', date: DateTime(2024, 4, 1), customerId: 'c1', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 10, salePrice: 800, costPriceAtSale: 300),
-          ], paid: 8000),
+          Sale(
+              id: 's1',
+              date: DateTime(2024, 4, 1),
+              customerId: 'c1',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 10,
+                    salePrice: 800,
+                    costPriceAtSale: 300),
+              ],
+              paid: 8000),
         ],
         purchases: [],
         expenses: [],
@@ -147,9 +300,19 @@ void main() {
         supplierPayments: [],
         products: [
           // Product now has costPrice=500, but sale was at costPriceAtSale=300
-          Product(id: 'p1', name: 'Foam', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
-              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 800, costPrice: 500,
-              currentStock: 90, lowStockThreshold: 5),
+          Product(
+              id: 'p1',
+              name: 'Foam',
+              type: 'Sheet',
+              sizeLength: 72,
+              sizeWidth: 36,
+              thickness: 4,
+              density: 16,
+              unitType: 'per_sqft',
+              unitPrice: 800,
+              costPrice: 500,
+              currentStock: 90,
+              lowStockThreshold: 5),
         ],
         openingBal: null,
       );
@@ -163,59 +326,133 @@ void main() {
       expect(result.grossProfit, 5000.0);
     });
 
-    test('adding or editing a product never changes Cash in Hand, Revenue, or Expenses', () {
+    test(
+        'adding or editing a product never changes Cash in Hand, Revenue, or Expenses',
+        () {
       // Same sales, expenses, opening capital
       // Only the product list differs (a new product added)
       final baseResult = service.compute(
         sales: [
-          Sale(id: 's1', date: DateTime(2024, 5, 1), customerId: 'c1', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 5, salePrice: 400, costPriceAtSale: 200),
-          ], paid: 2000),
+          Sale(
+              id: 's1',
+              date: DateTime(2024, 5, 1),
+              customerId: 'c1',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 5,
+                    salePrice: 400,
+                    costPriceAtSale: 200),
+              ],
+              paid: 2000),
         ],
         purchases: [
-          Purchase(id: 'pu1', date: DateTime(2024, 5, 2), supplierId: 'su1', productId: 'p1',
-              qtyOrArea: 20, costAmount: 4000, paid: 4000, balance: 0),
+          Purchase(
+              id: 'pu1',
+              date: DateTime(2024, 5, 2),
+              supplierId: 'su1',
+              productId: 'p1',
+              qtyOrArea: 20,
+              costAmount: 4000,
+              paid: 4000,
+              balance: 0),
         ],
         expenses: [
-          Expense(id: 'e1', date: DateTime(2024, 5, 3), category: 'Salary', amount: 1500),
+          Expense(
+              id: 'e1',
+              date: DateTime(2024, 5, 3),
+              category: 'Salary',
+              amount: 1500),
         ],
         payments: [],
         supplierPayments: [],
         products: [
-          Product(id: 'p1', name: 'Foam', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
-              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 400, costPrice: 200,
-              currentStock: 50, lowStockThreshold: 5),
+          Product(
+              id: 'p1',
+              name: 'Foam',
+              type: 'Sheet',
+              sizeLength: 72,
+              sizeWidth: 36,
+              thickness: 4,
+              density: 16,
+              unitType: 'per_sqft',
+              unitPrice: 400,
+              costPrice: 200,
+              currentStock: 50,
+              lowStockThreshold: 5),
         ],
-        openingBal: OpeningBalance(id: 'ob1', date: DateTime(2024, 5, 1), capitalAmount: 20000),
+        openingBal: OpeningBalance(
+            id: 'ob1', date: DateTime(2024, 5, 1), capitalAmount: 20000),
       );
 
       // Same data but with an extra product added
-      final newProduct = Product(id: 'p2', name: 'Memory Foam', type: 'Sheet', sizeLength: 72,
-          sizeWidth: 36, thickness: 2, density: 24, unitType: 'per_sqft', unitPrice: 600,
-          costPrice: 350, currentStock: 30, lowStockThreshold: 3);
+      final newProduct = Product(
+          id: 'p2',
+          name: 'Memory Foam',
+          type: 'Sheet',
+          sizeLength: 72,
+          sizeWidth: 36,
+          thickness: 2,
+          density: 24,
+          unitType: 'per_sqft',
+          unitPrice: 600,
+          costPrice: 350,
+          currentStock: 30,
+          lowStockThreshold: 3);
 
       final withNewProductResult = service.compute(
         sales: [
-          Sale(id: 's1', date: DateTime(2024, 5, 1), customerId: 'c1', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 5, salePrice: 400, costPriceAtSale: 200),
-          ], paid: 2000),
+          Sale(
+              id: 's1',
+              date: DateTime(2024, 5, 1),
+              customerId: 'c1',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 5,
+                    salePrice: 400,
+                    costPriceAtSale: 200),
+              ],
+              paid: 2000),
         ],
         purchases: [
-          Purchase(id: 'pu1', date: DateTime(2024, 5, 2), supplierId: 'su1', productId: 'p1',
-              qtyOrArea: 20, costAmount: 4000, paid: 4000, balance: 0),
+          Purchase(
+              id: 'pu1',
+              date: DateTime(2024, 5, 2),
+              supplierId: 'su1',
+              productId: 'p1',
+              qtyOrArea: 20,
+              costAmount: 4000,
+              paid: 4000,
+              balance: 0),
         ],
         expenses: [
-          Expense(id: 'e1', date: DateTime(2024, 5, 3), category: 'Salary', amount: 1500),
+          Expense(
+              id: 'e1',
+              date: DateTime(2024, 5, 3),
+              category: 'Salary',
+              amount: 1500),
         ],
         payments: [],
         supplierPayments: [],
         products: [
-          Product(id: 'p1', name: 'Foam', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
-              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 400, costPrice: 200,
-              currentStock: 50, lowStockThreshold: 5),
+          Product(
+              id: 'p1',
+              name: 'Foam',
+              type: 'Sheet',
+              sizeLength: 72,
+              sizeWidth: 36,
+              thickness: 4,
+              density: 16,
+              unitType: 'per_sqft',
+              unitPrice: 400,
+              costPrice: 200,
+              currentStock: 50,
+              lowStockThreshold: 5),
           newProduct,
         ],
-        openingBal: OpeningBalance(id: 'ob1', date: DateTime(2024, 5, 1), capitalAmount: 20000),
+        openingBal: OpeningBalance(
+            id: 'ob1', date: DateTime(2024, 5, 1), capitalAmount: 20000),
       );
 
       // Adding a product should NOT change Cash in Hand
@@ -230,9 +467,13 @@ void main() {
   group('AccountingService edge cases', () {
     test('empty data returns zeroes', () {
       final result = service.compute(
-        sales: [], purchases: [], expenses: [],
-        payments: [], supplierPayments: [],
-        products: [], openingBal: null,
+        sales: [],
+        purchases: [],
+        expenses: [],
+        payments: [],
+        supplierPayments: [],
+        products: [],
+        openingBal: null,
       );
       expect(result.revenue, 0.0);
       expect(result.cogs, 0.0);
@@ -247,18 +488,37 @@ void main() {
       // SaleLineItem asserts salePrice >= 0, so we pass valid values.
       final result = service.compute(
         sales: [
-          Sale(id: 's1', date: DateTime.now(), customerId: '', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 1, salePrice: 100, costPriceAtSale: 60),
-          ], paid: 100),
+          Sale(
+              id: 's1',
+              date: DateTime.now(),
+              customerId: '',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 1,
+                    salePrice: 100,
+                    costPriceAtSale: 60),
+              ],
+              paid: 100),
         ],
         purchases: [],
         expenses: [],
         payments: [],
         supplierPayments: [],
         products: [
-          Product(id: 'p1', name: 'Test', type: 'Sheet', sizeLength: 10, sizeWidth: 10,
-              thickness: 1, density: 10, unitType: 'per_sqft', unitPrice: 100,
-              costPrice: 60, currentStock: 5, lowStockThreshold: 1),
+          Product(
+              id: 'p1',
+              name: 'Test',
+              type: 'Sheet',
+              sizeLength: 10,
+              sizeWidth: 10,
+              thickness: 1,
+              density: 10,
+              unitType: 'per_sqft',
+              unitPrice: 100,
+              costPrice: 60,
+              currentStock: 5,
+              lowStockThreshold: 1),
         ],
         openingBal: null,
       );
@@ -272,21 +532,42 @@ void main() {
   });
 
   group('Fix 5 — COGS vs Revenue diagnosis', () {
-    test('COGS when costPriceAtSale=0 and product.costPrice=0 is 0 (no estimation)', () {
+    test(
+        'COGS when costPriceAtSale=0 and product.costPrice=0 is 0 (no estimation)',
+        () {
       final result = service.compute(
         sales: [
-          Sale(id: 's_diag', date: DateTime(2026, 7, 26), customerId: 'c1', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 10, salePrice: 3600, costPriceAtSale: 0),
-          ], paid: 36000),
+          Sale(
+              id: 's_diag',
+              date: DateTime(2026, 7, 26),
+              customerId: 'c1',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 10,
+                    salePrice: 3600,
+                    costPriceAtSale: 0),
+              ],
+              paid: 36000),
         ],
         purchases: [],
         expenses: [],
         payments: [],
         supplierPayments: [],
         products: [
-          Product(id: 'p1', name: 'Test Foam', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
-              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 0,
-              costPrice: 0, currentStock: 100, lowStockThreshold: 5),
+          Product(
+              id: 'p1',
+              name: 'Test Foam',
+              type: 'Sheet',
+              sizeLength: 72,
+              sizeWidth: 36,
+              thickness: 4,
+              density: 16,
+              unitType: 'per_sqft',
+              unitPrice: 0,
+              costPrice: 0,
+              currentStock: 100,
+              lowStockThreshold: 5),
         ],
         openingBal: null,
       );
@@ -296,22 +577,43 @@ void main() {
       expect(result.grossProfit, 36000.0);
     });
 
-    test('COGS when costPriceAtSale equals salePrice (cost price data entry error)', () {
+    test(
+        'COGS when costPriceAtSale equals salePrice (cost price data entry error)',
+        () {
       // Simulates: user entered selling price into "Buy Price" field
       final result = service.compute(
         sales: [
-          Sale(id: 's_data_err', date: DateTime(2026, 7, 26), customerId: 'c1', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 10, salePrice: 3600, costPriceAtSale: 3600),
-          ], paid: 36000),
+          Sale(
+              id: 's_data_err',
+              date: DateTime(2026, 7, 26),
+              customerId: 'c1',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 10,
+                    salePrice: 3600,
+                    costPriceAtSale: 3600),
+              ],
+              paid: 36000),
         ],
         purchases: [],
         expenses: [],
         payments: [],
         supplierPayments: [],
         products: [
-          Product(id: 'p1', name: 'Test Foam', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
-              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 100,
-              costPrice: 3600, currentStock: 100, lowStockThreshold: 5),
+          Product(
+              id: 'p1',
+              name: 'Test Foam',
+              type: 'Sheet',
+              sizeLength: 72,
+              sizeWidth: 36,
+              thickness: 4,
+              density: 16,
+              unitType: 'per_sqft',
+              unitPrice: 100,
+              costPrice: 3600,
+              currentStock: 100,
+              lowStockThreshold: 5),
         ],
         openingBal: null,
       );
@@ -327,18 +629,37 @@ void main() {
       // Correct scenario: costPrice=200, salePrice=500, qty=10
       final result = service.compute(
         sales: [
-          Sale(id: 's_correct', date: DateTime(2026, 7, 26), customerId: 'c1', lineItems: [
-            SaleLineItem(productId: 'p1', qtyOrArea: 10, salePrice: 500, costPriceAtSale: 200),
-          ], paid: 5000),
+          Sale(
+              id: 's_correct',
+              date: DateTime(2026, 7, 26),
+              customerId: 'c1',
+              lineItems: [
+                SaleLineItem(
+                    productId: 'p1',
+                    qtyOrArea: 10,
+                    salePrice: 500,
+                    costPriceAtSale: 200),
+              ],
+              paid: 5000),
         ],
         purchases: [],
         expenses: [],
         payments: [],
         supplierPayments: [],
         products: [
-          Product(id: 'p1', name: 'Test Foam', type: 'Sheet', sizeLength: 72, sizeWidth: 36,
-              thickness: 4, density: 16, unitType: 'per_sqft', unitPrice: 500,
-              costPrice: 200, currentStock: 100, lowStockThreshold: 5),
+          Product(
+              id: 'p1',
+              name: 'Test Foam',
+              type: 'Sheet',
+              sizeLength: 72,
+              sizeWidth: 36,
+              thickness: 4,
+              density: 16,
+              unitType: 'per_sqft',
+              unitPrice: 500,
+              costPrice: 200,
+              currentStock: 100,
+              lowStockThreshold: 5),
         ],
         openingBal: null,
       );

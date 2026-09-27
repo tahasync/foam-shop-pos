@@ -42,7 +42,8 @@ class FullScreenOverlay extends StatelessWidget {
               title: title,
               leading: leading,
               actions: actions ?? const [],
-              onBack: leading == null ? () => Navigator.maybePop(context) : null,
+              onBack:
+                  leading == null ? () => Navigator.maybePop(context) : null,
             ),
             Expanded(
               child: SingleChildScrollView(

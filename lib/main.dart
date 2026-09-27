@@ -40,9 +40,11 @@ void main() {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.error_outline_rounded, size: 48, color: theme.colorScheme.error),
+                Icon(Icons.error_outline_rounded,
+                    size: 48, color: theme.colorScheme.error),
                 const SizedBox(height: 12),
-                Text('Something went wrong', style: theme.textTheme.titleMedium),
+                Text('Something went wrong',
+                    style: theme.textTheme.titleMedium),
               ],
             ),
           ),
@@ -52,7 +54,8 @@ void main() {
 
     try {
       if (Firebase.apps.isNotEmpty) {
-        debugPrint('[Firebase] Already initialized by native auto-init — skipping.');
+        debugPrint(
+            '[Firebase] Already initialized by native auto-init — skipping.');
       } else {
         try {
           await Firebase.initializeApp(
@@ -60,7 +63,8 @@ void main() {
           );
         } on FirebaseException catch (e) {
           if (e.code == 'duplicate-app') {
-            debugPrint('[Firebase] Duplicate init suppressed (native auto-init won).');
+            debugPrint(
+                '[Firebase] Duplicate init suppressed (native auto-init won).');
           } else {
             rethrow;
           }
@@ -70,7 +74,8 @@ void main() {
         persistenceEnabled: true,
       );
     } catch (e) {
-      runApp(ProviderScope(child: _FatalError(message: 'Failed to initialize: $e')));
+      runApp(ProviderScope(
+          child: _FatalError(message: 'Failed to initialize: $e')));
       return;
     }
 
@@ -84,7 +89,8 @@ void main() {
   }, (Object error, StackTrace stack) {
     debugPrint('[FATAL] Unhandled error: $error');
     debugPrint('[FATAL] Stack trace: $stack');
-    runApp(ProviderScope(child: _FatalError(message: 'Unexpected error occurred')));
+    runApp(ProviderScope(
+        child: _FatalError(message: 'Unexpected error occurred')));
   });
 }
 
@@ -92,7 +98,7 @@ bool get _isEmulator {
   if (!Platform.isAndroid) return false;
   try {
     return Platform.environment['ANDROID_EMULATOR'] == '1' ||
-           Platform.environment['ANDROID_SERIAL']?.contains('emulator') == true;
+        Platform.environment['ANDROID_SERIAL']?.contains('emulator') == true;
   } catch (_) {
     return false;
   }
@@ -109,8 +115,7 @@ Future<void> _initBackgroundServices() async {
     if (!_isEmulator) {
       await FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
     }
-  } catch (_) {
-  }
+  } catch (_) {}
 }
 
 class _FatalError extends StatelessWidget {
@@ -129,11 +134,14 @@ class _FatalError extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.error_outline_rounded, size: 64, color: theme.colorScheme.error),
+                Icon(Icons.error_outline_rounded,
+                    size: 64, color: theme.colorScheme.error),
                 const SizedBox(height: 16),
                 Text('Digital Register', style: theme.textTheme.headlineSmall),
                 const SizedBox(height: 8),
-                Text(message, style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
+                Text(message,
+                    style: theme.textTheme.bodyMedium,
+                    textAlign: TextAlign.center),
               ],
             ),
           ),
@@ -176,14 +184,16 @@ class AuthGate extends ConsumerWidget {
               data: (profile) {
                 if (profile != null) {
                   final email = user.email ?? '';
-                  final isFounder = AppConstants.foundingAccountEmails.any(
-                      (e) => e.toLowerCase() == email.toLowerCase());
-                  if (isFounder || profile.founderExempt ||
+                  final isFounder = AppConstants.foundingAccountEmails
+                      .any((e) => e.toLowerCase() == email.toLowerCase());
+                  if (isFounder ||
+                      profile.founderExempt ||
                       profile.subscriptionStatus == 'free_forever') {
                     return const HomeScreen();
                   }
                   if (!profile.isSubscriptionActive) {
-                    return SubscriptionExpiredScreen(shopName: profile.shopName);
+                    return SubscriptionExpiredScreen(
+                        shopName: profile.shopName);
                   }
                   return const HomeScreen();
                 }

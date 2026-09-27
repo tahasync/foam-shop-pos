@@ -56,7 +56,8 @@ class AppSearchField extends StatelessWidget {
             height: AppHit.min,
             child: Row(
               children: [
-                Icon(Icons.search_rounded, size: AppIconSize.sm, color: ac.inkFaint),
+                Icon(Icons.search_rounded,
+                    size: AppIconSize.sm, color: ac.inkFaint),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: TextField(
@@ -138,7 +139,8 @@ class _ClearButton extends StatelessWidget {
           width: 18,
           height: 18,
           decoration: BoxDecoration(color: ac.saleTint, shape: BoxShape.circle),
-          child: Icon(Icons.close_rounded, size: AppIconSize.xs - 2, color: ac.saleFg),
+          child: Icon(Icons.close_rounded,
+              size: AppIconSize.xs - 2, color: ac.saleFg),
         ),
       ),
     );

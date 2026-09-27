@@ -159,5 +159,3 @@ class NoResults extends StatelessWidget {
     );
   }
 }
-
-

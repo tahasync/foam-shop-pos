@@ -12,7 +12,8 @@ enum SupportChannel { whatsapp, email }
 class SupportFeedbackScreen extends ConsumerStatefulWidget {
   const SupportFeedbackScreen({super.key});
   @override
-  ConsumerState<SupportFeedbackScreen> createState() => _SupportFeedbackScreenState();
+  ConsumerState<SupportFeedbackScreen> createState() =>
+      _SupportFeedbackScreenState();
 }
 
 class _SupportFeedbackScreenState extends ConsumerState<SupportFeedbackScreen> {
@@ -36,7 +37,8 @@ class _SupportFeedbackScreenState extends ConsumerState<SupportFeedbackScreen> {
     final fullMsg = '$msg\n\n\u2014 Sent from $shopName (v$appVersion)';
 
     if (_channel == SupportChannel.whatsapp) {
-      final number = AppConstants.supportWhatsAppNumber.replaceAll(RegExp(r'[^\d]'), '');
+      final number =
+          AppConstants.supportWhatsAppNumber.replaceAll(RegExp(r'[^\d]'), '');
       final uri = Uri.parse(
           'https://wa.me/$number?text=${Uri.encodeComponent(fullMsg)}');
       if (await canLaunchUrl(uri)) {
@@ -109,7 +111,9 @@ class _SupportFeedbackScreenState extends ConsumerState<SupportFeedbackScreen> {
             onChanged: (_) => setState(() {}),
           ),
           AppButton(
-            label: _channel == SupportChannel.whatsapp ? 'Send via WhatsApp' : 'Send via Email',
+            label: _channel == SupportChannel.whatsapp
+                ? 'Send via WhatsApp'
+                : 'Send via Email',
             onTap: _msgCtrl.text.trim().isEmpty ? null : _send,
           ),
           const SizedBox(height: 12),
@@ -149,7 +153,9 @@ class _ChannelCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? ac.saleTint : ac.glassFill,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? ac.saleFg : ac.glassBorder, width: selected ? 1.5 : 1),
+          border: Border.all(
+              color: selected ? ac.saleFg : ac.glassBorder,
+              width: selected ? 1.5 : 1),
         ),
         child: Column(children: [
           Icon(icon, size: 24, color: selected ? ac.saleFg : ac.inkSoft),

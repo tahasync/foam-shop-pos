@@ -11,8 +11,9 @@ class Supplier {
     required this.name,
     this.phone = '',
     this.isArchived = false,
-  }) : assert(name.trim().isNotEmpty, 'Supplier name is required'),
-       assert(name.length <= _maxNameLength, 'Supplier name exceeds $_maxNameLength characters');
+  })  : assert(name.trim().isNotEmpty, 'Supplier name is required'),
+        assert(name.length <= _maxNameLength,
+            'Supplier name exceeds $_maxNameLength characters');
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -34,7 +35,8 @@ class Supplier {
     );
   }
 
-  Supplier copyWith({String? id, String? name, String? phone, bool? isArchived}) =>
+  Supplier copyWith(
+          {String? id, String? name, String? phone, bool? isArchived}) =>
       Supplier(
         id: id ?? this.id,
         name: name ?? this.name,

@@ -9,17 +9,20 @@ import 'expense_provider.dart';
 import 'payment_provider.dart';
 import 'supplier_payment_provider.dart';
 
-final accountingServiceProvider = Provider<AccountingService>((ref) => AccountingService());
+final accountingServiceProvider =
+    Provider<AccountingService>((ref) => AccountingService());
 
 final openingBalanceStreamProvider = StreamProvider<OpeningBalance?>((ref) {
   final service = ref.watch(firestoreServiceProvider);
   return service.openingBalanceStream.map((snap) {
     if (snap.docs.isEmpty) return null;
-    return OpeningBalance.fromMap(snap.docs.first.data() as Map<String, dynamic>);
+    return OpeningBalance.fromMap(
+        snap.docs.first.data() as Map<String, dynamic>);
   });
 });
 
-final accountingSummaryProvider = Provider<AsyncValue<AccountingSummary>>((ref) {
+final accountingSummaryProvider =
+    Provider<AsyncValue<AccountingSummary>>((ref) {
   final salesAsync = ref.watch(salesStreamProvider);
   final purchasesAsync = ref.watch(purchasesStreamProvider);
   final expensesAsync = ref.watch(expensesStreamProvider);
@@ -28,9 +31,12 @@ final accountingSummaryProvider = Provider<AsyncValue<AccountingSummary>>((ref) 
   final productsAsync = ref.watch(productsStreamProvider);
   final openingBalAsync = ref.watch(openingBalanceStreamProvider);
 
-  if (salesAsync.isLoading || purchasesAsync.isLoading ||
-      expensesAsync.isLoading || paymentsAsync.isLoading ||
-      supplierPaymentsAsync.isLoading || productsAsync.isLoading ||
+  if (salesAsync.isLoading ||
+      purchasesAsync.isLoading ||
+      expensesAsync.isLoading ||
+      paymentsAsync.isLoading ||
+      supplierPaymentsAsync.isLoading ||
+      productsAsync.isLoading ||
       openingBalAsync.isLoading) {
     return const AsyncValue.loading();
   }

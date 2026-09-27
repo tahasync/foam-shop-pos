@@ -47,18 +47,28 @@ class SignInScreen extends ConsumerWidget {
                     style: TextStyle(fontSize: 12.5, color: ac.inkSoft),
                   ),
                   const SizedBox(height: 28),
-                  _FeatureCard(icon: '📊', title: 'Track Sales', subtitle: 'Every transaction recorded'),
+                  _FeatureCard(
+                      icon: '📊',
+                      title: 'Track Sales',
+                      subtitle: 'Every transaction recorded'),
                   const SizedBox(height: 10),
-                  _FeatureCard(icon: '📦', title: 'Manage Inventory', subtitle: 'Stock levels in real time'),
+                  _FeatureCard(
+                      icon: '📦',
+                      title: 'Manage Inventory',
+                      subtitle: 'Stock levels in real time'),
                   const SizedBox(height: 10),
-                  _FeatureCard(icon: '📈', title: 'Smart Analytics', subtitle: 'Profit & loss insights'),
+                  _FeatureCard(
+                      icon: '📈',
+                      title: 'Smart Analytics',
+                      subtitle: 'Profit & loss insights'),
                   const SizedBox(height: 26),
                   SizedBox(
                     width: double.infinity,
                     child: AppButton(
                       variant: AppButtonVariant.primary,
                       label: 'Sign in with Google',
-                      leading: SvgPicture.string(_googleGSvg, width: 18, height: 18),
+                      leading:
+                          SvgPicture.string(_googleGSvg, width: 18, height: 18),
                       onTap: () async {
                         try {
                           await authService.signInWithGoogle();
@@ -102,18 +112,21 @@ class SignInScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   GlassContainer(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
                     level: AppGlassLevel.raised,
                     gloss: false,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.lock_outline_rounded, size: 13, color: ac.inkFaint),
+                        Icon(Icons.lock_outline_rounded,
+                            size: 13, color: ac.inkFaint),
                         const SizedBox(width: 7),
                         Flexible(
                           child: Text(
                             'Your data stays on your device. No tracking, ever.',
-                            style: TextStyle(fontSize: 10.5, color: ac.inkFaint),
+                            style:
+                                TextStyle(fontSize: 10.5, color: ac.inkFaint),
                           ),
                         ),
                       ],
@@ -164,16 +177,22 @@ class _FeatureCard extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(child: Text(icon, style: const TextStyle(fontSize: 16))),
+            child:
+                Center(child: Text(icon, style: const TextStyle(fontSize: 16))),
           ),
           const SizedBox(width: 13),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: ac.ink)),
+                Text(title,
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: ac.ink)),
                 const SizedBox(height: 1),
-                Text(subtitle, style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
+                Text(subtitle,
+                    style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
               ],
             ),
           ),

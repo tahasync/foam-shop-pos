@@ -40,8 +40,11 @@ class HomeScreen extends ConsumerStatefulWidget {
   /// underneath the nav. One constant, one definition, no drift.
   static double contentBottomInset(BuildContext context) {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
-    return kNavPillHeight + kNavPillBottomMargin + kNavPillFabGap +
-        AppSpacing.xxl + safeBottom;
+    return kNavPillHeight +
+        kNavPillBottomMargin +
+        kNavPillFabGap +
+        AppSpacing.xxl +
+        safeBottom;
   }
 
   const HomeScreen({super.key});
@@ -61,7 +64,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkUpdate());
   }
 
-  void _checkNotifications(List<Product> products, List<Sale> sales, List<Payment> payments) {
+  void _checkNotifications(
+      List<Product> products, List<Sale> sales, List<Payment> payments) {
     LocalNotificationService.checkAndNotify(
       products: products,
       sales: sales,
@@ -144,7 +148,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: SafeArea(
           top: false,
           child: Padding(
-            padding: EdgeInsets.only(left: 16, right: 16, bottom: HomeScreen.kNavPillBottomMargin),
+            padding: EdgeInsets.only(
+                left: 16, right: 16, bottom: HomeScreen.kNavPillBottomMargin),
             child: GlassContainer(
               radius: 22,
               // The ONLY frosted surface in the app. It floats over scrolling

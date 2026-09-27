@@ -60,7 +60,10 @@ class SuccessSheet extends StatelessWidget {
         color: ac.surface,
         borderRadius: BorderRadius.circular(26),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 40, offset: const Offset(0, 14)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 40,
+              offset: const Offset(0, 14)),
         ],
       ),
       child: Column(

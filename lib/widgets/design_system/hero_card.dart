@@ -111,7 +111,9 @@ class HeroCard extends StatelessWidget {
                 children: [
                   for (var i = 0; i < pills.length; i++) ...[
                     if (i > 0) const SizedBox(width: AppSpacing.sm),
-                    Expanded(child: _StatPill(label: pills[i].label, value: pills[i].value)),
+                    Expanded(
+                        child: _StatPill(
+                            label: pills[i].label, value: pills[i].value)),
                   ],
                 ],
               ),
@@ -122,6 +124,7 @@ class HeroCard extends StatelessWidget {
     );
   }
 }
+
 /// The small trend badge beside the headline.
 class _TrendChip extends StatelessWidget {
   const _TrendChip({required this.label});
@@ -132,7 +135,8 @@ class _TrendChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
       decoration: BoxDecoration(
         color: ac.glassNested,
         borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -141,7 +145,8 @@ class _TrendChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.arrow_upward_rounded, size: AppIconSize.xs - 1, color: ac.saleFg),
+          Icon(Icons.arrow_upward_rounded,
+              size: AppIconSize.xs - 1, color: ac.saleFg),
           const SizedBox(width: AppSpacing.xs),
           Flexible(
             child: Text(
@@ -200,7 +205,8 @@ class _StatPill extends StatelessWidget {
             child: Text(
               value,
               maxLines: 1,
-              style: AppTheme.display(context, size: AppTypeScale.stat, color: ac.ink),
+              style: AppTheme.display(context,
+                  size: AppTypeScale.stat, color: ac.ink),
             ),
           ),
         ],

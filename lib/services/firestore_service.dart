@@ -22,15 +22,24 @@ class FirestoreService {
     return user.uid;
   }
 
-  CollectionReference get _products => _db.collection('users').doc(_uid).collection('products');
-  CollectionReference get _customers => _db.collection('users').doc(_uid).collection('customers');
-  CollectionReference get _suppliers => _db.collection('users').doc(_uid).collection('suppliers');
-  CollectionReference get _sales => _db.collection('users').doc(_uid).collection('sales');
-  CollectionReference get _purchases => _db.collection('users').doc(_uid).collection('purchases');
-  CollectionReference get _expenses => _db.collection('users').doc(_uid).collection('expenses');
-  CollectionReference get _payments => _db.collection('users').doc(_uid).collection('payments');
-  CollectionReference get _supplierPayments => _db.collection('users').doc(_uid).collection('supplier_payments');
-  CollectionReference get _openingBalances => _db.collection('users').doc(_uid).collection('opening_balances');
+  CollectionReference get _products =>
+      _db.collection('users').doc(_uid).collection('products');
+  CollectionReference get _customers =>
+      _db.collection('users').doc(_uid).collection('customers');
+  CollectionReference get _suppliers =>
+      _db.collection('users').doc(_uid).collection('suppliers');
+  CollectionReference get _sales =>
+      _db.collection('users').doc(_uid).collection('sales');
+  CollectionReference get _purchases =>
+      _db.collection('users').doc(_uid).collection('purchases');
+  CollectionReference get _expenses =>
+      _db.collection('users').doc(_uid).collection('expenses');
+  CollectionReference get _payments =>
+      _db.collection('users').doc(_uid).collection('payments');
+  CollectionReference get _supplierPayments =>
+      _db.collection('users').doc(_uid).collection('supplier_payments');
+  CollectionReference get _openingBalances =>
+      _db.collection('users').doc(_uid).collection('opening_balances');
 
   String generateId() {
     return _db.collection('_ids').doc().id;
@@ -38,9 +47,12 @@ class FirestoreService {
 
   // Products
   Future<void> addProduct(Product p) => _products.doc(p.id).set(p.toMap());
-  Future<void> updateProduct(Product p) => _products.doc(p.id).update(p.toMap());
-  Future<void> archiveProduct(String id) => _products.doc(id).update({'is_archived': true});
-  Stream<QuerySnapshot> get productsStream => _products.where('is_archived', isEqualTo: false).snapshots();
+  Future<void> updateProduct(Product p) =>
+      _products.doc(p.id).update(p.toMap());
+  Future<void> archiveProduct(String id) =>
+      _products.doc(id).update({'is_archived': true});
+  Stream<QuerySnapshot> get productsStream =>
+      _products.where('is_archived', isEqualTo: false).snapshots();
 
   /// Firestore caps a `whereIn` / `in` clause at 10 values, so a cart with more
   /// than 10 distinct products has to be fetched in batches.
@@ -72,18 +84,22 @@ class FirestoreService {
 
   // Customers
   Future<void> addCustomer(Customer c) => _customers.doc(c.id).set(c.toMap());
-  Stream<QuerySnapshot> get customersStream => _customers.where('is_archived', isEqualTo: false).snapshots();
+  Stream<QuerySnapshot> get customersStream =>
+      _customers.where('is_archived', isEqualTo: false).snapshots();
 
   // Suppliers
   Future<void> addSupplier(Supplier s) => _suppliers.doc(s.id).set(s.toMap());
-  Stream<QuerySnapshot> get suppliersStream => _suppliers.where('is_archived', isEqualTo: false).snapshots();
+  Stream<QuerySnapshot> get suppliersStream =>
+      _suppliers.where('is_archived', isEqualTo: false).snapshots();
 
   // Sales
   Future<void> addSale(Sale s) => _sales.doc(s.id).set(s.toMap());
   Stream<QuerySnapshot> salesStream({DateTime? from, DateTime? to}) {
     Query q = _sales.orderBy('date', descending: true);
-    if (from != null) q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
-    if (to != null) q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
+    if (from != null)
+      q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
+    if (to != null)
+      q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
     return q.snapshots();
   }
 
@@ -95,8 +111,10 @@ class FirestoreService {
   // disagree.
   Stream<QuerySnapshot> purchasesStream({DateTime? from, DateTime? to}) {
     Query q = _purchases.orderBy('date', descending: true);
-    if (from != null) q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
-    if (to != null) q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
+    if (from != null)
+      q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
+    if (to != null)
+      q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
     return q.snapshots();
   }
 
@@ -104,8 +122,10 @@ class FirestoreService {
   Future<void> addExpense(Expense e) => _expenses.doc(e.id).set(e.toMap());
   Stream<QuerySnapshot> expensesStream({DateTime? from, DateTime? to}) {
     Query q = _expenses.orderBy('date', descending: true);
-    if (from != null) q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
-    if (to != null) q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
+    if (from != null)
+      q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
+    if (to != null)
+      q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
     return q.snapshots();
   }
 
@@ -135,17 +155,22 @@ class FirestoreService {
 
   Stream<QuerySnapshot> paymentsStream({DateTime? from, DateTime? to}) {
     Query q = _payments.orderBy('date', descending: true);
-    if (from != null) q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
-    if (to != null) q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
+    if (from != null)
+      q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
+    if (to != null)
+      q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
     return q.snapshots();
   }
 
   // Supplier Payments
-  Future<void> addSupplierPayment(SupplierPayment sp) => _supplierPayments.doc(sp.id).set(sp.toMap());
+  Future<void> addSupplierPayment(SupplierPayment sp) =>
+      _supplierPayments.doc(sp.id).set(sp.toMap());
   Stream<QuerySnapshot> supplierPaymentsStream({DateTime? from, DateTime? to}) {
     Query q = _supplierPayments.orderBy('date', descending: true);
-    if (from != null) q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
-    if (to != null) q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
+    if (from != null)
+      q = q.where('date', isGreaterThanOrEqualTo: from.toIso8601String());
+    if (to != null)
+      q = q.where('date', isLessThanOrEqualTo: to.toIso8601String());
     return q.snapshots();
   }
 
@@ -167,18 +192,22 @@ class FirestoreService {
       if (existing.exists) return;
 
       final productEntries = deductions.entries.toList();
-      final productRefs = productEntries.map((e) => _products.doc(e.key)).toList();
-      final snaps = await Future.wait(productRefs.map((ref) => transaction.get(ref)));
+      final productRefs =
+          productEntries.map((e) => _products.doc(e.key)).toList();
+      final snaps =
+          await Future.wait(productRefs.map((ref) => transaction.get(ref)));
 
       for (int i = 0; i < productEntries.length; i++) {
         final entry = productEntries[i];
         final snap = snaps[i];
         if (!snap.exists) throw Exception('Product ${entry.key} not found');
-        final currentStock = (snap.data() as Map<String, dynamic>)['current_stock'] as num? ?? 0;
+        final currentStock =
+            (snap.data() as Map<String, dynamic>)['current_stock'] as num? ?? 0;
         if ((currentStock).toDouble() < entry.value) {
           throw Exception('Insufficient stock for product ${entry.key}');
         }
-        transaction.update(productRefs[i], {'current_stock': (currentStock).toDouble() - entry.value});
+        transaction.update(productRefs[i],
+            {'current_stock': (currentStock).toDouble() - entry.value});
       }
 
       transaction.set(saleRef, sale.toMap());
@@ -191,7 +220,9 @@ class FirestoreService {
   }
 
   // Atomic restock transaction
-  Future<void> restockTransaction(String productId, double restockQty, double unitCost, double amountPaid, {String supplierId = ''}) async {
+  Future<void> restockTransaction(
+      String productId, double restockQty, double unitCost, double amountPaid,
+      {String supplierId = ''}) async {
     await _db.runTransaction((transaction) async {
       final productRef = _products.doc(productId);
       final snap = await transaction.get(productRef);
@@ -202,7 +233,8 @@ class FirestoreService {
 
       final totalStock = currentStock + restockQty;
       if (totalStock <= 0) return;
-      final weightedCost = ((currentStock * costPrice) + (restockQty * unitCost)) / totalStock;
+      final weightedCost =
+          ((currentStock * costPrice) + (restockQty * unitCost)) / totalStock;
 
       transaction.update(productRef, {
         'current_stock': totalStock,
@@ -246,22 +278,28 @@ class FirestoreService {
         final snap = await transaction.get(productRef);
         if (snap.exists) {
           final productData = snap.data() as Map<String, dynamic>;
-          final currentStock = (productData['current_stock'] as num?)?.toDouble() ?? 0;
-          transaction.update(productRef, {'current_stock': currentStock + li.qtyOrArea});
+          final currentStock =
+              (productData['current_stock'] as num?)?.toDouble() ?? 0;
+          transaction.update(
+              productRef, {'current_stock': currentStock + li.qtyOrArea});
         }
       }
     });
   }
 
   // Opening Balance
-  Future<void> setOpeningBalance(OpeningBalance ob) => _openingBalances.doc(ob.id).set(ob.toMap());
+  Future<void> setOpeningBalance(OpeningBalance ob) =>
+      _openingBalances.doc(ob.id).set(ob.toMap());
 
   Stream<QuerySnapshot> get openingBalanceStream =>
       _openingBalances.orderBy('date', descending: true).limit(1).snapshots();
 
   // Shop Profile
-  DocumentReference get _shopProfile =>
-      _db.collection('users').doc(_uid).collection('settings').doc('shopProfile');
+  DocumentReference get _shopProfile => _db
+      .collection('users')
+      .doc(_uid)
+      .collection('settings')
+      .doc('shopProfile');
 
   Future<void> setShopProfile(ShopProfile profile) =>
       _shopProfile.set(profile.toMap());
@@ -283,7 +321,8 @@ class FirestoreService {
   CollectionReference get _costPriceHistory =>
       _db.collection('users').doc(_uid).collection('cost_price_history');
 
-  Future<void> updateCostPrice(String productId, double newCostPrice, {String note = ''}) async {
+  Future<void> updateCostPrice(String productId, double newCostPrice,
+      {String note = ''}) async {
     final productRef = _products.doc(productId);
     await _db.runTransaction((transaction) async {
       final snap = await transaction.get(productRef);
@@ -310,7 +349,8 @@ class FirestoreService {
         .orderBy('date', descending: true)
         .snapshots()
         .map((snap) => snap.docs
-            .map((d) => CostPriceHistory.fromMap(d.data() as Map<String, dynamic>))
+            .map((d) =>
+                CostPriceHistory.fromMap(d.data() as Map<String, dynamic>))
             .toList());
   }
 }

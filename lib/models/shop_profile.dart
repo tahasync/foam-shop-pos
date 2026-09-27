@@ -22,16 +22,16 @@ class ShopProfile {
   });
 
   Map<String, dynamic> toMap() => {
-    'shop_name': shopName,
-    'location': location,
-    'phone': phone,
-    'currency': currency,
-    'created_at': createdAt.toIso8601String(),
-    'subscription_status': subscriptionStatus,
-    'trial_ends_at': trialEndsAt?.toIso8601String(),
-    'subscription_expires_at': subscriptionExpiresAt?.toIso8601String(),
-    'founder_exempt': founderExempt,
-  };
+        'shop_name': shopName,
+        'location': location,
+        'phone': phone,
+        'currency': currency,
+        'created_at': createdAt.toIso8601String(),
+        'subscription_status': subscriptionStatus,
+        'trial_ends_at': trialEndsAt?.toIso8601String(),
+        'subscription_expires_at': subscriptionExpiresAt?.toIso8601String(),
+        'founder_exempt': founderExempt,
+      };
 
   factory ShopProfile.fromMap(Map<String, dynamic> map) {
     return ShopProfile(
@@ -72,7 +72,8 @@ class ShopProfile {
         createdAt: createdAt ?? this.createdAt,
         subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
         trialEndsAt: trialEndsAt ?? this.trialEndsAt,
-        subscriptionExpiresAt: subscriptionExpiresAt ?? this.subscriptionExpiresAt,
+        subscriptionExpiresAt:
+            subscriptionExpiresAt ?? this.subscriptionExpiresAt,
         founderExempt: founderExempt ?? this.founderExempt,
       );
 

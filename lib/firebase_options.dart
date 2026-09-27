@@ -43,12 +43,14 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static String get webClientId => const String.fromEnvironment('FIREBASE_WEB_CLIENT_ID');
+  static String get webClientId =>
+      const String.fromEnvironment('FIREBASE_WEB_CLIENT_ID');
 
   static FirebaseOptions get android {
     const apiKey = String.fromEnvironment('FIREBASE_ANDROID_API_KEY');
     const appId = String.fromEnvironment('FIREBASE_ANDROID_APP_ID');
-    const senderId = String.fromEnvironment('FIREBASE_ANDROID_MESSAGING_SENDER_ID');
+    const senderId =
+        String.fromEnvironment('FIREBASE_ANDROID_MESSAGING_SENDER_ID');
     const projectId = String.fromEnvironment('FIREBASE_ANDROID_PROJECT_ID');
     const bucket = String.fromEnvironment('FIREBASE_ANDROID_STORAGE_BUCKET');
     return FirebaseOptions(
@@ -66,7 +68,8 @@ class DefaultFirebaseOptions {
     const senderId = String.fromEnvironment('FIREBASE_IOS_MESSAGING_SENDER_ID');
     const projectId = String.fromEnvironment('FIREBASE_IOS_PROJECT_ID');
     const bucket = String.fromEnvironment('FIREBASE_IOS_STORAGE_BUCKET');
-    const androidClientId = String.fromEnvironment('FIREBASE_IOS_ANDROID_CLIENT_ID');
+    const androidClientId =
+        String.fromEnvironment('FIREBASE_IOS_ANDROID_CLIENT_ID');
     const iosClientId = String.fromEnvironment('FIREBASE_IOS_CLIENT_ID');
     const iosBundleId = String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID');
     return FirebaseOptions(

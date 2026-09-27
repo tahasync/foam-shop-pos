@@ -50,7 +50,8 @@ void main() {
     // U+00C2/U+00C3 followed by U+0080-U+00BF, and U+00E2 followed by the
     // UTF-8 lead for an em dash / curly quote. These are Latin-1 renderings of
     // bytes that were already UTF-8 \u2014 the fingerprint of one decode too many.
-    final mojibake = RegExp('[\u00C2\u00C3][\u0080-\u00BF]|\u00E2[\u0080\u0093]');
+    final mojibake =
+        RegExp('[\u00C2\u00C3][\u0080-\u00BF]|\u00E2[\u0080\u0093]');
     final offenders = <String>[];
     for (final entity in [Directory('lib'), Directory('test')]) {
       if (!entity.existsSync()) continue;
@@ -466,7 +467,8 @@ void main() {
     // and Flutter's ellipsis breaks mid-word: "Opposite Meezan Ba\u2026". A
     // half-rendered word reads as a layout fault, and the address is the one
     // detail this header exists to show.
-    testWidgets('shows the full address on the small phone the checklist requires',
+    testWidgets(
+        'shows the full address on the small phone the checklist requires',
         (tester) async {
       tester.view.physicalSize = const Size(375, 667);
       tester.view.devicePixelRatio = 1.0;
@@ -491,7 +493,8 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a very long address wraps and never overflows', (tester) async {
+    testWidgets('a very long address wraps and never overflows',
+        (tester) async {
       tester.view.physicalSize = const Size(375, 667);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -504,7 +507,8 @@ void main() {
             // One unbroken token: no space to wrap at, so this is the case
             // that would throw a RenderFlex overflow if the text were not
             // inside a `Flexible`.
-            location: 'SupercalifragilisticexpialidociousAddressBlockNumberFortyTwo',
+            location:
+                'SupercalifragilisticexpialidociousAddressBlockNumberFortyTwo',
           ),
         ),
       ));
@@ -1166,7 +1170,8 @@ void main() {
     // resolved to "sq.ft" for every product in the app. The caption therefore
     // read "PRICE PER SQ.FT" directly above a stock count reading "15 pcs" —
     // a caption that states the unit basis, and states it wrongly.
-    testWidgets('price caption does not claim a square-foot basis', (tester) async {
+    testWidgets('price caption does not claim a square-foot basis',
+        (tester) async {
       await _pumpPriceField(tester);
 
       expect(find.text('PRICE PER UNIT'), findsOneWidget,
@@ -1215,8 +1220,11 @@ void main() {
       for (final label in ['Save Sale', 'Save as Quote']) {
         final finder = find.text(label);
         final textWidth = tester.getSize(finder).width;
-        final buttonWidth =
-            tester.getSize(find.ancestor(of: finder, matching: find.byType(AppButton)).first).width;
+        final buttonWidth = tester
+            .getSize(find
+                .ancestor(of: finder, matching: find.byType(AppButton))
+                .first)
+            .width;
         expect(textWidth, lessThan(buttonWidth),
             reason: '"$label" paints $textWidth wide inside a $buttonWidth '
                 'button, so it is being truncated');
@@ -1302,7 +1310,8 @@ void main() {
       expect(
         tester.widget<TextField>(field).controller!.text,
         '20500',
-        reason: 'every keystroke must land; the field went deaf after the first '
+        reason:
+            'every keystroke must land; the field went deaf after the first '
             'character, so multi-digit prices were impossible to enter',
       );
       expect(tester.takeException(), isNull);
@@ -1346,7 +1355,8 @@ void main() {
         expect(
           size.height,
           greaterThanOrEqualTo(AppHit.min),
-          reason: 'the "$label" hit area is only ${size.height} tall, under the '
+          reason:
+              'the "$label" hit area is only ${size.height} tall, under the '
               '48dp touch minimum',
         );
         expect(
@@ -1368,7 +1378,8 @@ void main() {
     // inline against the price field: that caption was the first thing pushed
     // off the right edge on a narrow phone. It is asserted here as its own
     // element, on the same row as the status pill.
-    testWidgets('line total stays blank until a price is entered', (tester) async {
+    testWidgets('line total stays blank until a price is entered',
+        (tester) async {
       await _pumpPriceField(tester);
 
       // The pre-filled price renders a real figure, formatted with thousands
@@ -1386,7 +1397,8 @@ void main() {
       expect(
         find.text('\u2014'),
         findsOneWidget,
-        reason: 'with no price there is no line total to show, so the total slot '
+        reason:
+            'with no price there is no line total to show, so the total slot '
             'falls back to a dash',
       );
       // The margin used to be a second dash here. It is now a status pill that
@@ -1403,7 +1415,8 @@ void main() {
     // useless: a margin that far negative only means "well below cost", which
     // the rupee shortfall says directly. The pill must name the state, and the
     // notice must quantify the loss in currency.
-    testWidgets('a below-cost line states the loss in rupees, not just a margin',
+    testWidgets(
+        'a below-cost line states the loss in rupees, not just a margin',
         (tester) async {
       await tester.pumpWidget(
         _wrap(
@@ -1442,7 +1455,8 @@ void main() {
       expect(
         find.textContaining('Losing'),
         findsOneWidget,
-        reason: 'the shortfall must be quantified in rupees so it is actionable',
+        reason:
+            'the shortfall must be quantified in rupees so it is actionable',
       );
       expect(
         find.textContaining('-832'),
@@ -1827,9 +1841,10 @@ void main() {
 
       // The real faces, straight from the asset bundle, as `generateReceiptPdf`
       // loads them.
-      final regular = pw.Font.ttf(
-          await rootBundle.load('assets/fonts/Inter-Regular.ttf'));
-      final bold = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Bold.ttf'));
+      final regular =
+          pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Regular.ttf'));
+      final bold =
+          pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Bold.ttf'));
       final theme = pw.ThemeData.withFont(base: regular, bold: bold);
 
       final doc = pw.Document(theme: theme);
@@ -1867,17 +1882,22 @@ void main() {
             .whereType<pw.FlexColumnWidth>()
             .map((f) => f.flex)
             .fold<double>(0, (a, b) => a + b);
-        return (widths[column]! as pw.FlexColumnWidth).flex / sum * contentWidth;
+        return (widths[column]! as pw.FlexColumnWidth).flex /
+            sum *
+            contentWidth;
       }
 
       // `td` pads right-aligned cells with `EdgeInsets.symmetric(horizontal: 4)`,
       // so 8 points of every money column is padding, not digits.
       const cellPadX = 8.0;
-      expect(share(2), greaterThanOrEqualTo(paintedWidth('60,000', regular) + cellPadX),
+      expect(share(2),
+          greaterThanOrEqualTo(paintedWidth('60,000', regular) + cellPadX),
           reason: 'PRICE column must fit "60,000"');
-      expect(share(3), greaterThanOrEqualTo(paintedWidth('120,000', bold) + cellPadX),
+      expect(share(3),
+          greaterThanOrEqualTo(paintedWidth('120,000', bold) + cellPadX),
           reason: 'TOTAL column must fit "120,000"');
-      expect(share(1), greaterThanOrEqualTo(paintedWidth('2', regular) + cellPadX),
+      expect(
+          share(1), greaterThanOrEqualTo(paintedWidth('2', regular) + cellPadX),
           reason: 'QTY column must fit its value');
     });
 
@@ -1889,7 +1909,8 @@ void main() {
             metaLine: 'Shop #4',
             customerName: 'Walk-in Customer',
             items: [
-              ReceiptLine(name: 'luxury', qty: '2', unitPrice: '60,000', total: total),
+              ReceiptLine(
+                  name: 'luxury', qty: '2', unitPrice: '60,000', total: total),
             ],
             total: 'Rs $total',
             paid: 'Rs 0',
@@ -1906,8 +1927,10 @@ void main() {
           bold: pw.Font.helveticaBold(),
           contentWidth: contentWidth,
         );
-        final sum =
-            w.values.whereType<pw.FlexColumnWidth>().map((f) => f.flex).fold<double>(0, (a, b) => a + b);
+        final sum = w.values
+            .whereType<pw.FlexColumnWidth>()
+            .map((f) => f.flex)
+            .fold<double>(0, (a, b) => a + b);
         return (w[3]! as pw.FlexColumnWidth).flex / sum * contentWidth;
       }
 
@@ -2081,7 +2104,8 @@ void main() {
   // a visible error, which is why nothing else in the suite would catch them.
 
   group('Stock label', () {
-    Product product({double stock = 15, String unitType = 'per_sqft'}) => Product(
+    Product product({double stock = 15, String unitType = 'per_sqft'}) =>
+        Product(
           id: 'p',
           name: 'Foam',
           type: 'Sheet',
@@ -2128,8 +2152,9 @@ void main() {
 
     test('masks Firebase internals behind the fallback', () {
       expect(
-        sanitizeErrorMessage(Exception('[firebase_firestore/failed-precondition] '
-            'permission denied at /users/x/sales/y')),
+        sanitizeErrorMessage(
+            Exception('[firebase_firestore/failed-precondition] '
+                'permission denied at /users/x/sales/y')),
         'Something went wrong. Please try again.',
       );
     });
@@ -2164,7 +2189,8 @@ void main() {
     // written before the `customer_name` field existed carry only a short
     // `customer_id`. One such sale in the selected period aborted CSV, XLSX and
     // PDF generation together, which is how "export is not working" presented.
-    AccountingSummary summaryFor(List<Sale> sales) => AccountingService().compute(
+    AccountingSummary summaryFor(List<Sale> sales) =>
+        AccountingService().compute(
           sales: sales,
           purchases: const [],
           expenses: const [],
@@ -2297,7 +2323,10 @@ void main() {
           customerName: null,
           lineItems: [
             SaleLineItem(
-                productId: 'p1', qtyOrArea: 1, salePrice: 100, costPriceAtSale: 50),
+                productId: 'p1',
+                qtyOrArea: 1,
+                salePrice: 100,
+                costPriceAtSale: 50),
           ],
           paid: 100,
         ),
@@ -2323,7 +2352,10 @@ void main() {
           customerName: 'Bilal Traders',
           lineItems: [
             SaleLineItem(
-                productId: 'p1', qtyOrArea: 1, salePrice: 100, costPriceAtSale: 50),
+                productId: 'p1',
+                qtyOrArea: 1,
+                salePrice: 100,
+                costPriceAtSale: 50),
           ],
           paid: 100,
         ),
@@ -2357,7 +2389,8 @@ void main() {
           paid: 2 * salePrice,
         );
 
-    test('computes the same figures whether or not diagnostics are enabled', () {
+    test('computes the same figures whether or not diagnostics are enabled',
+        () {
       final service = AccountingService();
       final products = [
         Product(

@@ -283,8 +283,7 @@ class AppIconButton extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             Center(child: Icon(icon, size: chipSize * 0.44, color: fg)),
-            if (badge != null)
-              Positioned(top: -2, right: -2, child: badge!),
+            if (badge != null) Positioned(top: -2, right: -2, child: badge!),
           ],
         ),
       ),

@@ -26,12 +26,16 @@ class ThemeModeManager extends Notifier<ThemeMode> {
     final prefs = await SharedPreferences.getInstance();
     final String val;
     switch (mode) {
-      case ThemeMode.light: val = 'light';
-      case ThemeMode.dark:  val = 'dark';
-      case ThemeMode.system: val = 'system';
+      case ThemeMode.light:
+        val = 'light';
+      case ThemeMode.dark:
+        val = 'dark';
+      case ThemeMode.system:
+        val = 'system';
     }
     await prefs.setString('themeMode', val);
   }
 }
 
-final themeModeProvider = NotifierProvider<ThemeModeManager, ThemeMode>(ThemeModeManager.new);
+final themeModeProvider =
+    NotifierProvider<ThemeModeManager, ThemeMode>(ThemeModeManager.new);

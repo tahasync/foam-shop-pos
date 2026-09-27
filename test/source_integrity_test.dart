@@ -56,7 +56,8 @@ void main() {
       expect(
         source,
         contains(r'in \u00d7 ${p.sizeWidth'),
-        reason: 'Search result dimensions must use the × escape (\\u00d7), not "?"',
+        reason:
+            'Search result dimensions must use the × escape (\\u00d7), not "?"',
       );
       expect(
         source,

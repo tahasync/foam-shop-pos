@@ -176,7 +176,6 @@ class _BackButton extends StatelessWidget {
   }
 }
 
-
 /// The foam brand mark (`.brand-mark`): fixed `brandSolid` fill with white
 /// logo glyph, used in app bars and auth screens.
 class BrandMark extends StatelessWidget {
@@ -203,7 +202,8 @@ class BrandMark extends StatelessWidget {
             margin: EdgeInsets.all(size * 0.16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(size * 0.18),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 1.5),
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.35), width: 1.5),
             ),
           ),
           CustomPaint(
@@ -222,7 +222,9 @@ class _FoamGlyphPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..style = PaintingStyle.fill;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
     final w = size.width;
     final h = size.height;
     final path = Path();

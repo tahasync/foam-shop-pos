@@ -20,7 +20,8 @@ class SupplierPayment {
 
   factory SupplierPayment.fromMap(Map<String, dynamic> map) {
     final date = map['date'];
-    if (date is! String) throw const FormatException('Invalid supplier payment: missing date');
+    if (date is! String)
+      throw const FormatException('Invalid supplier payment: missing date');
     return SupplierPayment(
       id: map['id'] as String? ?? '',
       date: DateTime.parse(date),

@@ -25,7 +25,8 @@ class CustomerKhataScreen extends ConsumerStatefulWidget {
 
   const CustomerKhataScreen({super.key, this.bottomInset = 120});
   @override
-  ConsumerState<CustomerKhataScreen> createState() => _CustomerKhataScreenState();
+  ConsumerState<CustomerKhataScreen> createState() =>
+      _CustomerKhataScreenState();
 }
 
 class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
@@ -62,19 +63,24 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
         data: (sales) => paymentsAsync.when(
           data: (payments) {
             final balList = csList.map((c) {
-              final cSales = sales.where((s) => s.customerId == c.id && !s.isVoided && !s.isQuote);
+              final cSales = sales.where(
+                  (s) => s.customerId == c.id && !s.isVoided && !s.isQuote);
               final cPayments = payments.where((p) => p.customerId == c.id);
               final total = cSales.fold(0.0, (s, x) => s + x.amount);
               final paid = cSales.fold(0.0, (s, x) => s + x.paid);
               final recv = cPayments.fold(0.0, (s, x) => s + x.amountCollected);
-              final lastSale = cSales.fold<DateTime?>(null, (prev, s) =>
-                  prev == null || s.date.isAfter(prev) ? s.date : prev);
-              final lastPayment = cPayments.fold<DateTime?>(null, (prev, p) =>
-                  prev == null || p.date.isAfter(prev) ? p.date : prev);
+              final lastSale = cSales.fold<DateTime?>(
+                  null,
+                  (prev, s) =>
+                      prev == null || s.date.isAfter(prev) ? s.date : prev);
+              final lastPayment = cPayments.fold<DateTime?>(
+                  null,
+                  (prev, p) =>
+                      prev == null || p.date.isAfter(prev) ? p.date : prev);
               final lastActivity = [lastSale, lastPayment]
                   .whereType<DateTime>()
-                  .fold<DateTime?>(null, (prev, d) =>
-                      prev == null || d.isAfter(prev) ? d : prev);
+                  .fold<DateTime?>(null,
+                      (prev, d) => prev == null || d.isAfter(prev) ? d : prev);
               return _CustBal(
                 customer: c,
                 balance: (total - paid - recv).clamp(0, double.infinity),
@@ -90,20 +96,29 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
             });
             return balList;
           },
-          loading: () => null, error: (_, __) => null,
+          loading: () => null,
+          error: (_, __) => null,
         ),
-        loading: () => null, error: (_, __) => null,
+        loading: () => null,
+        error: (_, __) => null,
       ),
-      loading: () => null, error: (e, _) => <_CustBal>[],
+      loading: () => null,
+      error: (e, _) => <_CustBal>[],
     );
 
     final payments = paymentsAsync.asData?.value ?? [];
     final now = DateTime.now();
-    final todayPayments = payments.where((p) =>
-        p.date.year == now.year && p.date.month == now.month && p.date.day == now.day).toList();
-    final collectedToday = todayPayments.fold(0.0, (s, p) => s + p.amountCollected);
+    final todayPayments = payments
+        .where((p) =>
+            p.date.year == now.year &&
+            p.date.month == now.month &&
+            p.date.day == now.day)
+        .toList();
+    final collectedToday =
+        todayPayments.fold(0.0, (s, p) => s + p.amountCollected);
     final summary = ref.watch(accountingSummaryProvider).asData?.value;
-    final dueCount = combined == null ? 0 : combined.where((b) => b.balance > 0).length;
+    final dueCount =
+        combined == null ? 0 : combined.where((b) => b.balance > 0).length;
     final double totalReceivable;
     if (summary != null) {
       totalReceivable = summary.totalCustomerBaqaya;
@@ -115,83 +130,94 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
 
     final filtered = combined == null
         ? null
-        : combined.where((b) => _query.isEmpty || b.customer.name.toLowerCase().contains(_query)).toList();
+        : combined
+            .where((b) =>
+                _query.isEmpty ||
+                b.customer.name.toLowerCase().contains(_query))
+            .toList();
 
     return GlassScaffold(
       safeBottom: false,
       child: Column(children: [
-          AppBarRow(
-            showBrand: false,
-            title: 'Khata',
-            trailing: [
-              AppIconButton(
-                icon: Icons.currency_exchange_rounded,
-                semanticLabel: 'Customer recovery',
-                onTap: () => Navigator.push(context, slideUpRoute(const CustomerRecoveryScreen())),
-              ),
-              const SizedBox(width: 8),
-              AppIconButton(
-                semanticLabel: 'Supplier khata',
-                icon: Icons.business_rounded,
-                onTap: () => Navigator.push(context, slideUpRoute(const SupplierKhataScreen())),
-              ),
-              const SizedBox(width: 8),
-              AppIconButton(
-                icon: Icons.add_rounded,
-                semanticLabel: 'Add customer',
-                background: ac.brandFill,
-                foreground: Colors.white,
-                onTap: _addCustomer,
-              ),
-            ],
-          ),
-          Expanded(
-            child: combined == null
-                ? const Center(child: CircularProgressIndicator())
-                : filtered!.isEmpty
-                    ? (combined.isEmpty
-                        ? EmptyState(
-                            icon: Icons.people_outline_rounded,
-                            title: 'No customers yet',
-                            subtitle: 'Add a customer to start tracking their khata',
-                          )
-                        : NoResults(
-                            title: 'No customers match',
-                            subtitle: 'Try a different search term',
-                          ))
-                    : ListView(
-                        padding: EdgeInsets.fromLTRB(18, 0, 18, bottom),
-                        children: [
-                          AppKpiRow(tiles: [
-                            KpiTile(
-                              label: 'Total receivable',
-                              value: _fmt(totalReceivable),
-                              sub: 'From $dueCount customer${dueCount == 1 ? '' : 's'}',
-                              icon: Icons.account_balance_wallet_rounded,
-                              tint: ac.expenseTint,
-                              iconColor: ac.expenseFg,
-                            ),
-                            KpiTile(
-                              label: 'Collected today',
-                              value: _fmt(collectedToday),
-                              sub: '${todayPayments.length} payment${todayPayments.length == 1 ? '' : 's'}',
-                              icon: Icons.savings_rounded,
-                              tint: ac.saleTint,
-                              iconColor: ac.saleFg,
-                            ),
-                          ]),
-                          const SizedBox(height: 14),
-                          AppSearchField(
-                            controller: _searchCtrl,
-                            hintText: 'Search customers\u2026',
-                            onChanged: (v) => setState(() => _query = v.toLowerCase()),
-                          ),
-                          const SectionLabel(title: 'Customer ledger'),
-                          for (final item in filtered) _buildRow(item, cs, ac, csym),
-                        ],
-                ),
+        AppBarRow(
+          showBrand: false,
+          title: 'Khata',
+          trailing: [
+            AppIconButton(
+              icon: Icons.currency_exchange_rounded,
+              semanticLabel: 'Customer recovery',
+              onTap: () => Navigator.push(
+                  context, slideUpRoute(const CustomerRecoveryScreen())),
             ),
-        ]),
+            const SizedBox(width: 8),
+            AppIconButton(
+              semanticLabel: 'Supplier khata',
+              icon: Icons.business_rounded,
+              onTap: () => Navigator.push(
+                  context, slideUpRoute(const SupplierKhataScreen())),
+            ),
+            const SizedBox(width: 8),
+            AppIconButton(
+              icon: Icons.add_rounded,
+              semanticLabel: 'Add customer',
+              background: ac.brandFill,
+              foreground: Colors.white,
+              onTap: _addCustomer,
+            ),
+          ],
+        ),
+        Expanded(
+          child: combined == null
+              ? const Center(child: CircularProgressIndicator())
+              : filtered!.isEmpty
+                  ? (combined.isEmpty
+                      ? EmptyState(
+                          icon: Icons.people_outline_rounded,
+                          title: 'No customers yet',
+                          subtitle:
+                              'Add a customer to start tracking their khata',
+                        )
+                      : NoResults(
+                          title: 'No customers match',
+                          subtitle: 'Try a different search term',
+                        ))
+                  : ListView(
+                      padding: EdgeInsets.fromLTRB(18, 0, 18, bottom),
+                      children: [
+                        AppKpiRow(tiles: [
+                          KpiTile(
+                            label: 'Total receivable',
+                            value: _fmt(totalReceivable),
+                            sub:
+                                'From $dueCount customer${dueCount == 1 ? '' : 's'}',
+                            icon: Icons.account_balance_wallet_rounded,
+                            tint: ac.expenseTint,
+                            iconColor: ac.expenseFg,
+                          ),
+                          KpiTile(
+                            label: 'Collected today',
+                            value: _fmt(collectedToday),
+                            sub:
+                                '${todayPayments.length} payment${todayPayments.length == 1 ? '' : 's'}',
+                            icon: Icons.savings_rounded,
+                            tint: ac.saleTint,
+                            iconColor: ac.saleFg,
+                          ),
+                        ]),
+                        const SizedBox(height: 14),
+                        AppSearchField(
+                          controller: _searchCtrl,
+                          hintText: 'Search customers\u2026',
+                          onChanged: (v) =>
+                              setState(() => _query = v.toLowerCase()),
+                        ),
+                        const SectionLabel(title: 'Customer ledger'),
+                        for (final item in filtered)
+                          _buildRow(item, cs, ac, csym),
+                      ],
+                    ),
+        ),
+      ]),
     );
   }
 
@@ -200,10 +226,13 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
     final due = item.balance > 0;
     String sub;
     if (item.lastActivity == DateTime(0)) {
-      sub = item.customer.phone.isNotEmpty ? item.customer.phone : 'Fully settled';
+      sub = item.customer.phone.isNotEmpty
+          ? item.customer.phone
+          : 'Fully settled';
     } else {
       final days = DateTime.now().difference(item.lastActivity).inDays;
-      final ago = days <= 0 ? 'today' : (days == 1 ? 'yesterday' : '$days days ago');
+      final ago =
+          days <= 0 ? 'today' : (days == 1 ? 'yesterday' : '$days days ago');
       final isPayment = item.lastPayment != null &&
           (item.lastSale == null || item.lastPayment!.isAfter(item.lastSale!));
       sub = isPayment ? 'Last payment $ago' : 'Last sale $ago';
@@ -215,9 +244,10 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
       level: AppGlassLevel.raised,
       gloss: false,
       tint: due ? ac.expenseFg.withValues(alpha: 0.06) : null,
-      onTap: () => Navigator.push(context,
-          slideUpRoute(_CustDetail(customer: item.customer))),
-      child: Row(children: [
+      onTap: () => Navigator.push(
+          context, slideUpRoute(_CustDetail(customer: item.customer))),
+      child: Row(
+        children: [
           InitialAvatar(
             name: item.customer.name,
             size: 42,
@@ -228,13 +258,20 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(item.customer.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: cs.onSurface)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                      color: cs.onSurface)),
               const SizedBox(height: 1),
-              Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: ac.inkFaint)),
+              Text(sub,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, color: ac.inkFaint)),
             ]),
           ),
           const SizedBox(width: 8),
@@ -246,10 +283,13 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: due ? ac.expenseFg : ac.saleFg)),
             Text(due ? 'Due' : 'Clear',
-                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: ac.inkFaint)),
+                style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: ac.inkFaint)),
           ]),
         ],
-        ),
+      ),
     );
   }
 }
@@ -284,7 +324,8 @@ class _CustDetail extends ConsumerWidget {
     return salesAsync.when(
       data: (sales) => paymentsAsync.when(
         data: (payments) {
-          final cSales = sales.where((s) => s.customerId == customer.id && !s.isVoided && !s.isQuote);
+          final cSales = sales.where(
+              (s) => s.customerId == customer.id && !s.isVoided && !s.isQuote);
           final cPayments = payments.where((p) => p.customerId == customer.id);
           final total = cSales.fold(0.0, (s, x) => s + x.amount);
           final paid = cSales.fold(0.0, (s, x) => s + x.paid);
@@ -313,7 +354,8 @@ class _CustDetail extends ConsumerWidget {
             ...cPayments.map((p) => _Txn(
                   date: p.date,
                   title: 'Payment received',
-                  sub: '${DateFormat('d MMM, h:mm a').format(p.date)} \u00b7 cash',
+                  sub:
+                      '${DateFormat('d MMM, h:mm a').format(p.date)} \u00b7 cash',
                   isSale: false,
                   amount: p.amountCollected,
                 )),
@@ -324,13 +366,18 @@ class _CustDetail extends ConsumerWidget {
 
           return FullScreenOverlay(
             title: customer.name,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               HeroCard(
                 eyebrow: 'Balance due',
                 amount: '$csym ${fmt.format(balance.toInt())}',
                 pills: [
-                  HeroPill(label: 'Total billed', value: '$csym ${fmt.format(total.toInt())}'),
-                  HeroPill(label: 'Paid', value: '$csym ${fmt.format((paid + recv).toInt())}'),
+                  HeroPill(
+                      label: 'Total billed',
+                      value: '$csym ${fmt.format(total.toInt())}'),
+                  HeroPill(
+                      label: 'Paid',
+                      value: '$csym ${fmt.format((paid + recv).toInt())}'),
                 ],
               ),
               const SizedBox(height: 14),
@@ -340,7 +387,8 @@ class _CustDetail extends ConsumerWidget {
                     label: 'Record Payment',
                     icon: Icons.credit_card_rounded,
                     onTap: balance > 0
-                        ? () => _collectPayment(context, ref, customer, currentBalance: balance.toDouble())
+                        ? () => _collectPayment(context, ref, customer,
+                            currentBalance: balance.toDouble())
                         : null,
                   ),
                 ),
@@ -362,44 +410,56 @@ class _CustDetail extends ConsumerWidget {
                   child: EmptyState(
                     icon: Icons.receipt_long_rounded,
                     title: 'No transactions',
-                    subtitle: 'Sales and payments for this customer will appear here',
+                    subtitle:
+                        'Sales and payments for this customer will appear here',
                     compact: true,
                   ),
                 )
               else
                 FoamCard(
                   foam: true,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: Column(children: [
                     for (var i = 0; i < txns.length; i++) ...[
                       if (i > 0) Divider(height: 1, color: ac.outline),
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 4),
                         child: Row(children: [
                           Container(
                             width: 38,
                             height: 38,
                             decoration: BoxDecoration(
-                              color: txns[i].isSale ? ac.saleTint : ac.khataTint,
+                              color:
+                                  txns[i].isSale ? ac.saleTint : ac.khataTint,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
-                              txns[i].isSale ? Icons.receipt_long_rounded : Icons.savings_rounded,
+                              txns[i].isSale
+                                  ? Icons.receipt_long_rounded
+                                  : Icons.savings_rounded,
                               size: 17,
                               color: txns[i].isSale ? ac.saleFg : ac.khataFg,
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(txns[i].title,
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface)),
-                              const SizedBox(height: 1),
-                              Text(txns[i].sub,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
-                            ]),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(txns[i].title,
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: cs.onSurface)),
+                                  const SizedBox(height: 1),
+                                  Text(txns[i].sub,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                          fontSize: 10.5, color: ac.inkFaint)),
+                                ]),
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -407,7 +467,9 @@ class _CustDetail extends ConsumerWidget {
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 13,
-                              fontFeatures: const [FontFeature.tabularFigures()],
+                              fontFeatures: const [
+                                FontFeature.tabularFigures()
+                              ],
                               color: txns[i].isSale ? ac.expenseFg : ac.saleFg,
                             ),
                           ),
@@ -421,40 +483,52 @@ class _CustDetail extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
-            child: Padding(
+          child: Padding(
               padding: const EdgeInsets.all(24),
-              child: Text(sanitizeErrorMessage(e, fallback: 'Could not load data'),
+              child: Text(
+                  sanitizeErrorMessage(e, fallback: 'Could not load data'),
                   style: TextStyle(color: cs.onSurface))),
-          ),
+        ),
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(sanitizeErrorMessage(e, fallback: 'Could not load data'),
-                  style: TextStyle(color: cs.onSurface))),
-          ),
+        child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+                sanitizeErrorMessage(e, fallback: 'Could not load data'),
+                style: TextStyle(color: cs.onSurface))),
+      ),
     );
   }
 }
 
-void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, {double currentBalance = 0}) {
+void _collectPayment(BuildContext context, WidgetRef ref, Customer customer,
+    {double currentBalance = 0}) {
   final csym = ref.read(currencySymbolProvider);
   final fmt = NumberFormat('#,##0');
-  final ctrl = TextEditingController(text: currentBalance > 0 ? currentBalance.toStringAsFixed(0) : '');
+  final ctrl = TextEditingController(
+      text: currentBalance > 0 ? currentBalance.toStringAsFixed(0) : '');
 
   showAppSheet(
     context: context,
     builder: (ctx) => AppSheetContent(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Collect from ${customer.name}',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface)),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.onSurface)),
         const SizedBox(height: 2),
         Text('Outstanding: $csym ${fmt.format(currentBalance.toInt())}',
-            style: TextStyle(fontSize: 11, color: AppColors.of(context).inkFaint)),
+            style:
+                TextStyle(fontSize: 11, color: AppColors.of(context).inkFaint)),
         const SizedBox(height: 14),
         Text('Amount received ($csym)',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.of(context).inkSoft, letterSpacing: 0.03)),
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppColors.of(context).inkSoft,
+                letterSpacing: 0.03)),
         const SizedBox(height: 6),
         TextField(
           controller: ctrl,
@@ -465,7 +539,8 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, {do
             isDense: true,
             filled: true,
             fillColor: AppColors.of(context).surface2,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: AppColors.of(context).outline),
@@ -476,7 +551,8 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, {do
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.of(context).primary, width: 1.5),
+              borderSide:
+                  BorderSide(color: AppColors.of(context).primary, width: 1.5),
             ),
           ),
         ),
@@ -501,12 +577,16 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, {do
                   return;
                 }
                 if (currentBalance > 0 && amt > currentBalance) {
-                  showAppToast(context, 'Cannot exceed the outstanding balance');
+                  showAppToast(
+                      context, 'Cannot exceed the outstanding balance');
                   return;
                 }
                 final s = ref.read(firestoreServiceProvider);
                 final payment = Payment(
-                    id: s.generateId(), date: DateTime.now(), customerId: customer.id, amountCollected: amt);
+                    id: s.generateId(),
+                    date: DateTime.now(),
+                    customerId: customer.id,
+                    amountCollected: amt);
                 Navigator.pop(ctx);
                 s.savePaymentTransaction(payment).then((_) {
                   ref.invalidate(accountingSummaryProvider);
@@ -515,7 +595,8 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, {do
                     SuccessSheet.show(
                       context: context,
                       title: 'Payment Collected',
-                      subtitle: '${customer.name} \u00b7 $csym2 ${fmt.format(amt.toInt())}',
+                      subtitle:
+                          '${customer.name} \u00b7 $csym2 ${fmt.format(amt.toInt())}',
                       primaryLabel: 'Done',
                     );
                   }

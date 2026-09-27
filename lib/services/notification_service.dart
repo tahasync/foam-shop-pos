@@ -113,9 +113,9 @@ class LocalNotificationService {
         // worth reading. This previously logged one line per low-stock product
         // on every check, which for a shop with 40 low items meant 40 log lines
         // describing a notification the user never sees in detail.
-        final names =
-            lowStock.take(3).map((p) => p.name).join(', ');
-        messages.add('Low stock: ${lowStock.length} item${lowStock.length == 1 ? '' : 's'} '
+        final names = lowStock.take(3).map((p) => p.name).join(', ');
+        messages.add(
+            'Low stock: ${lowStock.length} item${lowStock.length == 1 ? '' : 's'} '
             '(${lowStock.length > 3 ? '$names +${lowStock.length - 3} more' : names})');
       }
     }
@@ -134,8 +134,8 @@ class LocalNotificationService {
       }
 
       for (final cid in overdueIds) {
-        final cSales = sales.where(
-            (s) => s.customerId == cid && !s.isVoided && !s.isQuote);
+        final cSales = sales
+            .where((s) => s.customerId == cid && !s.isVoided && !s.isQuote);
         final cPayments = payments.where((p) => p.customerId == cid);
         final total = cSales.fold(0.0, (s, x) => s + x.amount);
         final paid = cSales.fold(0.0, (s, x) => s + x.paid);
@@ -144,9 +144,10 @@ class LocalNotificationService {
 
         if (bal > 0) {
           final lastActivity = cSales.fold<DateTime?>(
-              null, (prev, s) => prev == null || s.date.isAfter(prev) ? s.date : prev);
-          if (lastActivity != null &&
-              lastActivity.isBefore(thirtyDaysAgo)) {
+              null,
+              (prev, s) =>
+                  prev == null || s.date.isAfter(prev) ? s.date : prev);
+          if (lastActivity != null && lastActivity.isBefore(thirtyDaysAgo)) {
             customerBalances[cid] = bal;
           }
         }

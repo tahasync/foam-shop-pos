@@ -32,7 +32,8 @@ DateTimeRange _dateRangeFor(ReportsPeriod period) {
     case ReportsPeriod.daily:
       return DateTimeRange(start: today, end: eod);
     case ReportsPeriod.weekly:
-      return DateTimeRange(start: today.subtract(const Duration(days: 6)), end: eod);
+      return DateTimeRange(
+          start: today.subtract(const Duration(days: 6)), end: eod);
     case ReportsPeriod.monthly:
       final first = DateTime(now.year, now.month, 1);
       final last = DateTime(now.year, now.month + 1, 0, 23, 59, 59, 999);
@@ -47,10 +48,14 @@ DateTimeRange _dateRangeFor(ReportsPeriod period) {
 
 String _periodLabel(ReportsPeriod period) {
   switch (period) {
-    case ReportsPeriod.daily: return 'Today';
-    case ReportsPeriod.weekly: return 'This Week';
-    case ReportsPeriod.monthly: return 'This Month';
-    case ReportsPeriod.yearly: return 'This Year';
+    case ReportsPeriod.daily:
+      return 'Today';
+    case ReportsPeriod.weekly:
+      return 'This Week';
+    case ReportsPeriod.monthly:
+      return 'This Month';
+    case ReportsPeriod.yearly:
+      return 'This Year';
   }
 }
 
@@ -63,7 +68,20 @@ class _RevenueBucket {
 }
 
 const _shortDays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-const _monthInitials = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const _monthInitials = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec'
+];
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -86,8 +104,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final openingBalAsync = ref.watch(openingBalanceStreamProvider);
 
     final asyncs = <AsyncValue>[
-      salesAsync, purchasesAsync, expensesAsync,
-      paymentsAsync, supplierPaymentsAsync, productsAsync, openingBalAsync,
+      salesAsync,
+      purchasesAsync,
+      expensesAsync,
+      paymentsAsync,
+      supplierPaymentsAsync,
+      productsAsync,
+      openingBalAsync,
     ];
     if (asyncs.any((a) => a.isLoading)) {
       return const FullScreenOverlay(
@@ -99,7 +122,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     if (firstError != null) {
       return FullScreenOverlay(
         title: 'Reports',
-        child: Center(child: Text('Error: ${firstError.error}', style: TextStyle(color: cs.onSurface))),
+        child: Center(
+            child: Text('Error: ${firstError.error}',
+                style: TextStyle(color: cs.onSurface))),
       );
     }
 
@@ -150,7 +175,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       actions: [
         AppIconButton(
           icon: Icons.ios_share_rounded,
-            semanticLabel: 'Export report',
+          semanticLabel: 'Export report',
           onTap: () => pushOverlay(context, const ExportScreen()),
         ),
       ],
@@ -176,15 +201,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         FoamCard(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           child: Column(children: [
-            _summaryRow(context, 'Gross profit', _fmt(summary.grossProfit), valueColor: ac.saleFg),
+            _summaryRow(context, 'Gross profit', _fmt(summary.grossProfit),
+                valueColor: ac.saleFg),
             const Divider(height: 1),
-            _summaryRow(context, 'Opening capital', _fmt(summary.openingCapital)),
+            _summaryRow(
+                context, 'Opening capital', _fmt(summary.openingCapital)),
             const Divider(height: 1),
-            _summaryRow(context, 'Cash from recoveries', _fmt(summary.cashFromRecoveries)),
+            _summaryRow(context, 'Cash from recoveries',
+                _fmt(summary.cashFromRecoveries)),
             const Divider(height: 1),
-            _summaryRow(context, 'Paid to suppliers', _fmt(summary.cashPaidToSuppliers), valueColor: ac.purchaseFg),
+            _summaryRow(
+                context, 'Paid to suppliers', _fmt(summary.cashPaidToSuppliers),
+                valueColor: ac.purchaseFg),
             const Divider(height: 1),
-            _summaryRow(context, 'Products / categories', '${summary.totalProducts} / ${summary.categoryCount}'),
+            _summaryRow(context, 'Products / categories',
+                '${summary.totalProducts} / ${summary.categoryCount}'),
           ]),
         ),
       ]),
@@ -231,7 +262,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return buckets;
   }
 
-  Widget _buildRevenueChart(BuildContext context, List<Sale> sales, String csym) {
+  Widget _buildRevenueChart(
+      BuildContext context, List<Sale> sales, String csym) {
     final buckets = _revenueBuckets(_period);
     for (final s in sales) {
       if (s.isVoided || s.isQuote) continue;
@@ -258,11 +290,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return _RevenueBarChart(buckets: buckets, csym: csym);
   }
 
-  Widget _buildDonut(BuildContext context, List<Expense> expenses, DateTimeRange range, String csym) {
+  Widget _buildDonut(BuildContext context, List<Expense> expenses,
+      DateTimeRange range, String csym) {
     final ac = AppColors.of(context);
-    final endOfDay = DateTime(range.end.year, range.end.month, range.end.day, 23, 59, 59, 999);
+    final endOfDay = DateTime(
+        range.end.year, range.end.month, range.end.day, 23, 59, 59, 999);
     final inRange = expenses
-        .where((e) => !e.date.isBefore(range.start) && !e.date.isAfter(endOfDay))
+        .where(
+            (e) => !e.date.isBefore(range.start) && !e.date.isAfter(endOfDay))
         .toList();
 
     if (inRange.isEmpty) {
@@ -281,7 +316,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     for (final e in inRange) {
       totals[e.category] = (totals[e.category] ?? 0) + e.amount;
     }
-    final entries = totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final entries = totals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     final total = entries.fold<double>(0, (s, e) => s + e.value);
 
     final palette = <Color>[
@@ -322,7 +358,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 Text('$csym ${NumberFormat.compact().format(total)}',
                     style: AppTheme.display(context, size: 17)),
                 const SizedBox(height: 1),
-                Text('TOTAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: ac.inkFaint)),
+                Text('TOTAL',
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: ac.inkFaint)),
               ]),
             ],
           ),
@@ -346,7 +386,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 const SizedBox(width: 6),
                 Text(
                   '${entries[i].key} ${_pct(entries[i].value, total)}',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ac.inkSoft),
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: ac.inkSoft),
                 ),
               ]),
           ],
@@ -355,14 +398,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Widget _summaryRow(BuildContext context, String label, String value, {Color? valueColor}) {
+  Widget _summaryRow(BuildContext context, String label, String value,
+      {Color? valueColor}) {
     final ac = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ac.inkSoft)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: ac.inkSoft)),
           Text(
             value,
             style: TextStyle(
@@ -378,7 +426,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 }
 
-String _pct(double v, double total) => total <= 0 ? '0%' : '${((v / total) * 100).round()}%';
+String _pct(double v, double total) =>
+    total <= 0 ? '0%' : '${((v / total) * 100).round()}%';
 
 /// The revenue trend bar chart.
 ///
@@ -441,7 +490,8 @@ class _RevenueBarChart extends StatelessWidget {
           // Peak callout - the takeaway is readable without any interaction.
           Row(
             children: [
-              Icon(Icons.trending_up_rounded, size: AppIconSize.sm, color: ac.saleFg),
+              Icon(Icons.trending_up_rounded,
+                  size: AppIconSize.sm, color: ac.saleFg),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(

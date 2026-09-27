@@ -89,7 +89,8 @@ class MenuRow extends StatelessWidget {
               if (trailing != null)
                 trailing!
               else if (onTap != null)
-                Icon(Icons.chevron_right_rounded, size: AppIconSize.sm, color: ac.inkFaint),
+                Icon(Icons.chevron_right_rounded,
+                    size: AppIconSize.sm, color: ac.inkFaint),
             ],
           ),
         ),

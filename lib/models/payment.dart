@@ -20,12 +20,14 @@ class Payment {
 
   factory Payment.fromMap(Map<String, dynamic> map) {
     final date = map['date'];
-    if (date is! String) throw const FormatException('Invalid payment: missing date');
+    if (date is! String)
+      throw const FormatException('Invalid payment: missing date');
     return Payment(
       id: map['id'] as String? ?? '',
       date: DateTime.parse(date),
       customerId: map['customer_id'] as String? ?? '',
-      amountCollected: ((map['amount_collected'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
+      amountCollected:
+          ((map['amount_collected'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
     );
   }
 }

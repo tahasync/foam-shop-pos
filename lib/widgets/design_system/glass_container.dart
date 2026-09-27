@@ -257,4 +257,3 @@ class GlassContainer extends StatelessWidget {
     return ScaleButton(onTap: onTap, child: panel);
   }
 }
-

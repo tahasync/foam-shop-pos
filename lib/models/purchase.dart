@@ -17,9 +17,9 @@ class Purchase {
     required this.costAmount,
     required this.paid,
     required this.balance,
-  }) : assert(qtyOrArea > 0, 'Purchase quantity must be positive'),
-       assert(costAmount >= 0, 'Cost amount cannot be negative'),
-       assert(paid >= 0, 'Paid amount cannot be negative');
+  })  : assert(qtyOrArea > 0, 'Purchase quantity must be positive'),
+        assert(costAmount >= 0, 'Cost amount cannot be negative'),
+        assert(paid >= 0, 'Paid amount cannot be negative');
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -34,7 +34,8 @@ class Purchase {
 
   factory Purchase.fromMap(Map<String, dynamic> map) {
     final date = map['date'];
-    if (date is! String) throw const FormatException('Invalid purchase: missing date');
+    if (date is! String)
+      throw const FormatException('Invalid purchase: missing date');
     return Purchase(
       id: map['id'] as String? ?? '',
       date: DateTime.parse(date),

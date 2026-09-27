@@ -51,20 +51,28 @@ class RateLimiter {
     final now = DateTime.now();
 
     if (deviceId != null) {
-      final result = _checkEntry(_deviceEntries, deviceId, _config.maxAttempts, now);
+      final result =
+          _checkEntry(_deviceEntries, deviceId, _config.maxAttempts, now);
       if (!result.allowed) return result;
     }
 
     if (accountId != null) {
-      final result = _checkEntry(_accountEntries, accountId, _config.maxAccountAttempts, now);
+      final result = _checkEntry(
+          _accountEntries, accountId, _config.maxAccountAttempts, now);
       if (!result.allowed) return result;
     }
 
     if (deviceId != null) {
-      _deviceEntries.putIfAbsent(deviceId, () => RateLimitEntry()).timestamps.add(now);
+      _deviceEntries
+          .putIfAbsent(deviceId, () => RateLimitEntry())
+          .timestamps
+          .add(now);
     }
     if (accountId != null) {
-      _accountEntries.putIfAbsent(accountId, () => RateLimitEntry()).timestamps.add(now);
+      _accountEntries
+          .putIfAbsent(accountId, () => RateLimitEntry())
+          .timestamps
+          .add(now);
     }
 
     return const RateLimitResult(allowed: true);
@@ -97,7 +105,8 @@ class RateLimiter {
       return RateLimitResult(
         allowed: false,
         retryAfter: _config.cooldown,
-        reason: 'Too many attempts. Please wait ${_config.cooldown.inMinutes} minutes.',
+        reason:
+            'Too many attempts. Please wait ${_config.cooldown.inMinutes} minutes.',
       );
     }
 

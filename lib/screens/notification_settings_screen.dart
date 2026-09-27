@@ -9,10 +9,12 @@ import 'notification_history_screen.dart';
 class NotificationSettingsScreen extends ConsumerStatefulWidget {
   const NotificationSettingsScreen({super.key});
   @override
-  ConsumerState<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
+  ConsumerState<NotificationSettingsScreen> createState() =>
+      _NotificationSettingsScreenState();
 }
 
-class _NotificationSettingsScreenState extends ConsumerState<NotificationSettingsScreen> {
+class _NotificationSettingsScreenState
+    extends ConsumerState<NotificationSettingsScreen> {
   NotificationSettings _settings = const NotificationSettings();
   final _phoneCtrl = TextEditingController();
   bool _loaded = false;
@@ -77,7 +79,8 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                   subtitle: 'When a product hits its reorder threshold',
                   trailing: AppSwitch(
                     value: _settings.lowStockEnabled,
-                    onChanged: (v) => setState(() => _settings = _settings.copyWith(lowStockEnabled: v)),
+                    onChanged: (v) => setState(() =>
+                        _settings = _settings.copyWith(lowStockEnabled: v)),
                   ),
                 ),
                 MenuRow(
@@ -86,7 +89,8 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
                   subtitle: 'Customer balances outstanding 30+ days',
                   trailing: AppSwitch(
                     value: _settings.overdueBaqayaEnabled,
-                    onChanged: (v) => setState(() => _settings = _settings.copyWith(overdueBaqayaEnabled: v)),
+                    onChanged: (v) => setState(() => _settings =
+                        _settings.copyWith(overdueBaqayaEnabled: v)),
                   ),
                 ),
               ],
@@ -97,8 +101,10 @@ class _NotificationSettingsScreenState extends ConsumerState<NotificationSetting
           const SizedBox(height: 8),
           Center(
             child: TextButton(
-              onPressed: () => Navigator.push(context, slideUpRoute(const NotificationHistoryScreen())),
-              child: Text('View notification history', style: TextStyle(fontSize: 12.5, color: ac.primary)),
+              onPressed: () => Navigator.push(
+                  context, slideUpRoute(const NotificationHistoryScreen())),
+              child: Text('View notification history',
+                  style: TextStyle(fontSize: 12.5, color: ac.primary)),
             ),
           ),
         ],

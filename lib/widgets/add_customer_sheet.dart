@@ -9,7 +9,8 @@ import 'design_system/design_system.dart';
 /// Shared "Add Customer" sheet (mockup `sheet-addCustomer`) used by the Khata
 /// screen and the Sales change-customer sheet. Saves the customer to Firestore
 /// and returns the created [Customer] (or null when cancelled).
-Future<Customer?> showAddCustomerSheet(BuildContext context, WidgetRef ref) async {
+Future<Customer?> showAddCustomerSheet(
+    BuildContext context, WidgetRef ref) async {
   final nameCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
 

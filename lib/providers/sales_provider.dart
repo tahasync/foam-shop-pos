@@ -53,7 +53,8 @@ class SalesNotifier extends Notifier<SalesState> {
     recent.remove(product.id);
     recent.insert(0, product.id);
     if (recent.length > 6) recent.removeLast();
-    final existing = state.cart.where((c) => c.product.id == product.id).firstOrNull;
+    final existing =
+        state.cart.where((c) => c.product.id == product.id).firstOrNull;
     if (existing != null) {
       if (existing.quantity >= product.currentStock) return;
       existing.quantity++;
@@ -67,7 +68,8 @@ class SalesNotifier extends Notifier<SalesState> {
   }
 
   void removeFromCart(String productId) {
-    state = state.copyWith(cart: state.cart.where((c) => c.product.id != productId).toList());
+    state = state.copyWith(
+        cart: state.cart.where((c) => c.product.id != productId).toList());
   }
 
   void changeQty(String productId, int delta) {
@@ -81,7 +83,8 @@ class SalesNotifier extends Notifier<SalesState> {
     }
     if (newQty > item.product.currentStock) return;
     final updated = [...state.cart];
-    updated[idx] = CartItem(product: item.product, quantity: newQty, salePrice: item.salePrice);
+    updated[idx] = CartItem(
+        product: item.product, quantity: newQty, salePrice: item.salePrice);
     state = state.copyWith(cart: updated);
   }
 
@@ -106,4 +109,5 @@ class SalesNotifier extends Notifier<SalesState> {
   }
 }
 
-final salesProvider = NotifierProvider<SalesNotifier, SalesState>(SalesNotifier.new);
+final salesProvider =
+    NotifierProvider<SalesNotifier, SalesState>(SalesNotifier.new);

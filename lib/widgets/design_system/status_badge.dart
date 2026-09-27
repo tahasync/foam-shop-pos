@@ -62,7 +62,8 @@ class StatusBadge extends StatelessWidget {
           fontWeight: FontWeight.w800,
           letterSpacing: 0.04,
           color: fg,
-          decoration: type == BadgeType.void_ ? TextDecoration.lineThrough : null,
+          decoration:
+              type == BadgeType.void_ ? TextDecoration.lineThrough : null,
           decorationColor: fg,
         ),
       ),
@@ -152,7 +153,8 @@ class AlertBanner extends StatelessWidget {
                     ),
                   ),
                   if (onTap != null)
-                    Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: fg),
+                    Icon(Icons.chevron_right_rounded,
+                        size: AppIconSize.md, color: fg),
                 ],
               ),
             ),

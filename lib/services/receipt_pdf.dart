@@ -166,10 +166,13 @@ Future<_ReceiptFonts> _loadReceiptTheme() async {
   try {
     final regular = pw.Font.ttf(await rootBundle.load(_kRegular));
     final bold = pw.Font.ttf(await rootBundle.load(_kBold));
-    return _ReceiptFonts(regular, bold, pw.ThemeData.withFont(
-      base: regular,
-      bold: bold,
-    ));
+    return _ReceiptFonts(
+        regular,
+        bold,
+        pw.ThemeData.withFont(
+          base: regular,
+          bold: bold,
+        ));
   } catch (_) {
     // Fonts unavailable (e.g. a unit test with no asset bundle): fall back to
     // the built-ins rather than failing the whole receipt. Built-in Helvetica
@@ -202,9 +205,8 @@ String stripCurrencySymbol(String value) {
   // a formatted string can put the symbol in between ("-Rs 500"), so the sign is
   // held aside and re-attached after the symbol is removed — otherwise a
   // customer credit silently prints as a charge.
-  final sign = value.isNotEmpty && (value[0] == '-' || value[0] == '+')
-      ? value[0]
-      : '';
+  final sign =
+      value.isNotEmpty && (value[0] == '-' || value[0] == '+') ? value[0] : '';
   final rest = sign.isEmpty ? value : value.substring(1);
   final firstDigit = rest.indexOf(RegExp(r'[0-9]'));
   if (firstDigit < 0) return '';
@@ -284,8 +286,8 @@ Map<int, pw.TableColumnWidth> receiptColumnWidths({
   var widestTotal = 0.0;
 
   for (final line in data.items) {
-    widestQty = math.max(widestQty,
-        _measureMoneyWidth(line.qty, regular, fontSize, context));
+    widestQty = math.max(
+        widestQty, _measureMoneyWidth(line.qty, regular, fontSize, context));
     widestPrice = math.max(
         widestPrice,
         _measureMoneyWidth(
@@ -354,8 +356,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
         ],
       );
 
-  pw.Widget th(String t, {bool end = false, bool center = false}) =>
-      pw.Padding(
+  pw.Widget th(String t, {bool end = false, bool center = false}) => pw.Padding(
         // Vertical pad matches the cells so the header baseline sits on the
         // same rhythm as the data; the horizontal pad mirrors [td] so a header
         // is inset from the rule by the same amount as the value beneath it.
@@ -416,8 +417,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
   // clipped — a wrong number on a customer's receipt, the one failure this
   // document cannot have.
   pw.TableRow itemRow(ReceiptLine i, int index) => pw.TableRow(
-        decoration:
-            index.isOdd ? pw.BoxDecoration(color: p.tintRowBg) : null,
+        decoration: index.isOdd ? pw.BoxDecoration(color: p.tintRowBg) : null,
         children: [
           td(i.name, end: false, bold: true, maxLines: 2),
           td(i.qty, center: true),
@@ -444,8 +444,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
               value,
               style: pw.TextStyle(
                 fontSize: grand ? 11 : 9.5,
-                fontWeight:
-                    grand ? pw.FontWeight.bold : pw.FontWeight.bold,
+                fontWeight: grand ? pw.FontWeight.bold : pw.FontWeight.bold,
                 color: grand ? p.brand : p.ink,
               ),
             ),
@@ -544,8 +543,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
         pw.Container(
           padding: const pw.EdgeInsets.only(bottom: 7),
           decoration: pw.BoxDecoration(
-            border: pw.Border(
-                bottom: pw.BorderSide(color: p.line, width: 0.7)),
+            border: pw.Border(bottom: pw.BorderSide(color: p.line, width: 0.7)),
           ),
           child: pw.Text(
             d.metaLine,
@@ -698,8 +696,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
       // lacks the character, which is what the old "✓" did.
       pw.Center(
         child: pw.Container(
-          padding:
-              const pw.EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+          padding: const pw.EdgeInsets.symmetric(horizontal: 11, vertical: 5),
           decoration: pw.BoxDecoration(
             color: d.isDue ? p.warningBg : p.successBg,
             borderRadius: pw.BorderRadius.circular(12),
@@ -867,8 +864,8 @@ Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
 
   // A couple of points of headroom absorbs sub-point rounding in the
   // measurement so the last line can never kiss the page edge.
-  final heightMm = ((measured + (margin * 2) + 4) / PdfPageFormat.mm)
-      .clamp(40.0, 2000.0);
+  final heightMm =
+      ((measured + (margin * 2) + 4) / PdfPageFormat.mm).clamp(40.0, 2000.0);
 
   if (heightMm <= kReceiptTallMm) {
     // Fits a normal roll: one page, sized to the content.
@@ -887,7 +884,8 @@ Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        build: (_) => [_buildReceipt(data, palette, columnWidths: columnWidths)],
+        build: (_) =>
+            [_buildReceipt(data, palette, columnWidths: columnWidths)],
       ),
     );
   }

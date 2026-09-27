@@ -13,29 +13,31 @@ class AppAnim {
 
 // ── Reusable page transitions ──
 Route<T> slideUpRoute<T>(Widget page) => PageRouteBuilder<T>(
-  pageBuilder: (_, a, __) => SlideTransition(
-    position: Tween<Offset>(
-      begin: const Offset(0, 0.06),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: a, curve: AppAnim.spring)),
-    child: FadeTransition(opacity: a, child: page),
-  ),
-  transitionDuration: AppAnim.normal,
-  reverseTransitionDuration: AppAnim.fast,
-);
+      pageBuilder: (_, a, __) => SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.06),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: a, curve: AppAnim.spring)),
+        child: FadeTransition(opacity: a, child: page),
+      ),
+      transitionDuration: AppAnim.normal,
+      reverseTransitionDuration: AppAnim.fast,
+    );
 
 // ── Micro-interaction: scale-on-tap wrapper ──
 class TapScale extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
   final double scale;
-  const TapScale({super.key, required this.child, this.onTap, this.scale = 0.96});
+  const TapScale(
+      {super.key, required this.child, this.onTap, this.scale = 0.96});
 
   @override
   State<TapScale> createState() => _TapScaleState();
 }
 
-class _TapScaleState extends State<TapScale> with SingleTickerProviderStateMixin {
+class _TapScaleState extends State<TapScale>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
 
@@ -49,7 +51,10 @@ class _TapScaleState extends State<TapScale> with SingleTickerProviderStateMixin
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +65,8 @@ class _TapScaleState extends State<TapScale> with SingleTickerProviderStateMixin
       onTap: widget.onTap,
       child: AnimatedBuilder(
         animation: _anim,
-        builder: (_, child) => Transform.scale(scale: _anim.value, child: child),
+        builder: (_, child) =>
+            Transform.scale(scale: _anim.value, child: child),
         child: widget.child,
       ),
     );
@@ -71,13 +77,15 @@ class _TapScaleState extends State<TapScale> with SingleTickerProviderStateMixin
 class AnimatedCheck extends StatefulWidget {
   final double size;
   final Color color;
-  const AnimatedCheck({super.key, this.size = 48, this.color = const Color(0xFF3D5387)});
+  const AnimatedCheck(
+      {super.key, this.size = 48, this.color = const Color(0xFF3D5387)});
 
   @override
   State<AnimatedCheck> createState() => _AnimatedCheckState();
 }
 
-class _AnimatedCheckState extends State<AnimatedCheck> with SingleTickerProviderStateMixin {
+class _AnimatedCheckState extends State<AnimatedCheck>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _scale;
   late Animation<double> _checkProgress;
@@ -90,13 +98,17 @@ class _AnimatedCheckState extends State<AnimatedCheck> with SingleTickerProvider
       CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut),
     );
     _checkProgress = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _ctrl, curve: const Interval(0.4, 1, curve: Curves.easeOut)),
+      CurvedAnimation(
+          parent: _ctrl, curve: const Interval(0.4, 1, curve: Curves.easeOut)),
     );
     _ctrl.forward();
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,12 +120,18 @@ class _AnimatedCheckState extends State<AnimatedCheck> with SingleTickerProvider
         decoration: BoxDecoration(
           color: widget.color,
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: widget.color.withValues(alpha: 0.3), blurRadius: 12, spreadRadius: 2)],
+          boxShadow: [
+            BoxShadow(
+                color: widget.color.withValues(alpha: 0.3),
+                blurRadius: 12,
+                spreadRadius: 2)
+          ],
         ),
         child: Transform.scale(
           scale: _scale.value,
           child: CustomPaint(
-            painter: _CheckPainter(progress: _checkProgress.value, color: Colors.white),
+            painter: _CheckPainter(
+                progress: _checkProgress.value, color: Colors.white),
             size: Size(widget.size, widget.size),
           ),
         ),

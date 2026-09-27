@@ -26,7 +26,8 @@ import '../widgets/design_system/design_system.dart';
 
 enum ExportPeriod { daily, weekly, monthly, custom }
 
-DateTimeRange _dateRange(ExportPeriod p, {DateTime? customStart, DateTime? customEnd}) {
+DateTimeRange _dateRange(ExportPeriod p,
+    {DateTime? customStart, DateTime? customEnd}) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
@@ -34,7 +35,8 @@ DateTimeRange _dateRange(ExportPeriod p, {DateTime? customStart, DateTime? custo
     case ExportPeriod.daily:
       return DateTimeRange(start: today, end: endOfDay);
     case ExportPeriod.weekly:
-      return DateTimeRange(start: today.subtract(const Duration(days: 6)), end: endOfDay);
+      return DateTimeRange(
+          start: today.subtract(const Duration(days: 6)), end: endOfDay);
     case ExportPeriod.monthly:
       return DateTimeRange(
         start: DateTime(now.year, now.month, 1),
@@ -52,14 +54,19 @@ DateTimeRange _dateRange(ExportPeriod p, {DateTime? customStart, DateTime? custo
 
 String _periodLabel(ExportPeriod p) {
   switch (p) {
-    case ExportPeriod.daily: return 'Today';
-    case ExportPeriod.weekly: return 'This Week';
-    case ExportPeriod.monthly: return 'This Month';
-    case ExportPeriod.custom: return 'Custom Range';
+    case ExportPeriod.daily:
+      return 'Today';
+    case ExportPeriod.weekly:
+      return 'This Week';
+    case ExportPeriod.monthly:
+      return 'This Month';
+    case ExportPeriod.custom:
+      return 'Custom Range';
   }
 }
 
-String _fmt(double v, {String csym = 'Rs'}) => '$csym ${NumberFormat('#,##0').format(v)}';
+String _fmt(double v, {String csym = 'Rs'}) =>
+    '$csym ${NumberFormat('#,##0').format(v)}';
 
 class ExportScreen extends ConsumerStatefulWidget {
   const ExportScreen({super.key});
@@ -75,8 +82,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   bool _loading = false;
   String? _error;
 
-  DateTimeRange get _range => _dateRange(_period,
-      customStart: _customStart, customEnd: _customEnd);
+  DateTimeRange get _range =>
+      _dateRange(_period, customStart: _customStart, customEnd: _customEnd);
 
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
@@ -86,7 +93,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       lastDate: now,
       initialDateRange: _customStart != null && _customEnd != null
           ? DateTimeRange(start: _customStart!, end: _customEnd!)
-          : DateTimeRange(start: now.subtract(const Duration(days: 7)), end: now),
+          : DateTimeRange(
+              start: now.subtract(const Duration(days: 7)), end: now),
     );
     if (picked != null) {
       setState(() {
@@ -97,20 +105,28 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   }
 
   Future<void> _export(String type) async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     try {
       final allSales = ref.read(salesStreamProvider).asData?.value ?? [];
       final products = ref.read(productsStreamProvider).asData?.value ?? [];
       final expenses = ref.read(expensesStreamProvider).asData?.value ?? [];
       final range = _range;
-      final sales = allSales.where((s) =>
-          !s.isVoided && !s.isQuote &&
-          !s.date.isBefore(range.start) && !s.date.isAfter(range.end)).toList();
+      final sales = allSales
+          .where((s) =>
+              !s.isVoided &&
+              !s.isQuote &&
+              !s.date.isBefore(range.start) &&
+              !s.date.isAfter(range.end))
+          .toList();
 
       final purchases = ref.read(purchasesStreamProvider).asData?.value ?? [];
       final payments = ref.read(paymentsStreamProvider).asData?.value ?? [];
-      final supplierPayments = ref.read(supplierPaymentsStreamProvider).asData?.value ?? [];
+      final supplierPayments =
+          ref.read(supplierPaymentsStreamProvider).asData?.value ?? [];
       final openingBal = ref.read(openingBalanceStreamProvider).asData?.value;
       final profile = ref.read(shopProfileProvider).asData?.value;
       final shopName = profile?.shopName ?? 'Digital Register';
@@ -141,7 +157,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         );
         if (!mounted) return;
         setState(() => _loading = false);
-        await SharePlus.instance.share(ShareParams(files: [XFile(xlsxFile.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')], text: 'Sales Report - $shopName'));
+        await SharePlus.instance.share(ShareParams(files: [
+          XFile(xlsxFile.path,
+              mimeType:
+                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        ], text: 'Sales Report - $shopName'));
       } else if (type == 'pdf') {
         final pdfFile = await service.generatePdfReport(
           sales: sales,
@@ -154,7 +174,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         );
         if (!mounted) return;
         setState(() => _loading = false);
-        await SharePlus.instance.share(ShareParams(files: [XFile(pdfFile.path, mimeType: 'application/pdf')], text: 'Sales Report - $shopName'));
+        await SharePlus.instance.share(ShareParams(
+            files: [XFile(pdfFile.path, mimeType: 'application/pdf')],
+            text: 'Sales Report - $shopName'));
       } else {
         final csvFile = await service.generateCsvReport(
           sales: sales,
@@ -166,7 +188,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         );
         if (!mounted) return;
         setState(() => _loading = false);
-        await SharePlus.instance.share(ShareParams(files: [XFile(csvFile.path, mimeType: 'application/octet-stream')], text: 'Sales Report - $shopName'));
+        await SharePlus.instance.share(ShareParams(
+            files: [XFile(csvFile.path, mimeType: 'application/octet-stream')],
+            text: 'Sales Report - $shopName'));
       }
     } catch (e, st) {
       if (!mounted) return;
@@ -196,8 +220,13 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final openingBalAsync = ref.watch(openingBalanceStreamProvider);
 
     final asyncs = <AsyncValue>[
-      salesAsync, productsAsync, expensesAsync,
-      purchasesAsync, paymentsAsync, supplierPaymentsAsync, openingBalAsync,
+      salesAsync,
+      productsAsync,
+      expensesAsync,
+      purchasesAsync,
+      paymentsAsync,
+      supplierPaymentsAsync,
+      openingBalAsync,
     ];
     if (asyncs.any((a) => a.isLoading)) {
       return const FullScreenOverlay(
@@ -209,7 +238,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     if (firstError != null) {
       return FullScreenOverlay(
         title: 'Export Reports',
-        child: Center(child: Text('Error: ${firstError.error}', style: TextStyle(color: cs.onSurface))),
+        child: Center(
+            child: Text('Error: ${firstError.error}',
+                style: TextStyle(color: cs.onSurface))),
       );
     }
 
@@ -251,9 +282,13 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       endDate: range.end,
     );
 
-    final filteredSales = sales.where((s) =>
-        !s.isVoided && !s.isQuote &&
-        !s.date.isBefore(range.start) && !s.date.isAfter(range.end)).toList();
+    final filteredSales = sales
+        .where((s) =>
+            !s.isVoided &&
+            !s.isQuote &&
+            !s.date.isBefore(range.start) &&
+            !s.date.isAfter(range.end))
+        .toList();
     final salesCount = filteredSales.length;
     final marginPct = summary.revenue > 0
         ? ((summary.netProfit / summary.revenue) * 100).toStringAsFixed(1)
@@ -300,21 +335,26 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           ),
         ],
         const SizedBox(height: 14),
-
         FoamCard(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(_periodLabel(_period).toUpperCase(),
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.06, color: ac.inkFaint)),
+                style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.06,
+                    color: ac.inkFaint)),
             const SizedBox(height: 10),
             MiniRow(label: 'Revenue', value: _fmtLocal(summary.revenue)),
-            MiniRow(label: 'Net profit', value: _fmtLocal(summary.netProfit),
+            MiniRow(
+                label: 'Net profit',
+                value: _fmtLocal(summary.netProfit),
                 valueColor: summary.netProfit >= 0 ? ac.saleFg : ac.expenseFg),
             const Divider(height: 14),
             MiniRow(label: 'COGS', value: _fmtLocal(summary.cogs)),
             MiniRow(label: 'Margin', value: '$marginPct%'),
           ]),
         ),
-
         if (_error != null) ...[
           const SizedBox(height: 10),
           Container(
@@ -329,7 +369,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(_error!,
-                    style: TextStyle(color: ac.expenseFg, fontSize: 12, fontWeight: FontWeight.w700)),
+                    style: TextStyle(
+                        color: ac.expenseFg,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
               ),
               GestureDetector(
                 onTap: () => setState(() => _error = null),
@@ -338,7 +381,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             ]),
           ),
         ],
-
         if (_loading) ...[
           const SizedBox(height: 20),
           const Center(child: CircularProgressIndicator()),
@@ -348,7 +390,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 style: TextStyle(color: ac.inkFaint, fontSize: 12)),
           ),
         ],
-
         if (salesCount == 0 && !_loading)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -358,7 +399,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               subtitle: 'The exported report will be empty',
             ),
           ),
-
         SectionLabel(title: 'Format'),
         Row(children: [
           _formatCard(

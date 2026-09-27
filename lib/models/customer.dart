@@ -14,10 +14,12 @@ class Customer {
     this.phone = '',
     this.baqaya = 0,
     this.isArchived = false,
-  }) : assert(name.trim().isNotEmpty, 'Customer name is required'),
-       assert(name.length <= _maxNameLength, 'Customer name exceeds $_maxNameLength characters'),
-       assert(phone.length <= _maxPhoneLength, 'Phone exceeds $_maxPhoneLength characters'),
-       assert(!baqaya.isNaN && !baqaya.isInfinite, 'Invalid baqaya value');
+  })  : assert(name.trim().isNotEmpty, 'Customer name is required'),
+        assert(name.length <= _maxNameLength,
+            'Customer name exceeds $_maxNameLength characters'),
+        assert(phone.length <= _maxPhoneLength,
+            'Phone exceeds $_maxPhoneLength characters'),
+        assert(!baqaya.isNaN && !baqaya.isInfinite, 'Invalid baqaya value');
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -41,7 +43,12 @@ class Customer {
     );
   }
 
-  Customer copyWith({String? id, String? name, String? phone, double? baqaya, bool? isArchived}) =>
+  Customer copyWith(
+          {String? id,
+          String? name,
+          String? phone,
+          double? baqaya,
+          bool? isArchived}) =>
       Customer(
         id: id ?? this.id,
         name: name ?? this.name,

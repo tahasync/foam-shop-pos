@@ -40,7 +40,9 @@ class SubscriptionScreen extends ConsumerWidget {
                 // page instead of as depth.
                 BoxShadow(
                   color: Colors.black.withValues(
-                    alpha: Theme.of(context).brightness == Brightness.dark ? 0.36 : 0.18,
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.36
+                        : 0.18,
                   ),
                   blurRadius: 18,
                   spreadRadius: -6,
@@ -95,31 +97,40 @@ class SubscriptionScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.schedule_rounded, size: 10, color: Colors.white),
+                          const Icon(Icons.schedule_rounded,
+                              size: 10, color: Colors.white),
                           const SizedBox(width: 5),
                           Text(
                             isTrial ? trialChipLabel(subLabel) : 'Active',
-                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800),
                           ),
                         ]),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         isTrial ? 'Free Trial' : 'Digital Register',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 19),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 19),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         isTrial
                             ? 'Full access to every feature until your trial ends'
                             : 'Your shop is fully active on the Digital Register plan.',
-                        style: const TextStyle(color: Colors.white70, fontSize: 11.5, height: 1.4),
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 11.5, height: 1.4),
                       ),
                     ],
                   ),
@@ -139,16 +150,27 @@ class SubscriptionScreen extends ConsumerWidget {
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text('Digital Register \u2014 Monthly',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ac.ink)),
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: ac.ink)),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text('Rs 1,500',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ac.ink,
-                                fontFeatures: const [FontFeature.tabularFigures()])),
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: ac.ink,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures()
+                                ])),
                         Text('/mo',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ac.inkFaint)),
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: ac.inkFaint)),
                       ],
                     ),
                   ],
@@ -173,7 +195,8 @@ class SubscriptionScreen extends ConsumerWidget {
               icon: Icons.receipt_long_rounded,
               title: 'View all receipts',
               subtitle: 'Sale invoices, paid/due/void',
-              onTap: () => Navigator.push(context, slideUpRoute(const BillingScreen())),
+              onTap: () =>
+                  Navigator.push(context, slideUpRoute(const BillingScreen())),
             ),
           ),
         ],
@@ -182,8 +205,10 @@ class SubscriptionScreen extends ConsumerWidget {
   }
 
   Future<void> _upgradeNow() async {
-    final number = AppConstants.supportWhatsAppNumber.replaceAll(RegExp(r'[^\d]'), '');
-    final uri = Uri.parse('https://wa.me/$number?text=${Uri.encodeComponent('I want to upgrade my subscription')}');
+    final number =
+        AppConstants.supportWhatsAppNumber.replaceAll(RegExp(r'[^\d]'), '');
+    final uri = Uri.parse(
+        'https://wa.me/$number?text=${Uri.encodeComponent('I want to upgrade my subscription')}');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

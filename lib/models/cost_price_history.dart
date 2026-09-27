@@ -16,13 +16,13 @@ class CostPriceHistory {
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'product_id': productId,
-    'old_cost_price': oldCostPrice,
-    'new_cost_price': newCostPrice,
-    'date': date.toIso8601String(),
-    'note': note,
-  };
+        'id': id,
+        'product_id': productId,
+        'old_cost_price': oldCostPrice,
+        'new_cost_price': newCostPrice,
+        'date': date.toIso8601String(),
+        'note': note,
+      };
 
   factory CostPriceHistory.fromMap(Map<String, dynamic> map) {
     return CostPriceHistory(
@@ -30,7 +30,9 @@ class CostPriceHistory {
       productId: map['product_id'] as String? ?? '',
       oldCostPrice: ((map['old_cost_price'] as num?)?.toDouble() ?? 0),
       newCostPrice: ((map['new_cost_price'] as num?)?.toDouble() ?? 0),
-      date: map['date'] != null ? DateTime.parse(map['date'] as String) : DateTime.now(),
+      date: map['date'] != null
+          ? DateTime.parse(map['date'] as String)
+          : DateTime.now(),
       note: map['note'] as String? ?? '',
     );
   }

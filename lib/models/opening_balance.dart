@@ -17,11 +17,13 @@ class OpeningBalance {
 
   factory OpeningBalance.fromMap(Map<String, dynamic> map) {
     final date = map['date'];
-    if (date is! String) throw const FormatException('Invalid opening balance: missing date');
+    if (date is! String)
+      throw const FormatException('Invalid opening balance: missing date');
     return OpeningBalance(
       id: map['id'] as String? ?? '',
       date: DateTime.parse(date),
-      capitalAmount: ((map['capital_amount'] as num?)?.toDouble() ?? 0).clamp(0, 1e12),
+      capitalAmount:
+          ((map['capital_amount'] as num?)?.toDouble() ?? 0).clamp(0, 1e12),
     );
   }
 }

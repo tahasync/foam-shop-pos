@@ -10,7 +10,8 @@ import '../widgets/design_system/design_system.dart';
 class ShopOnboardingScreen extends ConsumerStatefulWidget {
   const ShopOnboardingScreen({super.key});
   @override
-  ConsumerState<ShopOnboardingScreen> createState() => _ShopOnboardingScreenState();
+  ConsumerState<ShopOnboardingScreen> createState() =>
+      _ShopOnboardingScreenState();
 }
 
 class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
@@ -47,8 +48,8 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
       final service = ref.read(firestoreServiceProvider);
       final user = ref.read(authServiceProvider).currentUser;
       final email = user?.email ?? '';
-      final isFounder = AppConstants.foundingAccountEmails.any(
-          (e) => e.toLowerCase() == email.toLowerCase());
+      final isFounder = AppConstants.foundingAccountEmails
+          .any((e) => e.toLowerCase() == email.toLowerCase());
       final now = DateTime.now();
       final profile = ShopProfile(
         shopName: _nameCtrl.text.trim(),
@@ -57,7 +58,8 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
         currency: _selectedCurrency,
         createdAt: now,
         subscriptionStatus: isFounder ? 'free_forever' : 'trial',
-        trialEndsAt: isFounder ? null : now.add(Duration(days: AppConstants.trialDays)),
+        trialEndsAt:
+            isFounder ? null : now.add(Duration(days: AppConstants.trialDays)),
         founderExempt: isFounder,
       );
       await service.setShopProfile(profile);
@@ -66,7 +68,9 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not save: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(
+            content: Text('Could not save: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -102,7 +106,8 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
                           ),
                           borderRadius: BorderRadius.circular(21),
                         ),
-                        child: const Icon(Icons.storefront_rounded, size: 30, color: Colors.white),
+                        child: const Icon(Icons.storefront_rounded,
+                            size: 30, color: Colors.white),
                       ),
                     ),
                   ),
@@ -115,7 +120,8 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
                   Text(
                     'Shown once after your first Google sign-in. Used across receipts, reports, and every screen.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: ac.inkSoft, height: 1.6),
+                    style:
+                        TextStyle(fontSize: 13, color: ac.inkSoft, height: 1.6),
                   ),
                   const SizedBox(height: 28),
                   SizedBox(
@@ -123,8 +129,14 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        AppField(label: 'Shop name *', controller: _nameCtrl, onChanged: (_) => setState(() {})),
-                        AppField(label: 'Location', controller: _locCtrl, onChanged: (_) => setState(() {})),
+                        AppField(
+                            label: 'Shop name *',
+                            controller: _nameCtrl,
+                            onChanged: (_) => setState(() {})),
+                        AppField(
+                            label: 'Location',
+                            controller: _locCtrl,
+                            onChanged: (_) => setState(() {})),
                         AppField(
                           label: 'Phone (optional)',
                           controller: _phoneCtrl,
@@ -137,16 +149,22 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.only(left: 2, bottom: 6),
+                                padding:
+                                    const EdgeInsets.only(left: 2, bottom: 6),
                                 child: Text(
                                   'CURRENCY',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ac.inkSoft, letterSpacing: 0.03),
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: ac.inkSoft,
+                                      letterSpacing: 0.03),
                                 ),
                               ),
                               SizedBox(
                                 width: double.infinity,
                                 child: GlassContainer(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14),
                                   radius: 13,
                                   level: AppGlassLevel.raised,
                                   gloss: false,
@@ -154,14 +172,20 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
                                     child: DropdownButton<String>(
                                       value: _selectedCurrency,
                                       isExpanded: true,
-                                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: ac.ink),
+                                      style: TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: ac.ink),
                                       dropdownColor: cs.surfaceContainerHigh,
-                                      items: _currencies.map((c) => DropdownMenuItem(
-                                        value: c,
-                                        child: Text(c),
-                                      )).toList(),
+                                      items: _currencies
+                                          .map((c) => DropdownMenuItem(
+                                                value: c,
+                                                child: Text(c),
+                                              ))
+                                          .toList(),
                                       onChanged: (v) {
-                                        if (v != null) setState(() => _selectedCurrency = v);
+                                        if (v != null)
+                                          setState(() => _selectedCurrency = v);
                                       },
                                     ),
                                   ),
@@ -178,7 +202,8 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
                         Center(
                           child: Text(
                             'Editable anytime in Settings',
-                            style: TextStyle(fontSize: 10.5, color: ac.inkFaint),
+                            style:
+                                TextStyle(fontSize: 10.5, color: ac.inkFaint),
                           ),
                         ),
                       ],
