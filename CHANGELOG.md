@@ -1,9 +1,9 @@
 # Changelog
 
-## v1.5.3 — September 2026
+## v1.5.4 — September 2026
 
 Two accounting bugs that misstated a shop's money, plus the CI gate that keeps
-source formatting from drifting again.
+source formatting from drifting.
 
 ### Fixed
 - **Overpayment was banked as revenue and sat in the till.** When a customer hands
@@ -28,16 +28,34 @@ source formatting from drifting again.
   product on two separate lines also had to aggregate them into a single stock
   adjustment, since Firestore cannot read a document twice in one transaction;
   without that, a duplicated line restored the wrong quantity.
+- **The format gate failed on 72 of 94 files on every single run.** The check
+  itself was wrong, not the code. `dart format` selects the code style from the
+  project's *language version*, which it reads from
+  `.dart_tool/package_config.json` — **not** from `pubspec.yaml` — and with no
+  such file it falls back to the SDK's default. CI ran the check before
+  `flutter pub get`, so there was no `package_config.json`, so the formatter
+  used the Dart 3.7 *tall* style while this project declares `sdk: ">=3.4.0"`
+  and therefore uses the *short* style. The two styles disagree on most files,
+  so the gate reported 72 files as misformatted when not one of them was — and
+  because the failure is a clean exit 1 with no other signal, it reads as "your
+  code is badly formatted" rather than "this step is misconfigured". A developer
+  running `flutter pub get` (the normal first step) never saw it, which is why
+  it passed locally and failed only in CI. `flutter pub get` is now an explicit
+  step ahead of the check, and the workflow comment records why the order
+  matters. Verified against a clean `git archive` of HEAD — the same check that
+  reported 72 changed now reports 0.
 
 ### Changed
-- **`lib/` and `test/` reformatted to the Dart 3.12 tall style** (94 files).
-  Formatting-only — no behavioural change.
+- **`lib/` and `test/` reformatted to the Dart tall style** (94 files), under
+  the project's declared language version (`sdk: ">=3.4.0"`, i.e. the short
+  style). Formatting-only — no behavioural change.
 
 ### Added
 - **CI now fails the build on an unformatted file.** A formatting slip would
   otherwise land silently and reformat the whole tree in a later commit, burying
-  real changes in noise. `.github/workflows/build.yml` runs
-  `dart format --output=none --set-exit-if-changed lib test`.
+  real changes in noise. The gate is `dart format --output=none
+  --set-exit-if-changed lib test`, and it runs only after an explicit
+  `flutter pub get` step — that ordering is load-bearing, see *Fixed* above.
 - **31 regression tests** pinning both bugs: `test/change_due_regression_test.dart`
   (25) covers overpayment across the dashboard, receipt, billing and badge paths,
   and `test/void_reversal_regression_test.dart` (6) covers the void reversal

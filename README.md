@@ -115,7 +115,7 @@ flutter run --dart-define-from-file=env/firebase_config.json
 
 ## Release process
 
-**Current version: `1.5.3` (`pubspec.yaml` → `version: 1.5.3+6`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+**Current version: `1.5.4` (`pubspec.yaml` → `version: 1.5.4+7`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 **See [RELEASE.md](RELEASE.md) for the full release workflow.** The supported way to produce a release APK locally is:
 
@@ -132,7 +132,7 @@ The script runs clean → deps → analyze → test → build in sequence. Any f
 
 ## CI/CD
 
-Every push to `main` runs analyze + tests + builds a debug APK. A `dart format` check runs alongside them, so an unformatted file fails CI rather than landing silently. Every `v*` tag builds a signed release APK, generates a changelog from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam-Shop-Pos-v<version>.apk`, where the version comes from the tag (falls back to the `version:` in `pubspec.yaml` for non-tag builds).
+Every push to `main` runs analyze + tests + builds a debug APK. A `dart format` check runs alongside them, so an unformatted file fails CI rather than landing silently. It runs **after** `flutter pub get` on purpose: `dart format` picks the code style from the language version recorded in `.dart_tool/package_config.json`, so running it before dependencies are resolved makes it reformat the whole tree in a different style and fail spuriously. Every `v*` tag builds a signed release APK, generates a changelog from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam-Shop-Pos-v<version>.apk`, where the version comes from the tag (falls back to the `version:` in `pubspec.yaml` for non-tag builds).
 
 ```bash
 git tag v1.5.0
