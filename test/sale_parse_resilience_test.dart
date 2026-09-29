@@ -39,8 +39,16 @@ Map<String, dynamic> _goodSale(String id) => {
 
 void main() {
   group('the real legacy document loads', () {
-    // Verbatim production shape: no line_items, no is_voided, no is_quote,
+    // The original production shape: no line_items, no is_voided, no is_quote,
     // no customer_name, no transaction_uuid, a bare `amount` and `qty_or_area`.
+    //
+    // This exact document (`users/sU1zuc66O4WMkmIYrmWDG6k3qsv2/sales/
+    // wmejhdrF7cP21GLT9IRB`) was backfilled to the modern schema on release, so
+    // no live data reaches this branch any more. It is kept as a fixture on
+    // purpose: the fallback is what protects any account whose data predates
+    // `line_items`, including data imported from a backup or a hand-edited
+    // document, so it must not rot just because production no longer exercises
+    // it.
     final legacy = {
       'id': 'wmejhdrF7cP21GLT9IRB',
       'date': '2026-07-20T02:53:46.213228',
@@ -64,6 +72,40 @@ void main() {
       expect(sale.lineItems.single.productId, '5ClFeDnPDJLBrWM3CLzf');
       expect(sale.lineItems.single.salePrice, 25000.0,
           reason: 'Rs 50,000 over 2 units is Rs 25,000 a unit.');
+    });
+
+    test('the backfilled modern form reads identically', () {
+      // The same sale after migration to `line_items`. Both documents must
+      // produce the same money, or the migration would have silently altered
+      // this shop's revenue or COGS.
+      final backfilled = {
+        'id': 'wmejhdrF7cP21GLT9IRB',
+        'date': '2026-07-20T02:53:46.213228',
+        'customer_id': '3yH6FvKtqBBAopNuaZDe',
+        'line_items': [
+          {
+            'product_id': '5ClFeDnPDJLBrWM3CLzf',
+            'name': 'foam',
+            'custom_length': null,
+            'custom_width': null,
+            'qty_or_area': 2.0,
+            'sale_price': 25000.0,
+            'line_discount_amount': 0.0,
+            'cost_price_at_sale': 0.0,
+          }
+        ],
+        'paid': 50000.0,
+        'amount': 50000.0,
+        'balance': 0.0,
+      };
+      final legacySale = Sale.fromMap(legacy);
+      final modernSale = Sale.fromMap(backfilled);
+      expect(modernSale.amount, legacySale.amount);
+      expect(modernSale.paid, legacySale.paid);
+      expect(modernSale.balance, legacySale.balance);
+      expect(modernSale.changeDue, legacySale.changeDue);
+      expect(modernSale.netCashReceived, legacySale.netCashReceived);
+      expect(modernSale.amount, 50000.0);
     });
 
     test('missing optional flags default to a live, non-quote sale', () {
