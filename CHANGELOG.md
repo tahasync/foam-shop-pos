@@ -1,6 +1,47 @@
 # Changelog
 
-## v1.5.4 Ã¢â‚¬â€ September 2026
+## v1.5.5 — 29 September 2026
+
+One fix that could cost a shop its whole sales history, and one that made the
+product picker look broken on a first run.
+
+### Fixed
+- **One malformed sale could hide a shop's entire sales history.** Reading a
+  sale hard-cast `id`, `date`, `customer_id` and `paid`, and derived a legacy
+  flat sale's unit price by dividing `amount` by `qty_or_area` with no guard.
+  Any document missing one of those fields, or carrying a zero quantity, threw
+  — and because the sales stream maps every document eagerly, the throw
+  propagated straight out of the provider. That one provider feeds the billing
+  list, the dashboard totals, Reports, CSV export and the Khata ledger, so a
+  single unreadable archived row put every one of those screens into its error
+  state: no sales, no revenue, no COGS, and nothing on screen to distinguish a
+  corrupt row from an outage. This was reachable in production, which holds a
+  live legacy flat-schema document with no `line_items` — the exact branch that
+  divides. Every field now degrades instead of throwing, and the stream parses
+  each document on its own so an unreadable row costs that row and nothing more,
+  logged with its id so it can be found and repaired. A missing `paid` falls
+  back to the bill the lines add up to rather than to zero, which would have
+  invented a phantom unpaid balance. Covered by
+  `test/sale_parse_resilience_test.dart` (19 tests), which pins the real
+  production document as a fixture.
+- **The sales screen showed no products until you typed.** The product list
+  returned nothing for an empty query and the list itself was hidden until the
+  search field had text in it, so on a first run the entire area between the
+  search box and the cart rendered blank. A new cashier saw no product to tap and
+  nothing saying to type; the screen read as broken rather than as waiting for
+  input, and the only way out was a guess. Browsing the catalogue is the default
+  now and search narrows it, so an empty query is the *widest* one. A query that
+  matches nothing also says so, instead of rendering an empty bordered box that
+  was indistinguishable from a still-loading list. The recent-products chips are
+  unchanged and still take that space when they exist, so the two never fight
+  for it. The query is trimmed before both filtering and highlighting, so a
+  spaces-only query behaves like an empty one instead of blanking the list.
+  Browsing is capped at 8 rows and says so, because the screen builds its rows
+  eagerly and rendering a large catalogue on every keystroke would make the
+  search field feel slow. Covered by
+  `test/product_list_empty_state_test.dart` (11 tests).
+
+## v1.5.4 — September 2026
 
 Two accounting bugs that misstated a shop's money, plus the CI gate that keeps
 source formatting from drifting.

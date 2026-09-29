@@ -164,25 +164,86 @@ class Sale {
           .map((li) => SaleLineItem.fromMap(li as Map<String, dynamic>))
           .toList();
     } else {
+      // Legacy flat document: one product, with the bill as a single `amount`.
+      //
+      // Both of these used to be hard casts, and one of them a bare division.
+      // A legacy document missing `amount`, or carrying `qty_or_area` of 0,
+      // therefore threw - and because the sales stream maps every document
+      // eagerly, a single such row took down the whole shop's billing list,
+      // dashboard, reports and khata. One malformed archived sale should cost
+      // that one sale, not the business.
+      final qty = (map['qty_or_area'] as num?)?.toDouble() ?? 0;
+      final flatAmount = (map['amount'] as num?)?.toDouble() ?? 0;
+      // `qty` of 0 would divide to Infinity/NaN and then trip the
+      // `qtyOrArea > 0` assert in the constructor. Fall back to 1 so the
+      // document still loads with its bill intact, which is what a shopkeeper
+      // reading the record needs; the line is flagged by its own quantity.
+      final effectiveQty = qty > 0 ? qty : 1.0;
       items = [
         SaleLineItem(
-          productId: map['product_id'] as String,
+          productId: (map['product_id'] as String?)?.trim().isNotEmpty == true
+              ? (map['product_id'] as String).trim()
+              : 'unknown',
           customLength: (map['custom_length'] as num?)?.toDouble(),
           customWidth: (map['custom_width'] as num?)?.toDouble(),
-          qtyOrArea: (map['qty_or_area'] as num).toDouble(),
+          qtyOrArea: effectiveQty,
+          // A legacy row with no `sale_price` recovers it from the bill. If the
+          // bill is missing too, the price is 0 rather than a crash.
           salePrice: (map['sale_price'] as num?)?.toDouble() ??
-              (map['amount'] as num).toDouble() /
-                  (map['qty_or_area'] as num).toDouble(),
+              (flatAmount / effectiveQty),
         ),
       ];
     }
+    // `id` and `date` were hard casts too. A document missing either threw, and
+    // because the sales stream is eager, that removed the entire shop's sales
+    // from the billing list, dashboard, reports and khata over one bad row.
+    // Both now degrade instead: an unknown id, and an epoch date that sorts to
+    // the bottom of a list rather than taking the screen down with it.
+    final rawId = map['id'];
+    final id = rawId is String && rawId.trim().isNotEmpty
+        ? rawId.trim()
+        : 'unknown-sale';
+    DateTime date;
+    // Deliberately no `Timestamp` branch: this model stays free of any
+    // cloud_firestore import so it can be unit-tested without Firebase. The
+    // app writes ISO-8601 strings; a raw Firestore timestamp here would be a
+    // schema this model has never produced, and the epoch fallback keeps the
+    // row visible rather than crashing the stream.
+    final rawDate = map['date'];
+    if (rawDate is String) {
+      date =
+          DateTime.tryParse(rawDate) ?? DateTime.fromMillisecondsSinceEpoch(0);
+    } else if (rawDate is int) {
+      date = DateTime.fromMillisecondsSinceEpoch(rawDate);
+    } else {
+      date = DateTime.fromMillisecondsSinceEpoch(0);
+    }
+    // `customer_id` was a hard cast, the same single-row-take-down-the-stream
+    // risk. A walk-in sale legitimately has no customer, and an archived row
+    // missing the field must not blank the shop's sales.
+    final rawCustomerId = map['customer_id'];
+    final customerId = rawCustomerId is String && rawCustomerId.isNotEmpty
+        ? rawCustomerId
+        : '';
+
+    // `paid` was a hard cast too. Fall back to the bill the lines add up to,
+    // which is what the record was worth, rather than throwing the stream away.
+    final lineSubtotal = items.fold(0.0, (s, li) => s + li.lineTotal);
+    final computedAmount = lineSubtotal +
+        ((map['delivery_charge'] as num?)?.toDouble() ?? 0) +
+        ((map['cutting_charge'] as num?)?.toDouble() ?? 0) -
+        ((map['discount_amount'] as num?)?.toDouble() ??
+            lineSubtotal *
+                ((map['discount_percent'] as num?)?.toDouble() ?? 0) /
+                100);
+
     return Sale(
-      id: map['id'] as String,
-      date: DateTime.parse(map['date'] as String),
-      customerId: map['customer_id'] as String,
+      id: id,
+      date: date,
+      customerId: customerId,
       customerName: map['customer_name'] as String?,
       lineItems: items,
-      paid: (map['paid'] as num).toDouble(),
+      paid: (map['paid'] as num?)?.toDouble() ?? computedAmount,
       discountAmount: (map['discount_amount'] as num?)?.toDouble(),
       discountPercent: (map['discount_percent'] as num?)?.toDouble(),
       deliveryCharge: (map['delivery_charge'] as num?)?.toDouble(),

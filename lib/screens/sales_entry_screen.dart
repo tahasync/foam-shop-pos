@@ -774,16 +774,62 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     }
   }
 
+  /// Products to list under the search field for the current query.
+  ///
+  /// An empty query used to return an empty list, so the whole area below the
+  /// field rendered blank on a first run: a new cashier saw no product to tap
+  /// and nothing telling them to type. It read as a broken screen, and the only
+  /// clue was a search field that was easy to miss.
+  ///
+  /// Browsing the catalogue is now the default and search narrows it, so the
+  /// empty query is the *widest* one rather than an empty one.
   List<Product> _filteredProducts(List<Product> products) {
-    final q = _searchCtrl.text.toLowerCase();
-    if (q.isEmpty) return [];
+    final q = _searchCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return products;
     return products.where((p) => p.name.toLowerCase().contains(q)).toList();
   }
 
+  /// The catalogue rows to actually build, capped while browsing.
+  ///
+  /// This whole screen is a `ListView` built from a `children:` list, so every
+  /// row is constructed eagerly on each frame rather than lazily as it scrolls
+  /// into view. That was harmless while the list was bounded by a typed query,
+  /// but showing the entire catalogue by default turns a 200-product shop into
+  /// 200 rows rebuilt on every keystroke and every cart change - the search
+  /// field would feel slow precisely as you type into it.
+  ///
+  /// So an untyped browse is capped and says how much is hidden, pointing at
+  /// the narrowing that reveals it. A real query is never truncated: the user
+  /// asked for those rows by name, and hiding the last match would be the same
+  /// "where did my product go" problem all over again.
+  static const int kBrowseRowCap = 8;
+
+  List<Product> _visibleProducts(List<Product> products) {
+    final matches = _filteredProducts(products);
+    if (_searchCtrl.text.trim().isNotEmpty) return matches;
+    return matches.length <= kBrowseRowCap
+        ? matches
+        : matches.take(kBrowseRowCap).toList();
+  }
+
+  /// True when the result list should be open.
+  ///
+  /// While a query is typed the list is obviously expected. With no query it is
+  /// shown only when the recent-products chips are absent, because those chips
+  /// already occupy the same space; showing both would leave the chips buried
+  /// under a catalogue list.
+  ///
+  /// The state is passed in rather than read from the provider: this is called
+  /// during `build`, and `ref.read` there would not subscribe to a change, so
+  /// a chip appearing later would not reopen the list until some unrelated
+  /// rebuild.
+  bool _showsProductList(SalesState salesState) =>
+      _searchCtrl.text.trim().isNotEmpty || salesState.recentProductIds.isEmpty;
+
   Widget _buildSearchResult(Product p, BuildContext context, ColorScheme cs,
       AppColors ac, String csym) {
-    final q = _searchCtrl.text.toLowerCase();
-    final idx = p.name.toLowerCase().indexOf(q);
+    final q = _searchCtrl.text.trim().toLowerCase();
+    final idx = q.isEmpty ? -1 : p.name.toLowerCase().indexOf(q);
     final outOfStock = p.currentStock <= 0;
     return InkWell(
       onTap: () {
@@ -1326,76 +1372,116 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                   error: (e, _) => Center(
                       child: Text('Error: $e',
                           style: TextStyle(color: cs.onSurface))),
-                  data: (products) => Column(children: [
-                    // The clear button is now part of AppSearchField. The old
-                    // hand-rolled Positioned overlay was painted on top of the
-                    // glass pill and was missing from the field semantics.
-                    AppSearchField(
-                      controller: _searchCtrl,
-                      hintText: 'Search products\u2026',
-                      onChanged: (_) => setState(() {}),
-                      onClear: () => setState(() {}),
-                    ),
-                    if (_searchCtrl.text.isNotEmpty)
-                      Container(
-                        margin: const EdgeInsets.only(top: 8),
-                        decoration: BoxDecoration(
-                          color: ac.glassFill,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: ac.glassBorder),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 16,
-                                offset: const Offset(0, 8)),
-                          ],
-                        ),
-                        child: Column(children: [
-                          for (final p in _filteredProducts(products))
-                            _buildSearchResult(p, context, cs, ac, csym),
-                        ]),
+                  data: (products) {
+                    final visible = _visibleProducts(products);
+                    final total = _filteredProducts(products).length;
+                    final typed = _searchCtrl.text.trim();
+                    return Column(children: [
+                      // The clear button is now part of AppSearchField. The old
+                      // hand-rolled Positioned overlay was painted on top of the
+                      // glass pill and was missing from the field semantics.
+                      AppSearchField(
+                        controller: _searchCtrl,
+                        hintText: 'Search products\u2026',
+                        onChanged: (_) => setState(() {}),
+                        onClear: () => setState(() {}),
                       ),
-                    if (_searchCtrl.text.isEmpty &&
-                        salesState.recentProductIds.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: Wrap(
-                          spacing: 7,
-                          runSpacing: 7,
-                          children: salesState.recentProductIds.map((id) {
-                            final p =
-                                products.where((x) => x.id == id).firstOrNull;
-                            if (p == null) return const SizedBox.shrink();
-                            return GestureDetector(
-                              onTap: () {
-                                if (p.currentStock <= 0) return;
-                                ref.read(salesProvider.notifier).addToCart(p);
-                              },
-                              child: Container(
+                      if (_showsProductList(salesState))
+                        Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          decoration: BoxDecoration(
+                            color: ac.glassFill,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: ac.glassBorder),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8)),
+                            ],
+                          ),
+                          child: Column(children: [
+                            for (final p in visible)
+                              _buildSearchResult(p, context, cs, ac, csym),
+                            // A query that matches nothing used to render an empty
+                            // bordered box with no explanation, so a typo looked
+                            // identical to a still-loading list. Say which of the
+                            // two it is, and point at the way out.
+                            if (visible.isEmpty)
+                              Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 11, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: ac.inventoryTint,
-                                  borderRadius: BorderRadius.circular(999),
+                                    horizontal: 14, vertical: 18),
+                                child: Text(
+                                  'No product matches "$typed".',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: cs.onSurfaceVariant,
+                                  ),
                                 ),
-                                child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.access_time_rounded,
-                                          size: 10, color: ac.inventoryFg),
-                                      const SizedBox(width: 4),
-                                      Text(p.name,
-                                          style: TextStyle(
-                                              fontSize: 10.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: ac.inventoryFg)),
-                                    ]),
                               ),
-                            );
-                          }).toList(),
+                            // Never truncate a query the user typed, but DO say
+                            // so when browsing is capped, rather than letting a
+                            // full catalogue silently stop at 8 rows and look
+                            // like the shop only stocks 8 products.
+                            if (total > visible.length)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                child: Text(
+                                  'Showing ${visible.length} of $total products \u00b7 search to narrow',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                          ]),
                         ),
-                      ),
-                  ]),
+                      if (typed.isEmpty &&
+                          salesState.recentProductIds.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Wrap(
+                            spacing: 7,
+                            runSpacing: 7,
+                            children: salesState.recentProductIds.map((id) {
+                              final p =
+                                  products.where((x) => x.id == id).firstOrNull;
+                              if (p == null) return const SizedBox.shrink();
+                              return GestureDetector(
+                                onTap: () {
+                                  if (p.currentStock <= 0) return;
+                                  ref.read(salesProvider.notifier).addToCart(p);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 11, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: ac.inventoryTint,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.access_time_rounded,
+                                            size: 10, color: ac.inventoryFg),
+                                        const SizedBox(width: 4),
+                                        Text(p.name,
+                                            style: TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: ac.inventoryFg)),
+                                      ]),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                    ]);
+                  },
                 ),
                 if (!_hintDismissed)
                   Column(children: [
