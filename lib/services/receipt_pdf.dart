@@ -16,6 +16,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../utils/currency.dart';
+import '../utils/money.dart';
 
 /// One line of the itemised table.
 class ReceiptLine {
@@ -23,11 +24,22 @@ class ReceiptLine {
   final String qty;
   final String unitPrice;
   final String total;
+
+  /// The numeric line total, before it was formatted for display.
+  ///
+  /// Nullable, and deliberately so: it exists only so [buildReceiptData] can
+  /// prove the printed lines add up to the printed total. Tests and the
+  /// document-preview fixtures construct `ReceiptLine`s by hand and have no
+  /// reason to carry a second copy of a number they already formatted, so
+  /// omitting it simply disables the reconciliation rather than failing.
+  final double? totalValue;
+
   const ReceiptLine({
     required this.name,
     required this.qty,
     required this.unitPrice,
     required this.total,
+    this.totalValue,
   });
 }
 
@@ -56,6 +68,29 @@ class ReceiptData {
   /// knows how much to give back.
   final String change;
 
+  /// How far the printed line items miss the printed total, in whole currency
+  /// units, after every figure is rounded the way the customer sees it.
+  ///
+  /// Zero in the normal case. Non-zero only when the sale carries fractional
+  /// prices or a fractional cut area, where rounding each line independently
+  /// and rounding the total independently can disagree by a rupee or two.
+  ///
+  /// This is printed on the receipt as an explicit line rather than being
+  /// quietly absorbed into the total. Absorbing it would be the tempting fix and
+  /// the wrong one: the customer would be charged a number that is not the sum
+  /// of the items they can see, and a shopkeeper auditing a day's receipts
+  /// would have no way to tell a rounding wobble from a real shortfall.
+  final int roundingAdjustment;
+
+  /// [roundingAdjustment] already rendered for the receipt, sign and currency
+  /// symbol included. Empty when there is nothing to reconcile.
+  ///
+  /// Built in `buildReceiptData` rather than in the layout, because that is
+  /// the only scope that knows which currency the shop trades in. Keeping the
+  /// two fields together means a caller cannot print a number in the wrong
+  /// currency by formatting it themselves.
+  final String roundingLabel;
+
   /// The share sheet, print job and on-screen preview all render this one model,
   /// so a "Change" row cannot appear on one and be missing from another.
   const ReceiptData({
@@ -70,6 +105,8 @@ class ReceiptData {
     required this.isDue,
     required this.dueValue,
     this.change = '',
+    this.roundingAdjustment = 0,
+    this.roundingLabel = '',
     required this.footer,
   });
 
@@ -321,17 +358,44 @@ Map<int, pw.TableColumnWidth> receiptColumnWidths({
   // The item name is the elastic column: it is free text that already elides
   // over two lines, whereas a truncated *number* is a wrong number. So the
   // money columns get exactly what they measured and the name takes the
-  // remainder, down to a floor that keeps the column usable.
-  const minItemWidth = 46.0;
+  // remainder.
+  //
+  // The floor is 0.0, not a "usable minimum". A floor of 46pt made the four
+  // requested widths sum to MORE than contentWidth whenever the figures were
+  // wide, and pw.Table resolves an over-committed row by rescaling EVERY flex
+  // column proportionally - including the money columns, which then fall below
+  // the width they were just measured to need. Combined with `TextOverflow.clip`
+  // in `td`, a 13-digit total was cut mid-number with no ellipsis and no error.
+  // Letting the name shrink to zero means the money columns, which are fixed,
+  // keep exactly the width their widest value requires. The name is the right
+  // thing to sacrifice: it is the only cell that can be ellipsized legibly.
+  const minItemWidth = 0.0;
   final itemWidth = math.max(
       minItemWidth, contentWidth - (qtyWidth + priceWidth + totalWidth));
 
   return {
+    // Only the name flexes. The money columns are FIXED, so no rescale can ever
+    // shrink a figure below the width it needs.
     0: pw.FlexColumnWidth(itemWidth),
-    1: pw.FlexColumnWidth(qtyWidth),
-    2: pw.FlexColumnWidth(priceWidth),
-    3: pw.FlexColumnWidth(totalWidth),
+    1: pw.FixedColumnWidth(qtyWidth),
+    2: pw.FixedColumnWidth(priceWidth),
+    3: pw.FixedColumnWidth(totalWidth),
   };
+}
+
+/// Truncates [s] to [max] characters, appending a horizontal ellipsis (U+2026).
+///
+/// The `pdf` package has no ellipsis overflow mode - its `TextOverflow` is only
+/// {clip, visible, span} - so `maxLines` + clip silently hard-cuts at the column
+/// edge. On the 80mm roll a 58-character product name rendered about 15
+/// characters and dropped 43 with no marker, which is indistinguishable from a
+/// different, cheaper product on the customer's copy of the receipt.
+///
+/// Truncating in Dart is the only place the ellipsis can be introduced.
+String _ellipsize(String s, int max) {
+  if (s.length <= max) return s;
+  // Leave room for the ellipsis itself.
+  return '${s.substring(0, max - 1).trimRight()}\u2026';
 }
 
 pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
@@ -355,9 +419,13 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
           pw.Text(label, style: labelStyle(p.inkFaint)),
           pw.SizedBox(height: 2.5),
           pw.Text(
-            value,
+            // Ellipsized in Dart: see [_ellipsize]. A long shop or customer name
+            // in a maxLines:1 cell was hard-cut at the column edge with no
+            // marker, so the receipt simply ended mid-word.
+            _ellipsize(value, 30),
             textAlign: end ? pw.TextAlign.right : pw.TextAlign.left,
             maxLines: 1,
+            overflow: pw.TextOverflow.clip,
             style: pw.TextStyle(
               fontSize: 9.5,
               fontWeight: pw.FontWeight.bold,
@@ -433,7 +501,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
   pw.TableRow itemRow(ReceiptLine i, int index) => pw.TableRow(
         decoration: index.isOdd ? pw.BoxDecoration(color: p.tintRowBg) : null,
         children: [
-          td(i.name, end: false, bold: true, maxLines: 2),
+          td(_ellipsize(i.name, 34), end: false, bold: true, maxLines: 2),
           td(i.qty, center: true),
           td(stripCurrencySymbol(i.unitPrice)),
           td(stripCurrencySymbol(i.total), bold: true),
@@ -446,20 +514,36 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
         child: pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text(
-              label,
-              style: pw.TextStyle(
-                fontSize: grand ? 11 : 9.5,
-                fontWeight: grand ? pw.FontWeight.bold : pw.FontWeight.normal,
-                color: grand ? p.brand : p.inkSoft,
+            // Both children are flexed. `pdf` lays out NON-flex Row children with
+            // no maxWidth at all and their default TextOverflow is `visible`, so
+            // a long label plus a large figure used to add up to more than the
+            // card's width and the value was drawn off the right edge of the
+            // 80mm roll with no error. Expanded on the label absorbs the
+            // slack; the value keeps its natural size in a Flexible, so a big
+            // "Change Returned" figure can still shrink its font rather than
+            // disappear off the paper.
+            pw.Expanded(
+              child: pw.Text(
+                label,
+                style: pw.TextStyle(
+                  fontSize: grand ? 11 : 9.5,
+                  fontWeight: grand ? pw.FontWeight.bold : pw.FontWeight.normal,
+                  color: grand ? p.brand : p.inkSoft,
+                ),
               ),
             ),
-            pw.Text(
-              value,
-              style: pw.TextStyle(
-                fontSize: grand ? 11 : 9.5,
-                fontWeight: grand ? pw.FontWeight.bold : pw.FontWeight.bold,
-                color: grand ? p.brand : p.ink,
+            pw.SizedBox(width: 6),
+            pw.Flexible(
+              flex: 2,
+              child: pw.Text(
+                value,
+                textAlign: pw.TextAlign.right,
+                overflow: pw.TextOverflow.clip,
+                style: pw.TextStyle(
+                  fontSize: grand ? 11 : 9.5,
+                  fontWeight: pw.FontWeight.bold,
+                  color: grand ? p.brand : p.ink,
+                ),
               ),
             ),
           ],
@@ -591,8 +675,12 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
                   pw.Text('CUSTOMER', style: labelStyle(p.inkFaint)),
                   pw.SizedBox(height: 3),
                   pw.Text(
-                    d.customerName,
+                    // See [_ellipsize]: a long customer name was hard-cut with
+                    // no marker, leaving the customer's own name unreadable on
+                    // the receipt they keep.
+                    _ellipsize(d.customerName, 28),
                     maxLines: 1,
+                    overflow: pw.TextOverflow.clip,
                     style: pw.TextStyle(
                       fontSize: 11.5,
                       fontWeight: pw.FontWeight.bold,
@@ -685,7 +773,20 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.stretch,
           children: [
-            totalRow('Subtotal', d.total),
+            // Labelled "Total", not "Subtotal". The value carried in `d.total`
+            // is the sale's grand total - it already has the bill discount,
+            // delivery and cutting charges netted out (see Sale.amount). Printing
+            // the grand total under the word "Subtotal" told the customer the
+            // items they could see were not the whole bill, which is both wrong
+            // and unauditable. A real subtotal-plus-discount breakdown needs the
+            // components passed in separately, so it is not faked here.
+            totalRow('Total', d.total),
+
+            // Only appears when the printed line items genuinely miss the
+            // printed total. Carries its own sign, so the customer can verify
+            // the arithmetic: items + adjustment = total.
+            if (d.roundingLabel.isNotEmpty)
+              totalRow('Rounding adjustment', d.roundingLabel),
             totalRow('Paid', d.paid),
             pw.SizedBox(height: 6),
             pw.Container(
@@ -930,7 +1031,7 @@ ReceiptData buildReceiptData({
 }) {
   final fmt = NumberFormat('#,##0');
   final csym = currencySymbolFromCode(currencyCode);
-  String money(double v) => '$csym ${fmt.format(v.toInt())}';
+  String money(double v) => '$csym ${fmt.format(roundMoney(v))}';
 
   final isDue = remainingBalance > 0;
   // Overpayment is change the shop hands back, not a negative balance. The
@@ -940,6 +1041,25 @@ ReceiptData buildReceiptData({
   // hand in front of them. Floored at 0 so a rounding wobble never prints
   // "Change Rs 0".
   final change = (paidAmount - totalAmount).clamp(0.0, double.infinity);
+
+  // Does the printed receipt actually add up?
+  //
+  // Each figure the customer reads is a whole unit, but they are rounded
+  // independently: a line, and the total it rolls up into. With fractional
+  // prices or a fractional cut area those roundings can disagree, and the
+  // receipt then shows lines that do not sum to the total printed beneath them.
+  //
+  // The difference is measured and reported rather than hidden, so the printed
+  // arithmetic stays verifiable by the person holding the receipt. Callers that
+  // do not supply [ReceiptLine.totalValue] (hand-built fixtures, the document
+  // preview) have nothing to reconcile against and report zero.
+  var roundingAdjustment = 0;
+  if (items.isNotEmpty && items.every((i) => i.totalValue != null)) {
+    final linesSum =
+        items.fold<int>(0, (sum, i) => sum + roundMoney(i.totalValue));
+    roundingAdjustment = roundMoney(totalAmount) - linesSum;
+  }
+
   return ReceiptData(
     storeName: storeName,
     date: date,
@@ -956,6 +1076,11 @@ ReceiptData buildReceiptData({
     // Overpayment is change, not a negative balance, so never print a minus.
     dueValue: isDue ? money(remainingBalance) : money(0),
     change: change > 0 ? money(change) : '',
+    roundingAdjustment: roundingAdjustment,
+    roundingLabel: roundingAdjustment == 0
+        ? ''
+        : '${roundingAdjustment > 0 ? '+' : '−'}'
+            '$csym ${fmt.format(roundingAdjustment.abs())}',
     footer: location.isNotEmpty ? '$storeName \u00b7 $location' : storeName,
   );
 }

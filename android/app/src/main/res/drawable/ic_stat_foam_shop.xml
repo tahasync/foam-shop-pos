@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android status-bar (small) notification icon for Foam Shop POS.
+
+  Rules Android enforces on a notification small icon, and how each is met here:
+
+  1. It must be a 24x24dp alpha-only silhouette. Any RGB channel is dropped by
+     the system and the icon is drawn as a solid mask, so a full-colour or
+     multi-hue logo here collapses to a flat, unreadable blob. This asset is
+     therefore drawn with a single opaque white on a fully transparent
+     background - no gradients, no brand fills, no adaptive-icon layers.
+  2. It must NOT be the launcher icon. @mipmap/ic_launcher is an adaptive icon
+     with a brand-coloured background layer; used as a small icon the system
+     masks the opaque square, producing the "black square" symptom. This asset
+     is a standalone vector with no background layer at all.
+  3. Keep the artwork inside the 18dp safe circle (a 24dp viewport minus ~3dp
+     margin per side) so nothing is clipped by the status-bar icon mask.
+  4. The foreground is a receipt sheet with a header bar and three ruled lines,
+     which stays legible at 24dp, at every density, and in both light and dark
+     status bars (Android re-tints the mask to the bar's foreground colour).
+
+  The blue/purple brand identity is preserved by the notification *accent*
+  colour (see @color/notification_accent) and by the channel, not by this icon -
+  that is the correct place for brand colour in a status-bar icon.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!--
+      No android:tint here on purpose. For a notification small icon the system
+      always re-masks the alpha channel to its own status-bar foreground colour,
+      and a theme-attribute tint (?android:attr/colorControlNormal) is not
+      resolvable in the notification context - it would resolve against a theme
+      that may not carry the attribute and fall back to a null tint, which some
+      OEM launchers render as a fully transparent icon. The flat white
+      foreground below is the correct source of truth.
+    -->
+
+    <!-- Receipt sheet: outlined body with a torn bottom edge. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M5,2.75 L19,2.75 L19,21.25 L16.25,19.6 L14.2,21.25 L12,19.6 L9.8,21.25 L7.75,19.6 L5,21.25 Z" />
+
+    <!-- Knock-out rule lines so the sheet reads as a receipt, not a blank card. -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M8,7.2 L16,7.2 L16,8.6 L8,8.6 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M8,10.6 L16,10.6 L16,12 L8,12 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M8,14 L13,14 L13,15.4 L8,15.4 Z" />
+</vector>

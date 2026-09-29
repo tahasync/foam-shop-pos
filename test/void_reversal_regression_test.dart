@@ -157,10 +157,52 @@ void main() {
       // The old body wrote the sale document and *then* read each product
       // inside the restock loop, so Firestore rejected the transaction with
       // FAILED_PRECONDITION and voiding never worked.
-      final firstWrite = voidSaleBody.indexWhere((l) =>
+      //
+      // Every read in the transaction must precede every write. That is the rule
+      // Firestore enforces, and breaking it is what made every void fail with
+      // FAILED_PRECONDITION.
+      //
+      // The whole body is analysed, comments excluded. Earlier attempts scoped
+      // the window - by cutting at the first `return;`, then by anchoring on
+      // `Future.wait` - and both were wrong in the same way: they shrank the
+      // region until the offending ordering fell outside it, so the test passed
+      // on exactly the code it exists to reject. The `Future.wait` anchor is
+      // particularly treacherous because the read sits on a *continuation* line,
+      // so starting there also drops every write above it.
+      //
+      // The isQuote guard that was added later is legal precisely because it
+      // writes and returns without reading afterwards. Rather than special-case
+      // it by scanning for `return;` - which is how the previous version went
+      // wrong - the ordering rule is checked on the region AFTER that guard,
+      // found by its own distinctive text.
+      final guardAt =
+          voidSaleBody.indexWhere((l) => l.contains('if (sale.isQuote)'));
+
+      final analysedFrom = guardAt == -1
+          ? 0
+          : voidSaleBody.indexWhere(
+              (l) =>
+                  l.contains('restockByProduct') &&
+                  !l.trimLeft().startsWith('//'),
+              guardAt,
+            );
+
+      expect(
+        analysedFrom,
+        isNot(-1),
+        reason: 'voidSale must aggregate the restock quantities after the '
+            'isQuote guard; that aggregation starts the path under test.',
+      );
+
+      final restockPath = voidSaleBody
+          .sublist(analysedFrom)
+          .where((l) => !l.trimLeft().startsWith('//'))
+          .toList();
+
+      final firstWrite = restockPath.indexWhere((l) =>
           l.contains('transaction.update') || l.contains('transaction.set'));
       final lastRead =
-          voidSaleBody.lastIndexWhere((l) => l.contains('transaction.get'));
+          restockPath.lastIndexWhere((l) => l.contains('transaction.get'));
 
       expect(firstWrite, isNot(-1), reason: 'no write found in voidSale');
       expect(lastRead, isNot(-1), reason: 'no read found in voidSale');

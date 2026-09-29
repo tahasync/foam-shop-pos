@@ -16,6 +16,7 @@ import '../theme/app_theme.dart';
 import '../utils/animations.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
+import '../utils/money.dart';
 
 const _filters = ['All', 'Paid', 'Due', 'Void'];
 
@@ -134,11 +135,11 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     // "Bal -1,000", a figure that reads as a negative debt rather than Rs 1,000
     // leaving the till.
     final settledNote = sale.hasChange
-        ? 'Change ${fmt.format(sale.changeDue.toInt())}'
-        : 'Bal ${fmt.format(sale.balance.toInt())}';
+        ? 'Change ${fmt.format(roundMoney(sale.changeDue))}'
+        : 'Bal ${fmt.format(roundMoney(sale.balance))}';
     final sub = voided
         ? '$dateStr \u00b7 Voided'
-        : '$dateStr \u00b7 Paid ${fmt.format(sale.paid.toInt())} \u00b7 $settledNote';
+        : '$dateStr \u00b7 Paid ${fmt.format(roundMoney(sale.paid))} \u00b7 $settledNote';
 
     Widget trailing;
     if (voided) {
@@ -176,7 +177,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('$csym ${fmt.format(sale.amount.toInt())}',
+                    Text('$csym ${fmt.format(roundMoney(sale.amount))}',
                         style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -219,7 +220,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                   color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(height: 2),
           Text(
-              '$csym ${fmt.format(sale.amount.toInt())} \u00b7 ${DateFormat('d MMM y').format(sale.date)}',
+              '$csym ${fmt.format(roundMoney(sale.amount))} \u00b7 ${DateFormat('d MMM y').format(sale.date)}',
               style: TextStyle(
                   fontSize: 11, color: AppColors.of(context).inkFaint)),
           const SizedBox(height: 8),
@@ -239,7 +240,12 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
               icon: Icons.visibility_rounded,
               title: 'Receipt preview',
               onTap: () => Navigator.pop(ctx, _ReceiptAction.preview)),
-          if (!sale.isVoided)
+          // A quote is not voidable through this menu. Voiding a quote is
+          // legitimate (it retires a stale estimate) but it does not return
+          // stock, and offering "Void sale" on a document that moves no
+          // inventory invites the question "where did the stock go?".
+          // AccountingService.canCancelSale() encodes the same rule.
+          if (!sale.isVoided && !sale.isQuote)
             SheetOption(
                 icon: Icons.close_rounded,
                 title: 'Void sale',
@@ -360,8 +366,10 @@ Future<Uint8List?> _buildPdfBytes(
         qty: li.qtyOrArea == li.qtyOrArea.roundToDouble()
             ? li.qtyOrArea.toInt().toString()
             : li.qtyOrArea.toStringAsFixed(1),
-        unitPrice: fmt.format(li.salePrice.toInt()),
-        total: fmt.format(li.lineTotal.toInt()),
+        unitPrice: fmt.format(roundMoney(li.salePrice)),
+        total: fmt.format(roundMoney(li.lineTotal)),
+        // Carried so the receipt can prove its lines add up to its total.
+        totalValue: li.lineTotal,
       );
     }).toList();
     final data = buildReceiptData(
@@ -464,8 +472,11 @@ class ReceiptPreviewScreen extends ConsumerWidget {
             qty: li.qtyOrArea == li.qtyOrArea.roundToDouble()
                 ? li.qtyOrArea.toInt().toString()
                 : li.qtyOrArea.toStringAsFixed(1),
-            unitPrice: fmt.format(li.salePrice.toInt()),
-            total: fmt.format(li.lineTotal.toInt()),
+            unitPrice: fmt.format(roundMoney(li.salePrice)),
+            total: fmt.format(roundMoney(li.lineTotal)),
+            // Carried so the preview proves its lines add up to its total, the
+            // same way the printed and shared receipt does.
+            totalValue: li.lineTotal,
           ),
       ],
       totalAmount: sale.amount,

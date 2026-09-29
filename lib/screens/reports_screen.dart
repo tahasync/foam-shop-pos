@@ -21,6 +21,7 @@ import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/design_system/design_system.dart';
 import 'export_screen.dart';
+import '../utils/money.dart';
 
 enum ReportsPeriod { daily, weekly, monthly, yearly }
 
@@ -168,7 +169,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       endDate: range.end,
     );
 
-    String _fmt(double v) => '$csym ${NumberFormat('#,##0').format(v.toInt())}';
+    String _fmt(double v) =>
+        '$csym ${NumberFormat('#,##0').format(roundMoney(v))}';
 
     return FullScreenOverlay(
       title: 'Reports',
@@ -495,7 +497,7 @@ class _RevenueBarChart extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Peak ${buckets[peakIndex].label} \u00b7 $csym ${fmt.format(maxV.toInt())}',
+                  'Peak ${buckets[peakIndex].label} \u00b7 $csym ${fmt.format(roundMoney(maxV))}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -512,7 +514,7 @@ class _RevenueBarChart extends StatelessWidget {
             height: 168,
             child: Semantics(
               label:
-                  'Revenue trend chart. ${buckets.length} periods. Highest is ${buckets[peakIndex].label} at $csym ${fmt.format(maxV.toInt())}.',
+                  'Revenue trend chart. ${buckets.length} periods. Highest is ${buckets[peakIndex].label} at $csym ${fmt.format(roundMoney(maxV))}.',
               child: BarChart(
                 BarChartData(
                   maxY: maxY,
@@ -628,7 +630,7 @@ class _RevenueBarChart extends StatelessWidget {
                         final i = group.x.toInt();
                         if (i < 0 || i >= buckets.length) return null;
                         return BarTooltipItem(
-                          '${buckets[i].label}\n$csym ${fmt.format(rod.toY.toInt())}',
+                          '${buckets[i].label}\n$csym ${fmt.format(roundMoney(rod.toY))}',
                           TextStyle(
                             color: Colors.white,
                             fontSize: 11,

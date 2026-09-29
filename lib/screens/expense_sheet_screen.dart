@@ -8,6 +8,7 @@ import '../providers/shop_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
+import '../utils/money.dart';
 
 const _categories = [
   'Cutting Labor',
@@ -102,7 +103,7 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w700,
                                   color: ac.inkFaint)),
-                          Text('Total: $csym ${fmt.format(total.toInt())}',
+                          Text('Total: $csym ${fmt.format(roundMoney(total))}',
                               style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
@@ -289,6 +290,18 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
     String cat = _categories[0];
     DateTime date = DateTime.now();
 
+    // In-flight guard for the save.
+    //
+    // This was the ONLY save flow in the app without one - shop onboarding,
+    // account settings, inventory and account deletion all disable their button
+    // while writing. Here the sheet stayed open and the button stayed live
+    // across the `await` on addExpense, so two taps inside the network window
+    // created two Expense records with different generated ids. Expenses feed
+    // the accounting summary, so a double-tap silently under-reported net
+    // profit by the full amount of the expense - with no error and no
+    // duplicate warning to notice it by.
+    var saving = false;
+
     showAppSheet(
       context: context,
       builder: (ctx) => AppSheetContent(
@@ -320,39 +333,61 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
             _dateButton(ctx, date, (d) => setSD(() => date = d)),
             const SizedBox(height: 4),
             AppButton(
-              label: 'Save Expense',
+              label: saving ? 'Saving\u2026' : 'Save Expense',
               icon: Icons.check_rounded,
-              onTap: () async {
-                final a = double.tryParse(amtC.text) ?? 0;
-                if (a <= 0) {
-                  showAppToast(ctx, 'Enter a positive amount');
-                  return;
-                }
-                final s = ref.read(firestoreServiceProvider);
-                final cat2 = cat;
-                await s.addExpense(Expense(
-                    id: s.generateId(),
-                    date: date,
-                    category: cat2,
-                    description: noteC.text.trim(),
-                    amount: a));
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) {
-                  // Uses the shared design-system SuccessSheet like every other
-                  // save in the app. The previous call went through
-                  // `SaveSuccessSheet`, a second, older success dialog that only
-                  // this screen still used. It was being driven with
-                  // `paid == total` and `printLabel: ''`, so it rendered a
-                  // pointless "Change: Rs 0" row and a duplicate Total for a
-                  // plain expense confirmation.
-                  SuccessSheet.show(
-                    context: context,
-                    title: 'Expense Saved',
-                    subtitle: '$cat2 \u00b7 $csym ${fmt.format(a.toInt())}',
-                    primaryLabel: '+ Add Expense',
-                  );
-                }
-              },
+              // Disabled for the whole write, so a second tap is a no-op rather
+              // than a second expense.
+              onTap: saving
+                  ? null
+                  : () async {
+                      final a = double.tryParse(amtC.text) ?? 0;
+                      if (a <= 0) {
+                        showAppToast(ctx, 'Enter a positive amount');
+                        return;
+                      }
+                      final s = ref.read(firestoreServiceProvider);
+                      final cat2 = cat;
+                      // Set before the first await, so a rapid double-tap is
+                      // blocked rather than racing the network.
+                      setSD(() => saving = true);
+                      try {
+                        await s.addExpense(Expense(
+                            id: s.generateId(),
+                            date: date,
+                            category: cat2,
+                            description: noteC.text.trim(),
+                            amount: a));
+                      } catch (e, st) {
+                        logSecureError(e, st, tag: 'add_expense');
+                        if (ctx.mounted) {
+                          setSD(() => saving = false);
+                          showAppToast(
+                            ctx,
+                            sanitizeErrorMessage(e,
+                                fallback:
+                                    'Could not save the expense. Please try again.'),
+                          );
+                        }
+                        return;
+                      }
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (context.mounted) {
+                        // Uses the shared design-system SuccessSheet like every
+                        // other save in the app. The previous call went through
+                        // `SaveSuccessSheet`, a second, older success dialog that
+                        // only this screen still used. It was being driven with
+                        // `paid == total` and `printLabel: ''`, so it rendered a
+                        // pointless "Change: Rs 0" row and a duplicate Total for
+                        // a plain expense confirmation.
+                        SuccessSheet.show(
+                          context: context,
+                          title: 'Expense Saved',
+                          subtitle:
+                              '$cat2 \u00b7 $csym ${fmt.format(roundMoney(a))}',
+                          primaryLabel: '+ Add Expense',
+                        );
+                      }
+                    },
             ),
           ]),
         ),
@@ -436,7 +471,7 @@ class _ExpenseRow extends StatelessWidget {
           ]),
         ),
         const SizedBox(width: 8),
-        Text('$csym ${fmt.format(expense.amount.toInt())}',
+        Text('$csym ${fmt.format(roundMoney(expense.amount))}',
             style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 13,

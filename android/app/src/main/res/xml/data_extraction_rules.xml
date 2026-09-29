@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12 (API 31)+ backup/transfer configuration.
+
+  This is a point-of-sale register, so its local state is personal and
+  financial: `LocalNotificationService` writes a CUSTOMER PHONE NUMBER into
+  SharedPreferences, and Firestore's local-persistence cache holds the whole
+  ledger. With the default `allowBackup="true"`, that data is swept into the
+  user's Google/ADB backup in cleartext and restored onto any device the user
+  signs in to - so a customer's phone number follows them to a new handset, and
+  a backup image is readable by anyone who obtains it.
+
+  Both cloud-backup and device-to-device transfer are excluded wholesale. The
+  shop's authoritative data lives in Firestore, keyed by the signed-in account,
+  so a restored-from-backup install can always re-fetch it; nothing genuinely
+  unique to the device is lost by excluding this.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

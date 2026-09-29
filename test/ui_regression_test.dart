@@ -1972,15 +1972,12 @@ void main() {
         context: ctx,
       );
 
-      double share(int column) {
-        final sum = widths.values
-            .whereType<pw.FlexColumnWidth>()
-            .map((f) => f.flex)
-            .fold<double>(0, (a, b) => a + b);
-        return (widths[column]! as pw.FlexColumnWidth).flex /
-            sum *
-            contentWidth;
-      }
+      // The money columns are FIXED, so their width is read directly rather than
+      // as a share of a flex total. That is the point of the fix: a fixed
+      // column keeps exactly the width it was measured to need, so it can never
+      // be rescaled below the figure it has to render.
+      double share(int column) =>
+          (widths[column]! as pw.FixedColumnWidth).width;
 
       // `td` pads right-aligned cells with `EdgeInsets.symmetric(horizontal: 4)`,
       // so 8 points of every money column is padding, not digits.
@@ -1994,6 +1991,18 @@ void main() {
       expect(
           share(1), greaterThanOrEqualTo(paintedWidth('2', regular) + cellPadX),
           reason: 'QTY column must fit its value');
+
+      // And the whole row must still fit the printable area, otherwise pw.Table
+      // rescales and the figures are clipped again - the original bug.
+      final declaredTotal = widths.values.fold<double>(
+          0,
+          (sum, w) =>
+              sum +
+              (w is pw.FixedColumnWidth
+                  ? w.width
+                  : (w as pw.FlexColumnWidth).flex));
+      expect(declaredTotal, lessThanOrEqualTo(contentWidth + 0.01),
+          reason: 'Declared column widths must fit the printable width.');
     });
 
     test('a longer total widens the total column rather than clipping', () {
@@ -2015,25 +2024,81 @@ void main() {
           );
 
       final contentWidth = 80 * PdfPageFormat.mm - (6 * PdfPageFormat.mm * 2);
-      double totalShareFor(ReceiptData d) {
+      pw.FixedColumnWidth totalWidthFor(ReceiptData d) {
         final w = receiptColumnWidths(
           data: d,
           regular: pw.Font.helvetica(),
           bold: pw.Font.helveticaBold(),
           contentWidth: contentWidth,
         );
-        final sum = w.values
-            .whereType<pw.FlexColumnWidth>()
-            .map((f) => f.flex)
-            .fold<double>(0, (a, b) => a + b);
-        return (w[3]! as pw.FlexColumnWidth).flex / sum * contentWidth;
+        return w[3]! as pw.FixedColumnWidth;
       }
 
       // A seven-digit total must claim more room than a five-digit one, which is
       // only true if the width is derived from the content.
-      final narrow = totalShareFor(withTotal('120,000'));
-      final wide = totalShareFor(withTotal('12,345,600'));
-      expect(wide, greaterThan(narrow));
+      final narrow = totalWidthFor(withTotal('120,000')).width;
+      final wide = totalWidthFor(withTotal('12,345,600')).width;
+      expect(wide, greaterThan(narrow),
+          reason: 'The TOTAL column must grow with its widest value.');
+    });
+
+    test('the money columns are fixed so a wide figure can never be rescaled',
+        () {
+      // Regression guard. The widths were ALL FlexColumnWidth, so when the
+      // requested widths exceeded the printable area pw.Table rescaled every
+      // column proportionally - including the money ones, which then fell below
+      // the width they had just been measured to need and were hard-cut by
+      // TextOverflow.clip. A 13-digit total printed as a truncated number with
+      // no ellipsis and no error, which on a receipt is a wrong figure rather
+      // than a cosmetic one.
+      ReceiptData withTotal(String total) => ReceiptData(
+            storeName: 'Asif Foam Center',
+            date: '27/9/2026',
+            receiptNo: 'INV-1',
+            metaLine: 'Shop #4',
+            customerName: 'Walk-in Customer',
+            items: [
+              ReceiptLine(
+                  name: 'luxury', qty: '2', unitPrice: '60,000', total: total),
+            ],
+            total: 'Rs $total',
+            paid: 'Rs 0',
+            isDue: true,
+            dueValue: 'Rs $total',
+            footer: 'Asif Foam Center',
+          );
+
+      final contentWidth = 80 * PdfPageFormat.mm - (6 * PdfPageFormat.mm * 2);
+      final w = receiptColumnWidths(
+        data: withTotal('12,34,56,789'),
+        regular: pw.Font.helvetica(),
+        bold: pw.Font.helveticaBold(),
+        contentWidth: contentWidth,
+      );
+
+      expect(w[0], isA<pw.FlexColumnWidth>(),
+          reason:
+              'Only the item name may flex; it is the only cell that can be '
+              'ellipsized legibly.');
+      for (final col in [1, 2, 3]) {
+        expect(w[col], isA<pw.FixedColumnWidth>(),
+            reason:
+                'Column $col carries a number. A flex column can be rescaled '
+                'below the width its widest value needs, and the figure is then '
+                'clipped with no ellipsis.');
+      }
+
+      // And the elastic name column must be able to shrink to zero rather than
+      // forcing the row over budget, which is what triggered the rescale.
+      final item = (w[0]! as pw.FlexColumnWidth).flex;
+      final fixed = [1, 2, 3]
+          .map((c) => (w[c]! as pw.FixedColumnWidth).width)
+          .fold<double>(0, (a, b) => a + b);
+      expect(item, greaterThanOrEqualTo(0));
+      expect(item + fixed, lessThanOrEqualTo(contentWidth + 0.01),
+          reason:
+              'The declared widths must fit the printable area, or pw.Table '
+              'rescales the fixed money columns and clips the figures.');
     });
 
     test('a typical receipt fits on a single page', () async {

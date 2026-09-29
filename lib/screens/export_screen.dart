@@ -189,7 +189,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         if (!mounted) return;
         setState(() => _loading = false);
         await SharePlus.instance.share(ShareParams(
-            files: [XFile(csvFile.path, mimeType: 'application/octet-stream')],
+            files: [XFile(csvFile.path, mimeType: 'text/csv')],
             text: 'Sales Report - $shopName'));
       }
     } catch (e, st) {

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Monochrome (themed icon) layer for Foam Shop POS, Android 13+.
+
+  When the user turns on "Themed icons", the launcher discards colour entirely
+  and re-tints this layer with the wallpaper palette. So this is the same
+  artwork as ic_launcher_foreground.xml with every fill forced to opaque white
+  and no background at all - the system supplies the colour, and a
+  35%-alpha rule would be flattened to a flat block that the tinter then has to
+  guess at.
+
+  Sizing is identical to the colour foreground so the themed icon does not
+  jump in size when the user switches the setting on.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M42.48,29.52 h23.04 a12.96,12.96 0 0 1 12.96,12.96 v23.04 a12.96,12.96 0 0 1 -12.96,12.96 h-23.04 a12.96,12.96 0 0 1 -12.96,-12.96 v-23.04 a12.96,12.96 0 0 1 12.96,-12.96 z
+                          M42.48,31.72 h23.04 a10.76,10.76 0 0 1 10.76,10.76 v23.04 a10.76,10.76 0 0 1 -10.76,10.76 h-23.04 a10.76,10.76 0 0 1 -10.76,-10.76 v-23.04 a10.76,10.76 0 0 1 10.76,-10.76 z" />
+
+    <group
+        android:translateX="37.125"
+        android:translateY="37.125"
+        android:scaleX="1.40625"
+        android:scaleY="1.40625">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M2.88,17.28 C4.8,10.08 9.12,4.32 12,4.32 C14.88,4.32 19.2,10.08 21.12,17.28 C18.72,21.6 14.88,21.6 12,17.76 C9.12,21.6 5.28,21.6 2.88,17.28 Z" />
+    </group>
+</vector>

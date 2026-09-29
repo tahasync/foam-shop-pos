@@ -46,21 +46,30 @@ class _ShopOnboardingScreenState extends ConsumerState<ShopOnboardingScreen> {
     setState(() => _saving = true);
     try {
       final service = ref.read(firestoreServiceProvider);
-      final user = ref.read(authServiceProvider).currentUser;
-      final email = user?.email ?? '';
-      final isFounder = AppConstants.foundingAccountEmails
-          .any((e) => e.toLowerCase() == email.toLowerCase());
       final now = DateTime.now();
+
+      // Every new shop starts as an ordinary trial, including a founder's.
+      //
+      // This used to branch on `AppConstants.foundingAccountEmails` and write
+      // `free_forever` / `founderExempt: true` from the handset. Two problems:
+      // the entitlement was decided by the client, and the "who is a founder"
+      // list is a set of email addresses compiled into a public APK, which a
+      // user cannot be forced to match. Firestore rules now make both fields
+      // server-owned, so a client that tried this write would simply be denied.
+      //
+      // Founder and paid access is granted out of band by
+      // `scripts/grant_entitlement.mjs` (Admin SDK, bypasses rules). That is the
+      // correct shape for a payment decision: the paying party must not be the
+      // party that authorises it.
       final profile = ShopProfile(
         shopName: _nameCtrl.text.trim(),
         location: _locCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
         currency: _selectedCurrency,
         createdAt: now,
-        subscriptionStatus: isFounder ? 'free_forever' : 'trial',
-        trialEndsAt:
-            isFounder ? null : now.add(Duration(days: AppConstants.trialDays)),
-        founderExempt: isFounder,
+        subscriptionStatus: 'trial',
+        trialEndsAt: now.add(Duration(days: AppConstants.trialDays)),
+        founderExempt: false,
       );
       await service.setShopProfile(profile);
       ref.invalidate(shopProfileFutureProvider);

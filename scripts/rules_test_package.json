@@ -1,0 +1,13 @@
+{
+  "name": "foam-shop-rules-verify",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "firebase": "^11.0.0"
+  }
+}

@@ -19,6 +19,10 @@ import '../widgets/add_customer_sheet.dart';
 import '../utils/animations.dart';
 import 'billing_screen.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
+
+import '../utils/haptics.dart';
+import '../utils/money.dart';
 
 /// The note denominations a customer is likely to hand over.
 ///
@@ -208,7 +212,7 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
               // already been made.
               Text(
                 hasCost
-                    ? '$csym ${fmt.format(costPrice.toInt())} cost \u00b7 ${p.stockLabel} in stock'
+                    ? '$csym ${fmt.format(roundMoney(costPrice))} cost \u00b7 ${p.stockLabel} in stock'
                     : 'No cost price set \u00b7 ${p.stockLabel} in stock',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -236,9 +240,12 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(AppRadii.sm),
-                onTap: () => ref
-                    .read(salesProvider.notifier)
-                    .removeFromCart(widget.item.product.id),
+                onTap: () {
+                  ref
+                      .read(salesProvider.notifier)
+                      .removeFromCart(widget.item.product.id);
+                  unawaited(AppHaptics.tap());
+                },
                 child: SizedBox(
                   width: AppHit.min,
                   height: AppHit.min,
@@ -476,7 +483,7 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
           ),
           const SizedBox(width: AppSpacing.sm),
           Text(
-            hasValidPrice ? '$csym ${fmt.format(total.toInt())}' : '\u2014',
+            hasValidPrice ? '$csym ${fmt.format(roundMoney(total))}' : '\u2014',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
@@ -506,8 +513,8 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
                     children: [
                       Text(
                         qty > 1
-                            ? 'Losing $csym ${fmt.format(lineShort.toInt())} on this line'
-                            : 'Losing $csym ${fmt.format(unitShort.toInt())} on this line',
+                            ? 'Losing $csym ${fmt.format(roundMoney(lineShort))} on this line'
+                            : 'Losing $csym ${fmt.format(roundMoney(unitShort))} on this line',
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
@@ -516,7 +523,7 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
                       const SizedBox(height: 1),
                       Text(
                         // "per unit" for the same reason as the field caption above.
-                        'Cost is $csym ${fmt.format(costPrice.toInt())} per unit.',
+                        'Cost is $csym ${fmt.format(roundMoney(costPrice))} per unit.',
                         style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -703,6 +710,25 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
   final _searchCtrl = TextEditingController();
   bool _saving = false;
 
+  /// Session-stable id for the walk-in customer created by a credit sale.
+  ///
+  /// Held across save attempts so a retry overwrites the same document instead
+  /// of creating a second orphan customer. Reset whenever the cart is cleared,
+  /// so the next sale gets its own walk-in.
+  String? _pendingWalkInId;
+
+  /// Idempotency key for the sale currently being entered.
+  ///
+  /// Minted on the first save attempt and REUSED on every retry, so a retry
+  /// after a lost response re-uses the same document id and the server-side
+  /// existence check turns it into a no-op instead of a duplicate sale.
+  ///
+  /// Cleared in exactly two places, both of which mean "this is no longer the
+  /// same sale": after a confirmed success, and when the cart is explicitly
+  /// cleared. It is deliberately NOT cleared in the `catch` block - a failed
+  /// attempt is precisely the case that must keep the key.
+  String? _pendingSaleId;
+
   /// Whether the user has dismissed the "Step 1 / Step 2" explainer.
   ///
   /// Session-scoped rather than persisted: a returning user who already knows the
@@ -834,7 +860,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
               ])),
           const SizedBox(width: 8),
           Text(
-              '$csym ${NumberFormat('#,##0').format(p.effectivePrice.toInt())}',
+              '$csym ${NumberFormat('#,##0').format(roundMoney(p.effectivePrice))}',
               style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 12,
@@ -859,6 +885,10 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                       _searchCtrl.clear();
                       setState(() {});
                       ref.read(salesProvider.notifier).addToCart(p);
+                      // Light tap: adding a line changes the bill, which is the
+                      // thing the cashier is watching while they type. Paired
+                      // with the line appearing in the cart.
+                      unawaited(AppHaptics.tap());
                     },
               child: SizedBox(
                 width: AppHit.min,
@@ -883,9 +913,60 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     );
   }
 
+  /// "Clear all" emptied the cart with a single tap and no confirmation.
+  ///
+  /// On a multi-line sale a mis-tap next to the cart heading wiped a bill the
+  /// cashier had already keyed in item by item, and the only way back was to
+  /// re-enter it. It is now a deliberate two-step action, and the destructive
+  /// confirm carries an error haptic so the finger feels the difference between
+  /// "discard this work" and "tap a chip".
+  Future<void> _confirmClearCart() async {
+    final state = ref.read(salesProvider);
+    if (state.cart.isEmpty) return;
+
+    final count = state.totalItems;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear the whole cart?'),
+        content: Text(
+          'This removes all $count item${count == 1 ? '' : 's'} from this '
+          'sale. Nothing has been saved yet, so the amounts will be lost.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep cart'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear cart'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    unawaited(AppHaptics.error());
+    ref.read(salesProvider.notifier).clearCart();
+    _paidCtrl.clear();
+    // The cart is gone, so the next save is a different sale and must not
+    // inherit this cart's idempotency key.
+    _pendingSaleId = null;
+    _pendingWalkInId = null;
+  }
+
   Future<void> _save({required bool isQuote}) async {
     if (_saving) return;
     _saving = true;
+    // Rebuild immediately so the button shows "Saving…" and disables itself.
+    // The guard alone stops a double tap, but without this the cashier gets no
+    // feedback at all during the write and taps again out of uncertainty.
+    if (mounted) setState(() {});
     try {
       final state = ref.read(salesProvider);
       if (state.cart.isEmpty) return;
@@ -939,7 +1020,15 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
         return prod != null && c.salePrice > 0 && c.salePrice < prod.costPrice;
       }).toList();
       if (belowCostItems.isNotEmpty && !isQuote) {
-        _saving = false;
+        // The in-flight guard is deliberately NOT released here.
+        //
+        // It used to be set false before the sheet and re-armed after, which
+        // re-enabled the Save button for the whole time the sheet was open. A
+        // second tap then re-entered _save with the cart still populated (the
+        // cart is only cleared after a successful write), minted a second sale
+        // id, and committed a second sale - charging the customer twice and
+        // deducting the stock twice. A modal dialog must never be a window in
+        // which the same action can start again.
         if (!mounted) return;
         final csym = ref.read(currencySymbolProvider);
         final proceed = await showAppSheet<bool>(
@@ -951,7 +1040,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           ),
         );
         if (proceed != true) return;
-        _saving = true;
+        if (!mounted) return;
       }
 
       final subtotal = state.subtotal;
@@ -961,7 +1050,19 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
       String customerId = state.customerId;
       String customerName = state.customerName;
       if (balance > 0 && customerId.isEmpty) {
-        final walkInId = svc.generateId();
+        // A stable id for the whole cart session.
+        //
+        // This used to mint a fresh random id on every attempt, and the customer
+        // was created with a separate, non-transactional `set` BEFORE the sale
+        // transaction. So any failure - flaky network, stock race, permission -
+        // left an orphan "Walk-in" customer behind, and because the failure
+        // invites a retry, a cashier who tapped Save three times left three
+        // such customers with no sales against them. They are undeletable, they
+        // pollute the customer list, and they inflate the receivables report.
+        //
+        // Reusing one id across retries makes the write an overwrite of the same
+        // document, so a retry is idempotent and a failure is harmless.
+        final walkInId = _pendingWalkInId ??= svc.generateId();
         final now = DateTime.now();
         final timeLabel =
             '${now.day}/${now.month}/${now.year} ${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')}${now.hour < 12 ? 'AM' : 'PM'}';
@@ -983,7 +1084,22 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
         );
       }).toList();
 
-      final saleId = svc.generateId();
+      // The idempotency key for this cart, minted ONCE and reused on every
+      // retry.
+      //
+      // It has to be stable across attempts or the whole scheme is decorative.
+      // A retry after a lost response re-enters this method, finds the key
+      // already set, and reuses it - so `saveSaleTransaction` writes the SAME
+      // document path, its `existing.exists` check fires, and the transaction
+      // returns without a second write or a second stock decrement.
+      //
+      // Previously this was a fresh `generateId()` on every attempt, so the key
+      // differed each time, the existence check never matched, and a cashier who
+      // retried after a dropped connection wrote a SECOND sale and deducted the
+      // stock twice. A real loss: money billed twice, inventory gone, and the
+      // duplicate could not be deleted. The field was named `transaction_uuid`
+      // and the README called it idempotency, but nothing made it one.
+      final saleId = _pendingSaleId ??= svc.generateId();
       final sale = Sale(
         id: saleId,
         date: DateTime.now(),
@@ -992,12 +1108,24 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
         lineItems: lineItems,
         paid: paid,
         isQuote: isQuote,
+        // The document ID IS the idempotency key, so the two can never drift
+        // apart and the rules' immutability check on it is meaningful.
+        transactionUuid: saleId,
       );
 
       if (!isQuote) {
+        // Accumulate with `+=` rather than assign. A map assignment silently
+        // keeps only the LAST line for a repeated product id, which would deduct
+        // one line's worth of stock while selling two. The UI currently merges
+        // duplicate products into one cart line, so this is not reachable today -
+        // but it is a silent-wrong-answer failure mode in financial code, and it
+        // is exactly the shape a future "same item, different cut size" feature
+        // would take. `voidSale` already aggregates with `+=` for the same
+        // reason; this makes the two directions agree.
         final deductions = <String, double>{};
         for (final c in state.cart) {
-          deductions[c.product.id] = c.quantity.toDouble();
+          deductions[c.product.id] =
+              (deductions[c.product.id] ?? 0) + c.quantity.toDouble();
         }
         final verifiedStocks = <String, double>{};
         for (final c in state.cart) {
@@ -1009,12 +1137,30 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
       } else {
         await svc.addSale(sale);
       }
+
+      // Confirmed durable on the server, so the keys have done their job.
+      // Releasing them here means the NEXT cart mints fresh ones; holding them
+      // would make the next, unrelated sale collide with this one and be
+      // silently swallowed as a duplicate. This must stay AFTER the awaits
+      // above - releasing them in the `catch` block would undo the whole
+      // retry-safety property.
+      _pendingSaleId = null;
+      _pendingWalkInId = null;
+
+      // Clear the cart BEFORE the mounted check.
+      //
+      // Returning early on an unmounted widget used to leave the cart intact
+      // even though the sale was committed. The cashier comes back to a cart
+      // representing an already-saved sale and can save it a second time.
+      // Clearing cart state is not a context operation, so it is safe to do
+      // regardless of whether this widget is still in the tree.
+      ref.read(salesProvider.notifier).clearCart();
+      _paidCtrl.text = '0';
+
       if (!mounted) return;
 
       ref.invalidate(accountingSummaryProvider);
       final custName = state.customerName;
-      ref.read(salesProvider.notifier).clearCart();
-      _paidCtrl.text = '0';
 
       if (mounted) {
         final csym2 = ref.read(currencySymbolProvider);
@@ -1025,8 +1171,13 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
         // overpayment was discovered later — or not at all.
         final changeGiven = (paid - subtotal).clamp(0, double.infinity);
         final changeNote = changeGiven > 0
-            ? ' \u00b7 Change $csym2 ${NumberFormat('#,##0').format(changeGiven.toInt())}'
+            ? ' \u00b7 Change $csym2 ${NumberFormat('#,##0').format(roundMoney(changeGiven))}'
             : '';
+        // Medium impact: a sale is the one action in the app that commits money,
+        // so it earns the heavier confirmation rather than the light tap used
+        // for button presses. Fired alongside the success sheet, never awaited
+        // before it, so the UI is not held up by the vibrator.
+        unawaited(AppHaptics.success());
         SuccessSheet.show(
           context: context,
           title: isQuote
@@ -1035,7 +1186,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                   ? 'Sale saved \u00b7 give change'
                   : 'Sale saved'),
           subtitle:
-              '$csym2 ${NumberFormat('#,##0').format(subtotal.toInt())} \u00b7 $custName$changeNote',
+              '$csym2 ${NumberFormat('#,##0').format(roundMoney(subtotal))} \u00b7 $custName$changeNote',
           primaryLabel: 'New Sale',
           secondaryLabel: 'View Receipt',
           onSecondary: () => Navigator.push(
@@ -1050,13 +1201,23 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
       // would reasonably tap Save again. Surface the failure.
       logSecureError(e, st, tag: 'save_sale');
       if (!mounted) return;
+      // The sale did NOT persist, so this is a failure, not a tap: give the
+      // heavier error feedback so a cashier who taps again immediately knows
+      // the first attempt failed rather than having saved a duplicate.
+      unawaited(AppHaptics.error());
       showAppToast(
         context,
         sanitizeErrorMessage(e,
             fallback: 'Could not save the sale. Please try again.'),
       );
     } finally {
+      // setState so the button actually flips back to "Save Sale". The flag is
+      // what blocks a double tap, but without a rebuild the label stayed on
+      // "Saving…" forever, which read as a hang on the app's most important
+      // action. Guarded because the sheet is dismissible and the widget can be
+      // gone by the time an error unwinds here.
       _saving = false;
+      if (mounted) setState(() {});
     }
   }
 
@@ -1255,17 +1416,16 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                   ]),
                 const SizedBox(height: 14),
                 SectionLabel(
-                    // "1 items" was the literal heading on every single-item
-                    // sale, which is the most common sale there is. Also worth
-                    // a "Clear" escape hatch: previously the only way to empty a
-                    // cart was to tap the ? on every line, one mistake at a
-                    // time.
-                    title:
-                        'Cart \u00b7 ${salesState.totalItems} ${salesState.totalItems == 1 ? 'item' : 'items'}',
-                    actionLabel: salesState.cart.isEmpty ? null : 'Clear all',
-                    onAction: salesState.cart.isEmpty
-                        ? null
-                        : () => ref.read(salesProvider.notifier).clearCart()),
+                  // "1 items" was the literal heading on every single-item
+                  // sale, which is the most common sale there is. Also worth
+                  // a "Clear" escape hatch: previously the only way to empty a
+                  // cart was to tap the ? on every line, one mistake at a
+                  // time.
+                  title:
+                      'Cart \u00b7 ${salesState.totalItems} ${salesState.totalItems == 1 ? 'item' : 'items'}',
+                  actionLabel: salesState.cart.isEmpty ? null : 'Clear all',
+                  onAction: salesState.cart.isEmpty ? null : _confirmClearCart,
+                ),
                 if (salesState.cart.isEmpty)
                   FoamCard(
                     foam: true,
@@ -1297,7 +1457,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                       MiniRow(
                           label: 'Subtotal',
                           value:
-                              '$csym ${NumberFormat('#,##0').format(salesState.subtotal.toInt())}'),
+                              '$csym ${NumberFormat('#,##0').format(roundMoney(salesState.subtotal))}'),
                       Container(
                         margin: const EdgeInsets.only(top: 12),
                         padding: const EdgeInsets.only(top: 12),
@@ -1315,7 +1475,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                                       color: ac.inkSoft,
                                       letterSpacing: 0.04)),
                               Text(
-                                  '$csym ${NumberFormat('#,##0').format(salesState.subtotal.toInt())}',
+                                  '$csym ${NumberFormat('#,##0').format(roundMoney(salesState.subtotal))}',
                                   style: AppTheme.display(context, size: 22)),
                             ]),
                       ),
@@ -1542,8 +1702,8 @@ class _QuickPaidRow extends StatelessWidget {
               final selected = (currentPaid - amount).abs() < 0.005;
               return _QuickPaidChip(
                 label: isExact
-                    ? 'Exact $csym ${fmt.format(amount.toInt())}'
-                    : '$csym ${fmt.format(amount.toInt())}',
+                    ? 'Exact $csym ${fmt.format(roundMoney(amount))}'
+                    : '$csym ${fmt.format(roundMoney(amount))}',
                 selected: selected,
                 onTap: () => onSelected(amount),
               );
@@ -1781,12 +1941,12 @@ class _BelowCostSheet extends StatelessWidget {
               const SizedBox(height: 4),
               MiniRow(
                 label: 'Sale price',
-                value: '$csym ${fmt.format(item.salePrice.toInt())} /pc',
+                value: '$csym ${fmt.format(roundMoney(item.salePrice))} /pc',
                 valueColor: ac.expenseFg,
               ),
               MiniRow(
                 label: 'Cost price',
-                value: '$csym ${fmt.format(cost.toInt())} /pc',
+                value: '$csym ${fmt.format(roundMoney(cost))} /pc',
               ),
             ]),
           );

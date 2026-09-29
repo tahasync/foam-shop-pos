@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Round adaptive launcher icon for Foam Shop POS (API 26+).
+
+  Deliberately the SAME three layers as ic_launcher.xml. Launchers that ask for
+  a round icon still apply their own mask, so the artwork must not be pre-shaped
+  into a circle here - doing that would double-round the corners the same way a
+  pre-rounded background would. Identical layers also guarantee the square and
+  round variants can never drift apart.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+</adaptive-icon>

@@ -268,6 +268,25 @@ class FirestoreService {
       final sale = Sale.fromMap(data);
       if (sale.isVoided) return;
 
+      // A quote never moved stock. Sales are saved through
+      // `saveSaleTransaction`, which is the only path that decrements
+      // `current_stock`; a quote is a bare `.set()` (see `addSale`), so its line
+      // items were never deducted. Restocking them here would return material
+      // the shop never gave out - quote 500 sq ft with 1,000 in stock, void it,
+      // and the ledger now claims 1,500 sq ft of foam that does not exist. The
+      // phantom stock is sellable, the owner over-buys against it, and because
+      // there is no way to delete a sale to undo the mistake, it is permanent.
+      //
+      // Voiding is still correct for a quote - it retires the estimate so it
+      // stops counting as a live order - it just must not touch inventory.
+      if (sale.isQuote) {
+        transaction.update(saleRef, {
+          'is_voided': true,
+          'void_reason': reason,
+        });
+        return;
+      }
+
       // Every read must happen before the first write inside a transaction;
       // Firestore rejects the whole thing with FAILED_PRECONDITION otherwise.
       // This used to mark the sale voided and *then* read each product inside

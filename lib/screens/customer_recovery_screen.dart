@@ -14,6 +14,7 @@ import '../theme/app_theme.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/initial_avatar.dart';
 import '../widgets/design_system/design_system.dart';
+import '../utils/money.dart';
 
 class CustomerRecoveryScreen extends ConsumerStatefulWidget {
   const CustomerRecoveryScreen({super.key});
@@ -96,7 +97,7 @@ class _CustomerRecoveryScreenState
                       danger: true,
                       icon: Icons.info_outline_rounded,
                       title:
-                          '$csym ${fmt.format(totalOutstanding.toInt())} outstanding',
+                          '$csym ${fmt.format(roundMoney(totalOutstanding))} outstanding',
                       subtitle:
                           'Across ${due.length} customer${due.length == 1 ? '' : 's'} with balances',
                     ),
@@ -196,7 +197,7 @@ class _CustomerRecoveryScreenState
           ),
           const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('$csym ${fmt.format(item.outstanding.toInt())}',
+            Text('$csym ${fmt.format(roundMoney(item.outstanding))}',
                 style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 13.5,
@@ -229,7 +230,7 @@ class _CustomerRecoveryScreenState
                   fontWeight: FontWeight.w800,
                   color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(height: 2),
-          Text('Outstanding: $csym ${fmt.format(outstanding.toInt())}',
+          Text('Outstanding: $csym ${fmt.format(roundMoney(outstanding))}',
               style: TextStyle(
                   fontSize: 11, color: AppColors.of(context).inkFaint)),
           const SizedBox(height: 14),
@@ -275,7 +276,7 @@ class _CustomerRecoveryScreenState
                         context: context,
                         title: 'Payment Collected',
                         subtitle:
-                            '${customer.name} \u00b7 $csym2 ${fmt.format(amt.toInt())}',
+                            '${customer.name} \u00b7 $csym2 ${fmt.format(roundMoney(amt))}',
                         primaryLabel: 'Done',
                       );
                     }

@@ -19,6 +19,7 @@ import 'billing_screen.dart';
 import 'expense_sheet_screen.dart';
 import 'notification_settings_screen.dart';
 import 'reports_screen.dart';
+import '../utils/money.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final VoidCallback? onLowStockTap;
@@ -72,7 +73,8 @@ class DashboardScreen extends ConsumerWidget {
     final expenses = ref.watch(expensesStreamProvider).asData?.value ?? [];
     final payments = ref.watch(paymentsStreamProvider).asData?.value ?? [];
 
-    String _fmt(double v) => '$csym ${NumberFormat('#,##0').format(v.toInt())}';
+    String _fmt(double v) =>
+        '$csym ${NumberFormat('#,##0').format(roundMoney(v))}';
 
     final productMap = {for (final p in products) p.id: p};
     final customerMap = {for (final c in customers) c.id: c};
@@ -91,7 +93,7 @@ class DashboardScreen extends ConsumerWidget {
             title:
                 'Sale \u00b7 ${(s.customerName?.isNotEmpty ?? false) ? s.customerName! : 'Walk-in'}',
             sub: dateFmt.format(s.date),
-            amount: '+${timeFmt.format(s.amount.toInt())}',
+            amount: '+${timeFmt.format(roundMoney(s.amount))}',
             amountColor: ac.saleFg,
           ),
       for (final p in purchases)
@@ -104,7 +106,7 @@ class DashboardScreen extends ConsumerWidget {
           sub: p.supplierId.isNotEmpty
               ? '${supplierMap[p.supplierId]?.name ?? 'Supplier'} \u00b7 ${dateFmt.format(p.date)}'
               : dateFmt.format(p.date),
-          amount: timeFmt.format(p.costAmount.toInt()),
+          amount: timeFmt.format(roundMoney(p.costAmount)),
           amountColor: ac.ink,
         ),
       for (final e in expenses)
@@ -115,7 +117,7 @@ class DashboardScreen extends ConsumerWidget {
           iconColor: ac.expenseFg,
           title: 'Expense \u00b7 ${e.category}',
           sub: dateFmt.format(e.date),
-          amount: '\u2212${timeFmt.format(e.amount.toInt())}',
+          amount: '\u2212${timeFmt.format(roundMoney(e.amount))}',
           amountColor: ac.expenseFg,
         ),
       for (final pay in payments)
@@ -127,7 +129,7 @@ class DashboardScreen extends ConsumerWidget {
           title:
               'Payment \u00b7 ${customerMap[pay.customerId]?.name ?? 'customer'}',
           sub: dateFmt.format(pay.date),
-          amount: '+${timeFmt.format(pay.amountCollected.toInt())}',
+          amount: '+${timeFmt.format(roundMoney(pay.amountCollected))}',
           amountColor: ac.khataFg,
         ),
     ]..sort((a, b) => b.date.compareTo(a.date));

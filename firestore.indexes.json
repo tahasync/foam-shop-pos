@@ -43,9 +43,10 @@
       ]
     },
     {
-      "collectionGroup": "expenses",
+      "collectionGroup": "cost_price_history",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "product_id", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" }
       ]
     }

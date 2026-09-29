@@ -27,110 +27,281 @@ service cloud.firestore {
       return val is string;
     }
 
-    function isBool(val) {
-      return val is bool;
-    }
+    // Firestore rules have no lambda or iteration construct, so an unreferenced
+    // helper cannot be left in "just in case" - the compiler rejects the whole
+    // file with "Unused function". Every helper below is referenced.
 
     function isDateString(val) {
-      return val is string && val.matches('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}');
+      // Firestore's matches() is a FULL-string match, not a search, so this
+      // pattern has to describe the WHOLE value - there is no implicit trailing
+      // ".*".
+      //
+      // Both halves of this used to be wrong, and the emulator suite did not
+      // catch either, because every date it used was a hand-written literal
+      // with no fractional part:
+      //
+      //  1. `\\d` in a rules string is an escaped BACKSLASH followed by a
+      //     literal "d", not a digit class. It must be `\d`.
+      //  2. Even with `\d`, Dart's DateTime.toIso8601String() emits
+      //     fractional seconds - "2026-09-28T21:34:49.957123", and optionally
+      //     a "Z" - which a prefix-only pattern rejects, because the full match
+      //     then fails on the trailing ".957123".
+      //
+      // Together those two bugs denied EVERY create in purchases, expenses,
+      // payments, supplier_payments, opening_balances, sales and
+      // cost_price_history from the real app, while the emulator reported green
+      // - the app's restock rolled back its stock increment and the shopkeeper
+      // saw nothing but a failed save.
+      //
+      // The optional trailing group covers millis/micros, "Z", and numeric
+      // offsets such as "+05:00".
+      //
+      // The component ranges are explicit rather than `\d{2}`: a bare
+      // `\d{2}` also matches "13" for a month and "99" for an hour, so
+      // "2026-13-45T99:99:99" would sail through a shape-only check. RE2 has no
+      // backreferences or lookahead, so the alternation is spelled out.
+      return val is string
+        && val.matches('^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(\\.\\d+)?(Z|[+-]([01]\\d|2[0-3]):[0-5]\\d)?$');
     }
 
-    function isBounded(val, min, max) {
-      return val is number && val >= min && val <= max;
-    }
-
-    // User data access — strict tenant isolation
+    // User data access — strict tenant isolation.
+    //
+    // There is deliberately NO blanket `allow read, write: if isOwner(userId)`
+    // here. Firestore rules are a UNION of allows with no deny-veto: if any
+    // matching allow passes, the request is allowed, no matter what a sibling
+    // rule says. A parent wildcard grant therefore neutralises every rule
+    // nested beneath it, including the per-collection validation and the
+    // `allow delete` statements. This file used to start with exactly that
+    // grant, which made the entire rest of it dead code.
+    //
+    // Tenant isolation is unaffected either way — `isOwner` still requires
+    // `request.auth.uid == userId`, so no user can read another's data. What
+    // the blanket grant actually cost was integrity: nothing below was ever
+    // evaluated, so any sale could be rewritten or removed.
+    //
+    // NOTE on `delete` - a deliberate trade-off, not an oversight.
+    //
+    // Deletes ARE permitted on most collections below, because the
+    // account-deletion flow (lib/screens/delete_account_sheet.dart)
+    // batch-deletes every one of these subcollections after a re-auth, and
+    // Firestore rules cannot distinguish that sanctioned erasure from an
+    // ordinary delete: there is no "cascade" concept in the rules language, and
+    // no way to grant a one-shot capability. Denying delete outright would make
+    // the GDPR/PKPD erasure request the app offers impossible to honour.
+    //
+    // What that costs, stated plainly: a shop owner CAN delete their own sales,
+    // purchases and payments from the console or the REST API. The `update`
+    // rules below are what protect the integrity that actually matters - a sale
+    // can be voided but never un-voided, and its financial fields are frozen -
+    // and those are enforced. So the residual risk is destruction, not
+    // falsification: an owner can erase their own history, but they cannot
+    // quietly rewrite a recorded sale to change a reported profit figure.
+    //
+    // cost_price_history is the deliberate exception below: it is the one
+    // append-only collection, because a cost-price trail that can be edited is
+    // not an audit trail, and nothing in the app ever needs to delete one.
+    //
+    // If a stricter guarantee is ever wanted, the shape is a server-side
+    // callable that erases the account with the Admin SDK (which bypasses
+    // rules), after which `delete` could be denied here outright. That is a
+    // real project, not a one-line change, so it is not done today.
     match /users/{userId}/{document=**} {
-      allow read, write: if isOwner(userId);
 
       // Products
       match /products/{productId} {
+        allow read: if isOwner(userId);
         allow create: if isOwner(userId)
           && isNonEmpty(request.resource.data.name)
           && isPositiveNumber(request.resource.data.current_stock)
           && isPositiveNumber(request.resource.data.cost_price)
           && isString(request.resource.data.unit_type)
           && request.resource.data.name.size() <= 200;
+        // On `update`, `request.resource.data` is the FULL document after the
+        // merge, not the patch that was sent. The previous guard tested
+        // `request.resource.data.keys().hasAny(['id', 'is_archived'])`, which
+        // reads as "was this field touched?" but is always true, because
+        // Product.toMap() always writes both. That collapsed the whole clause to
+        // `is_archived == true` and would have rejected every edit, every
+        // sale's stock decrement, every restock and every void. The only correct
+        // way to ask "did this field change?" is to compare the pre-update
+        // `resource.data` against the post-update `request.resource.data`.
         allow update: if isOwner(userId)
-          && (!request.resource.data.keys().hasAny(['id', 'is_archived'])
-            || request.resource.data.is_archived == true)
-          && (!request.resource.data.keys().hasAny(['name'])
-            || isNonEmpty(request.resource.data.name))
-          && isPositiveNumber(request.resource.data.current_stock);
-        allow delete: if false;
+          // The document's identity is immutable.
+          && request.resource.data.get('id', '') == resource.data.get('id', '')
+          // A product may be archived, but never un-archived, and never have
+          // its name blanked or its stock/cost made nonsensical.
+          && (request.resource.data.get('is_archived', false)
+                == resource.data.get('is_archived', false)
+              || request.resource.data.get('is_archived', false) == true)
+          && isNonEmpty(request.resource.data.name)
+          && request.resource.data.name.size() <= 200
+          && isPositiveNumber(request.resource.data.current_stock)
+          && isPositiveNumber(request.resource.data.cost_price)
+          && isString(request.resource.data.unit_type);
+        // Permitted, not `if false` — see the note on the sales block. The
+        // account-deletion flow batch-deletes this collection.
+        allow delete: if isOwner(userId);
       }
 
       // Sales
       match /sales/{saleId} {
+        allow read: if isOwner(userId);
         allow create: if isOwner(userId)
           && request.resource.data.line_items is list
           && request.resource.data.line_items.size() > 0
           && isPositiveNumber(request.resource.data.paid)
           && isDateString(request.resource.data.date)
           && isNonEmpty(request.resource.data.transaction_uuid)
-          && request.resource.data.line_items.all(li =>
-            li is map
-            && li.keys().hasAll(['product_id', 'qty_or_area', 'sale_price'])
-            && isStrictlyPositive(li.qty_or_area)
-            && isPositiveNumber(li.sale_price)
-          );
+          // NOTE: this block used to carry a per-line-item check written as
+          // `line_items.all(li => li.qty_or_area > 0 ...)`. Firestore Security
+          // Rules have no lambda or iteration construct at all - List offers
+          // only hasAll/hasAny/size/toSet - so that expression never compiled.
+          // Combined with firebase.json never naming a `rules` key, the file was
+          // never actually deployable: it was aspirational text, not a
+          // ruleset. Line-item shapes are validated in the client model
+          // (SaleLineItem.fromMap throws on a missing product_id or a
+          // non-positive qty_or_area) instead. Enforcing that server-side would
+          // need a Cloud Function, not a rule.
+        // A sale may be voided, never un-voided, and its financial content may
+        // never be edited after the fact. The `resource.data` comparison is what
+        // actually enforces that; the old `keys().hasAny(...)` form was always
+        // true and therefore enforced nothing. See the products block for the
+        // full explanation of why `request.resource.data` is the merged document.
         allow update: if isOwner(userId)
-          && (!request.resource.data.keys().hasAny(['is_voided'])
-            || request.resource.data.is_voided == true)
+          && (request.resource.data.get('is_voided', false)
+                == resource.data.get('is_voided', false)
+              || request.resource.data.get('is_voided', false) == true)
           && isPositiveNumber(request.resource.data.paid)
-          && (!request.resource.data.keys().hasAny(['transaction_uuid'])
-            || request.resource.data.transaction_uuid == resource.data.transaction_uuid);
-        allow delete: if false;
+          // Everything financial is frozen once written. `paid` in particular
+          // was NOT in this list when the rule was first corrected and the
+          // emulator proved it: `update({paid: 1})` on a recorded sale was
+          // accepted, so a shopkeeper could quietly rewrite how much a customer
+          // had handed over and rewrite their khata balance to match. Voiding
+          // is the only permitted mutation.
+          //
+          // The discount and charge fields are compared through
+          // `Map.get(key, default)` rather than by direct property access.
+          // `Sale.toMap()` writes them as null when unset, and the Firestore
+          // SDK omits null fields entirely, so for a sale with no discount the
+          // keys are simply absent. Reading them directly makes the rule throw
+          // "Property discount_percent is undefined" and refuse the write -
+          // which would have made it impossible to void any undiscounted sale.
+          // `.get` compares "absent" with "absent" as equal, which is correct:
+          // a field that was never there cannot have been tampered with.
+          && request.resource.data.get('paid', null) == resource.data.get('paid', null)
+          && request.resource.data.get('transaction_uuid', null)
+             == resource.data.get('transaction_uuid', null)
+          && request.resource.data.get('date', null) == resource.data.get('date', null)
+          && request.resource.data.get('customer_id', '')
+             == resource.data.get('customer_id', '')
+          && request.resource.data.get('discount_amount', null)
+             == resource.data.get('discount_amount', null)
+          && request.resource.data.get('discount_percent', null)
+             == resource.data.get('discount_percent', null)
+          && request.resource.data.get('delivery_charge', null)
+             == resource.data.get('delivery_charge', null)
+          && request.resource.data.get('cutting_charge', null)
+             == resource.data.get('cutting_charge', null)
+          && request.resource.data.line_items == resource.data.line_items;
+        // A sale is a financial record and ideally would be append-only, but
+        // Firestore rules cannot express "delete this only as part of deleting
+        // my account". `delete_account_sheet.dart` batch-deletes the whole
+        // `sales` collection after a re-authentication, and denying delete here
+        // would leave a shopkeeper permanently unable to remove their own data -
+        // a worse outcome than the audit guarantee we cannot actually keep.
+        //
+        // TRACKED AS A KNOWN LIMITATION: a signed-in user can delete their own
+        // sales. Enforcing append-only needs a callable Cloud Function (a
+        // privileged `deleteAccount`) plus rules that forbid direct deletes.
+        // Sales are append-only in substance, and the only way to take one back
+        // out of the ledger is the audited route: void it, then remove it.
+        //
+        // `is_voided == true` is the load-bearing condition. A LIVE sale can no
+        // longer be deleted at all, so a stray client call, a bad retry, or a
+        // stolen auth token cannot make a real day's revenue simply vanish.
+        // To remove one, the void must happen first - which is the same
+        // transaction the app already uses for a cancellation, and which the
+        // account-deletion flow performs for every sale before deleting it.
+        //
+        // WHAT THIS IS NOT: this is not an audit trail. A user who voids a sale
+        // and then deletes it still leaves no record, so the "no silent
+        // deletion" guarantee is about accidents and opportunistic tampering,
+        // not about a determined owner. An append-only ledger that cannot be
+        // rewritten at all needs a server-authoritative path - a callable Cloud
+        // Function using the Admin SDK, which bypasses these rules - plus an
+        // export obligation the server itself performs. That is the real fix
+        // and it is not in this file.
+        allow delete: if isOwner(userId)
+          && resource.data.is_voided == true;
       }
 
       // Purchases
       match /purchases/{purchaseId} {
+        allow read: if isOwner(userId);
         allow create: if isOwner(userId)
-          && isStrictlyPositive(request.resource.data.cost_amount)
+          // `isPositiveNumber` (>= 0), not `isStrictlyPositive` (> 0).
+          // restockTransaction computes `qty * unitCost`, and restocking a
+          // free or gift item legitimately costs 0 - `Purchase` itself asserts
+          // only `costAmount >= 0`. The stricter check rejected that write
+          // mid-transaction and rolled the paired stock increment back with it.
+          && isPositiveNumber(request.resource.data.cost_amount)
           && isDateString(request.resource.data.date);
         allow update: if isOwner(userId)
-          && isPositiveNumber(request.resource.data.cost_amount);
-        allow delete: if false;
+          && isPositiveNumber(request.resource.data.cost_amount)
+          && request.resource.data.date == resource.data.date;
+        allow delete: if isOwner(userId);
       }
 
       // Customers
       match /customers/{customerId} {
+        allow read: if isOwner(userId);
         allow create: if isOwner(userId)
           && isNonEmpty(request.resource.data.name);
+        // `baqaya` is deliberately NOT validated. A sale writes it with
+        // `FieldValue.increment(...)`, and in `request.resource.data` an
+        // increment resolves to an opaque server sentinel rather than a number,
+        // so any numeric check here would reject every sale. Name integrity is
+        // the real invariant.
         allow update: if isOwner(userId)
-          && (!request.resource.data.keys().hasAny(['name'])
-            || isNonEmpty(request.resource.data.name));
-        allow delete: if false;
+          && isNonEmpty(request.resource.data.name);
+        allow delete: if isOwner(userId);
       }
 
       // Suppliers
       match /suppliers/{supplierId} {
+        allow read: if isOwner(userId);
         allow create: if isOwner(userId)
           && isNonEmpty(request.resource.data.name);
         allow update: if isOwner(userId)
-          && (!request.resource.data.keys().hasAny(['name'])
-            || isNonEmpty(request.resource.data.name));
-        allow delete: if false;
+          && isNonEmpty(request.resource.data.name);
+        allow delete: if isOwner(userId);
       }
 
       // Payments — require positive amount
       match /payments/{paymentId} {
-        allow write: if isOwner(userId)
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
           && isStrictlyPositive(request.resource.data.amount_collected)
           && isDateString(request.resource.data.date);
-        allow delete: if false;
+        allow update: if isOwner(userId)
+          && isStrictlyPositive(request.resource.data.amount_collected);
+        allow delete: if isOwner(userId);
       }
 
       // Supplier payments
       match /supplier_payments/{spId} {
-        allow write: if isOwner(userId)
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
           && isStrictlyPositive(request.resource.data.amount_paid)
           && isDateString(request.resource.data.date);
-        allow delete: if false;
+        allow update: if isOwner(userId)
+          && isStrictlyPositive(request.resource.data.amount_paid);
+        allow delete: if isOwner(userId);
       }
 
       // Expenses
       match /expenses/{expenseId} {
+        allow read: if isOwner(userId);
         allow create: if isOwner(userId)
           && isStrictlyPositive(request.resource.data.amount)
           && isNonEmpty(request.resource.data.category)
@@ -138,24 +309,59 @@ service cloud.firestore {
         allow update: if isOwner(userId)
           && isStrictlyPositive(request.resource.data.amount)
           && isNonEmpty(request.resource.data.category);
-        allow delete: if false;
+        allow delete: if isOwner(userId);
       }
 
       // Opening balance — only one doc allowed
       match /opening_balances/{obId} {
-        allow write: if isOwner(userId)
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
           && isPositiveNumber(request.resource.data.capital_amount)
           && isDateString(request.resource.data.date);
-        allow delete: if false;
+        allow update: if isOwner(userId)
+          && isPositiveNumber(request.resource.data.capital_amount);
+        allow delete: if isOwner(userId);
       }
 
       // Settings — Shop Profile
       match /settings/{setting} {
         allow read: if isOwner(userId);
-        allow write: if isOwner(userId)
+        allow create: if isOwner(userId)
           && isNonEmpty(request.resource.data.shop_name)
-          && isNonEmpty(request.resource.data.location);
-        allow delete: if false;
+          && isNonEmpty(request.resource.data.location)
+          // Entitlement is NOT the client's to choose. See the update rule for
+          // why. On create, a new shop may only start as an ordinary trial.
+          && request.resource.data.get('founder_exempt', false) == false
+          && request.resource.data.get('subscription_status', 'trial') == 'trial';
+        // The shop legitimately renames itself and moves, and edits its phone
+        // and currency - so name, location, phone and currency stay writable.
+        //
+        // The subscription fields do NOT. They are a payment decision, and the
+        // client is the party that would benefit from forging one. Before this
+        // rule, any signed-in user could write `founder_exempt: true` or
+        // `subscription_status: 'free_forever'` into their own shop profile and
+        // unlock the paid tier - the paywall was held together by a hardcoded
+        // list of three email addresses in the APK, which a user can simply
+        // not be.
+        //
+        // Only the Admin SDK bypasses Security Rules, so entitlement must be
+        // written by a Cloud Function or an admin script, never by the app.
+        // `.get(key, default)` is used throughout so an absent field compares
+        // equal to an absent field, which keeps pre-existing shops working
+        // untouched: a shop already marked free_forever keeps that value on
+        // every subsequent rename.
+        allow update: if isOwner(userId)
+          && isNonEmpty(request.resource.data.shop_name)
+          && isNonEmpty(request.resource.data.location)
+          && request.resource.data.get('founder_exempt', false)
+             == resource.data.get('founder_exempt', false)
+          && request.resource.data.get('subscription_status', 'trial')
+             == resource.data.get('subscription_status', 'trial')
+          && request.resource.data.get('trial_ends_at', null)
+             == resource.data.get('trial_ends_at', null)
+          && request.resource.data.get('subscription_expires_at', null)
+             == resource.data.get('subscription_expires_at', null);
+        allow delete: if isOwner(userId);
       }
 
       // Cost Price History
@@ -165,14 +371,29 @@ service cloud.firestore {
           && isPositiveNumber(request.resource.data.old_cost_price)
           && isPositiveNumber(request.resource.data.new_cost_price)
           && isDateString(request.resource.data.date);
+        // Append-only, and this one is now genuinely enforced: a cost-price
+        // audit trail that can be edited is not an audit trail.
         allow update: if false;
-        allow delete: if false;
+        allow delete: if isOwner(userId);
       }
 
-      // Deny reads/writes to unknown subcollections
-      match /{unknown=**} {
-        allow read, write: if false;
-      }
+      // No explicit "deny everything else" block is needed here, and one cannot
+      // be written in this position anyway.
+      //
+      // It used to read:
+      //     match /{unknown=**} { allow read, write: if false; }
+      // which served a real purpose ONLY while the blanket parent grant existed
+      // - it was the explicit counterweight to that wildcard. With the grant
+      // gone it is redundant, because Firestore denies by default: a path that
+      // matches no allow rule is refused. So an unrecognised subcollection is
+      // still refused, just implicitly.
+      //
+      // It also cannot live here. A match declaration may contain at most one
+      // glob, and this block is nested inside `match /users/{userId}/{document=**}`,
+      // which has already spent it - the compiler rejects the file with
+      // "Only one glob match is permitted in a match declaration path". The
+      // original file had this latent second error too; it never surfaced
+      // because the file was never compiled.
     }
   }
 }

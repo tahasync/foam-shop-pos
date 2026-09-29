@@ -1,11 +1,38 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      WRITE_EXTERNAL_STORAGE is the legacy write path only, and is capped at
+      API 28 because MediaStore (see MainActivity.saveViaMediaStore) covers
+      API 29+ with no permission at all.
+
+      READ_EXTERNAL_STORAGE was removed. It was declared but never exercised:
+      the only storage access is the write path above, and receipts are read
+      back from app-private storage via path_provider, never from shared media.
+      Keeping it granted read access to the user's photos, downloads and media
+      on API 29-32 for no functional reason - unrequested access to the widest
+      personal-data store on the device, on an app that holds customer names
+      and phone numbers.
+    -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+
+    <!--
+      Android 13 (API 33)+ requires this to be granted before any notification is
+      shown. It is requested at runtime from the notification settings screen
+      (see LocalNotificationService.requestPermission), not at app launch, so the
+      user is asked in the context where alerts matter. On API < 33 the
+      declaration is ignored and POST_NOTIFICATIONS is not defined, so the
+      system skips the prompt entirely.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:label="Foam Shop POS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:hardwareAccelerated="true">
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:hardwareAccelerated="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -30,6 +57,30 @@
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"
             android:value="true" />
+
+        <!--
+          Default notification icon for messages that arrive while the app is in
+          the background or fully terminated. Without these two tags the Firebase
+          Messaging SDK falls back to the application's launcher icon, which is an
+          adaptive icon with an opaque background layer - the system masks that
+          square and the status bar shows a black/white block instead of the Foam
+          Shop mark. This is the root cause of the "wrong notification icon"
+          report. The dedicated monochrome vector is declared here so the icon is
+          correct for FCM-delivered notifications as well as the ones this app
+          posts itself.
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_foam_shop" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
+        <!-- Stable channel ID for FCM fallback messages. It must match the channel
+             this app registers at runtime, otherwise a background FCM message
+             lands on an auto-created channel with the default importance. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="foam_shop_general" />
     </application>
     <queries>
         <intent>

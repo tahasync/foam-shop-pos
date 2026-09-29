@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive icon foreground layer for Foam Shop POS.
+
+  This reproduces the in-app BrandMark (lib/widgets/design_system/
+  brand_mark.dart): a 35%-white inner rule and the white foam glyph, both drawn
+  over the brand gradient in ic_launcher_background.xml.
+
+  SIZING: why everything lives in the middle 72dp
+  ................................................
+  An adaptive icon canvas is 108dp, but launchers only guarantee the central
+  72dp survives their mask, and only the central 66dp circle is guaranteed on
+  every OEM mask. The in-app BrandMark draws its rule at 0.68 of the mark's
+  size; mapped naively onto 108dp that rule would be 73dp wide and its corners
+  would fall outside the mask, so the launcher would shave the rounded square
+  into a clipped mess.
+
+  So the central 72dp is treated as the whole mark, which puts the rule at
+  48.96dp. Its corners then sit 34.6dp from centre - inside the 36dp inscribed
+  circle of the 72dp visible area - so the rule survives a squircle mask AND a
+  circular one, with no clipping on any launcher.
+
+  The glyph is the same mark's glyph scaled to 0.469 of the mark, matching
+  BrandMark(size: 64, iconSize: 30) on the sign-in screen.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!--
+      The inner rule, as one even-odd fill: the outer rounded square minus the
+      inner rounded square, leaving a 2.2dp band. Drawn as a fill rather than a
+      stroke so the weight is exact and does not depend on the renderer.
+
+      2.2dp is slightly heavier than the in-app 1.5px on a 64px mark (which
+      would be 1.7dp here). That is deliberate: a launcher icon is seen at
+      48-96px, where a hairline disappears, and a rule that vanishes on small
+      screens is worse than one that is a shade bolder than in-app.
+    -->
+    <path
+        android:fillColor="@color/ic_launcher_ring"
+        android:fillType="evenOdd"
+        android:pathData="M42.48,29.52 h23.04 a12.96,12.96 0 0 1 12.96,12.96 v23.04 a12.96,12.96 0 0 1 -12.96,12.96 h-23.04 a12.96,12.96 0 0 1 -12.96,-12.96 v-23.04 a12.96,12.96 0 0 1 12.96,-12.96 z
+                          M42.48,31.72 h23.04 a10.76,10.76 0 0 1 10.76,10.76 v23.04 a10.76,10.76 0 0 1 -10.76,10.76 h-23.04 a10.76,10.76 0 0 1 -10.76,-10.76 v-23.04 a10.76,10.76 0 0 1 10.76,-10.76 z" />
+
+    <!--
+      The foam glyph, lifted verbatim from _FoamGlyphPainter in
+      brand_mark.dart (its 0..1 normalised path expressed on a 24x24 viewport
+      so the numbers read the same way).
+
+      The <group> does the scaling rather than the path data so this file can
+      never drift from the Dart source: change the painter, re-apply the same
+      two numbers here. 33.75/24 = 1.40625, and (108 - 33.75) / 2 = 37.125 to
+      centre it.
+    -->
+    <group
+        android:translateX="37.125"
+        android:translateY="37.125"
+        android:scaleX="1.40625"
+        android:scaleY="1.40625">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M2.88,17.28 C4.8,10.08 9.12,4.32 12,4.32 C14.88,4.32 19.2,10.08 21.12,17.28 C18.72,21.6 14.88,21.6 12,17.76 C9.12,21.6 5.28,21.6 2.88,17.28 Z" />
+    </group>
+</vector>

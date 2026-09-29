@@ -77,3 +77,24 @@ migrate_working_dir/
 # Local dev run logs
 run*.txt
 
+
+# Firebase Admin service-account keys. grant_entitlement.mjs authenticates with one
+# of these, and the console downloads it as PROJECT_ID-firebase-adminsdk-XXXX.json
+# into the current directory. It grants full read/write on Firestore with no rules
+# applied - the exact privilege these rules exist to withhold from clients - so it
+# must never be committed.
+*-firebase-adminsdk-*.json
+scripts/*-firebase-adminsdk-*.json
+
+# npm dependencies for the Firestore rules test suite. package.json and
+# package-lock.json ARE committed so the suite is reproducible; the installed
+# tree is not.
+scripts/node_modules/
+
+# Local scratch artifacts from adb/emulator work. These are capture output, not
+# source: a3.err is an empty stderr redirect, and ss/ holds device screenshots
+# taken while verifying a build. Committing them would add megabytes of binary
+# noise and leak whatever was on screen at the time.
+a3.err
+ss/
+run*.txt

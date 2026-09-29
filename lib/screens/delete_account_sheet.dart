@@ -60,7 +60,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
       await user.reauthenticateWithCredential(credential);
 
       final batchSize = 500;
-      final collections = [
+      const collections = [
         'products',
         'customers',
         'suppliers',
@@ -72,6 +72,53 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
         'opening_balances',
         'settings',
       ];
+
+      // Sales must be voided before they can be deleted.
+      //
+      // The Firestore rule for `sales` refuses to delete a LIVE sale:
+      //   allow delete: if isOwner(userId) && resource.data.is_voided == true;
+      // That is deliberate - a real day's revenue should not be removable by a
+      // stray call or a stolen token without the cancellation step being
+      // recorded first. But the consequence is that this flow, which deletes
+      // every collection in one pass, would fail on the first non-voided sale
+      // and strand the account half-deleted, which is the one outcome worse
+      // than a permissive delete: the shopkeeper can neither keep their data
+      // nor remove it.
+      //
+      // So void everything first, then delete. The void is a legitimate
+      // mutation the sales rules already permit, it needs no new privilege, and
+      // it leaves the ledger honest right up to the moment the shopkeeper
+      // explicitly asked for erasure.
+      //
+      // A sale that is ALREADY voided is left alone, so re-running this after a
+      // partial failure does not fail on the `is_voided` immutability rule.
+      final salesRef = db.collection('users').doc(uid).collection('sales');
+      var voidingHasMore = true;
+      while (voidingHasMore) {
+        final snapshot = await salesRef.limit(batchSize).get();
+        if (snapshot.docs.isEmpty) {
+          voidingHasMore = false;
+          break;
+        }
+        final batch = db.batch();
+        var wrote = false;
+        for (final doc in snapshot.docs) {
+          final isVoided = doc.data()['is_voided'] == true;
+          if (isVoided) continue;
+          batch.update(doc.reference, {
+            'is_voided': true,
+            'void_reason': 'Account deleted',
+          });
+          wrote = true;
+        }
+        // If this page held nothing but already-voided sales, writing an empty
+        // batch is a no-op that would loop forever, so stop once the page is
+        // exhausted rather than waiting for writes to clear it.
+        if (wrote) await batch.commit();
+        if (snapshot.docs.length < batchSize) {
+          voidingHasMore = false;
+        }
+      }
 
       for (final col in collections) {
         var hasMore = true;
@@ -106,6 +153,16 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
         Navigator.of(context).pop(true);
       }
     } on FirebaseAuthException catch (e) {
+      // `mounted` guards, not decoration. This sheet is a modal bottom sheet, so
+      // it is dismissible by scrim tap and by drag while `_deleting` is true.
+      // Cancelling the Google account picker is also the most common way to land
+      // here. In every one of those cases `dispose()` has already run, and a
+      // bare setState here threw "setState() called after dispose()" - which
+      // `main.dart`'s ErrorWidget turns into a full-screen error card, so the
+      // shopkeeper got a dead app immediately after asking to delete their
+      // account. The success path below already had this guard; the three error
+      // paths did not.
+      if (!mounted) return;
       if (e.code == 'requires-recent-login' ||
           e.code == 'credential-already-in-use') {
         setState(() {
@@ -119,6 +176,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _deleting = false;
         _error = '$e';

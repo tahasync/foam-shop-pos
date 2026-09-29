@@ -12,7 +12,19 @@ import 'accounting_service.dart';
 
 class ExportService {
   final _dateFmt = DateFormat('dd-MMM-yyyy');
-  final _dateFmtFile = DateFormat('yyyy-MM-dd');
+
+  /// Timestamp for report filenames, to the second.
+  ///
+  /// Reports were named to the DAY only, so a second export on the same day
+  /// silently overwrote the first. A shopkeeper who exported the morning
+  /// figures, emailed them to their accountant, then corrected a sale and
+  /// re-exported ended up with a link whose contents no longer matched what
+  /// was sent. Including the time makes every export a distinct file.
+  final _stampFmtFile = DateFormat('yyyy-MM-dd_HHmmss');
+
+  /// A fresh, collision-free filename stem for one export.
+  String _reportStem() =>
+      'foam_shop_report_${_stampFmtFile.format(DateTime.now())}';
   final _numberFmt = NumberFormat('#,##0');
 
   String _fmt(double v, {String currencyCode = 'PKR'}) =>
@@ -76,7 +88,7 @@ class ExportService {
   }) {
     final productMap = {for (final p in products) p.id: p};
     final rows = <List<String>>[
-      ['$shopName - Digital Register'],
+      [_sanitizeCsvCell('$shopName - Digital Register')],
       ['Sales Report: ${_rangeLabel(startDate, endDate)}'],
       ['Generated: ${_dateFmt.format(DateTime.now())}'],
       [],
@@ -107,9 +119,9 @@ class ExportService {
         cogs += li.qtyOrArea * unitCost;
       }
       rows.add([
-        _invoiceId(sale.id),
+        _sanitizeCsvCell(_invoiceId(sale.id)),
         _dateFmt.format(sale.date),
-        _customerLabel(sale),
+        _sanitizeCsvCell(_customerLabel(sale)),
         _sanitizeCsvCell(items),
         _fmtCsv(sale.amount),
         _fmtCsv(cogs),
@@ -148,8 +160,7 @@ class ExportService {
       shopName: shopName,
     );
     final dir = await getApplicationDocumentsDirectory();
-    final fileName =
-        'foam_shop_report_${_dateFmtFile.format(DateTime.now())}.csv';
+    final fileName = '${_reportStem()}.csv';
     final file = File('${dir.path}/$fileName');
     await file.writeAsString(csv);
     return file;
@@ -367,8 +378,7 @@ class ExportService {
     }
 
     final dir = await getApplicationDocumentsDirectory();
-    final fileName =
-        'foam_shop_report_${_dateFmtFile.format(DateTime.now())}.pdf';
+    final fileName = '${_reportStem()}.pdf';
     final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(await doc.save());
     return file;
@@ -550,8 +560,7 @@ class ExportService {
     xl.delete('Sheet1');
 
     final dir = await getApplicationDocumentsDirectory();
-    final fileName =
-        'foam_shop_report_${_dateFmtFile.format(DateTime.now())}.xlsx';
+    final fileName = '${_reportStem()}.xlsx';
     final fileBytes = xl.encode();
     final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(fileBytes!);

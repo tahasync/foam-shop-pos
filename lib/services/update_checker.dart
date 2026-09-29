@@ -212,6 +212,14 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
   final pkg = await PackageInfo.fromPlatform();
   final installed = pkg.version;
 
+  // `PackageInfo.fromPlatform` is a platform-channel round-trip, so this await
+  // suspends. The caller checks `mounted` before calling, but that guard runs
+  // BEFORE this await and so does not cover the gap it opens. Without this
+  // check, leaving the screen during the channel call hands `showDialog` a
+  // deactivated context and throws "Looking up a deactivated widget's
+  // ancestor".
+  if (!context.mounted) return;
+
   await showDialog(
     context: context,
     barrierDismissible: false,

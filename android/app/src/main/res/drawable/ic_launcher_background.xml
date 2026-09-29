@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive icon background layer for Foam Shop POS.
+
+  The launcher masks this layer into its own shape (a squircle on Pixel, a
+  circle on some OEM launchers), so this fills the full 108dp canvas edge to
+  edge and must NOT contain the rounded corners of the in-app BrandMark -
+  drawing them here would show the launcher's mask plus our own radius, and
+  the corner would be visibly "cut twice".
+
+  The gradient runs the app's own two brand tokens (brandFillDeep -> brandFill)
+  top to bottom. The in-app BrandMark is a flat brandFill with a subtle top
+  edge highlight; a two-step ramp reads as that same surface catching light
+  from above, and keeps the launcher mark from looking like a dead flat
+  sticker at small sizes.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54"
+                android:startY="0"
+                android:endX="54"
+                android:endY="108">
+                <item
+                    android:offset="0"
+                    android:color="@color/ic_launcher_brand_deep" />
+                <item
+                    android:offset="1"
+                    android:color="@color/ic_launcher_brand_fill" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

@@ -17,6 +17,7 @@ import '../widgets/design_system/design_system.dart';
 import '../widgets/add_customer_sheet.dart';
 import 'customer_recovery_screen.dart';
 import 'supplier_khata_screen.dart';
+import '../utils/money.dart';
 
 class CustomerKhataScreen extends ConsumerStatefulWidget {
   /// Bottom space reserved for the floating nav pill. Supplied by
@@ -56,7 +57,25 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
     final csym = ref.watch(currencySymbolProvider);
     final bottom = widget.bottomInset;
 
-    String _fmt(double v) => '$csym ${NumberFormat('#,##0').format(v.toInt())}';
+    // Whether any of the three streams this screen depends on failed. Checked
+    // BEFORE the `combined == null` test, because a failure and a pending load
+    // both produce `null` and the user must never be shown a spinner for an
+    // error they cannot escape.
+    final _hasError = customersAsync.hasError ||
+        salesAsync.hasError ||
+        paymentsAsync.hasError;
+    if (_hasError) {
+      // Log the cause, not just the fact. `(_, __) =>` on the `when` branches
+      // below discards the exception entirely, so without this a support
+      // question about a stuck khata screen has nothing to go on.
+      final err =
+          customersAsync.error ?? salesAsync.error ?? paymentsAsync.error;
+      if (err != null)
+        logSecureError(err, StackTrace.current, tag: 'khata_load');
+    }
+
+    String _fmt(double v) =>
+        '$csym ${NumberFormat('#,##0').format(roundMoney(v))}';
 
     final combined = customersAsync.when(
       data: (csList) => salesAsync.when(
@@ -167,55 +186,71 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
           ],
         ),
         Expanded(
-          child: combined == null
-              ? const Center(child: CircularProgressIndicator())
-              : filtered!.isEmpty
-                  ? (combined.isEmpty
-                      ? EmptyState(
-                          icon: Icons.people_outline_rounded,
-                          title: 'No customers yet',
-                          subtitle:
-                              'Add a customer to start tracking their khata',
-                        )
-                      : NoResults(
-                          title: 'No customers match',
-                          subtitle: 'Try a different search term',
-                        ))
-                  : ListView(
-                      padding: EdgeInsets.fromLTRB(18, 0, 18, bottom),
-                      children: [
-                        AppKpiRow(tiles: [
-                          KpiTile(
-                            label: 'Total receivable',
-                            value: _fmt(totalReceivable),
-                            sub:
-                                'From $dueCount customer${dueCount == 1 ? '' : 's'}',
-                            icon: Icons.account_balance_wallet_rounded,
-                            tint: ac.expenseTint,
-                            iconColor: ac.expenseFg,
-                          ),
-                          KpiTile(
-                            label: 'Collected today',
-                            value: _fmt(collectedToday),
-                            sub:
-                                '${todayPayments.length} payment${todayPayments.length == 1 ? '' : 's'}',
-                            icon: Icons.savings_rounded,
-                            tint: ac.saleTint,
-                            iconColor: ac.saleFg,
-                          ),
-                        ]),
-                        const SizedBox(height: 14),
-                        AppSearchField(
-                          controller: _searchCtrl,
-                          hintText: 'Search customers\u2026',
-                          onChanged: (v) =>
-                              setState(() => _query = v.toLowerCase()),
+          child: _hasError
+              // An error is NOT a spinner. The nested `error: (_, __) => null`
+              // handlers below collapse a stream failure into exactly the same
+              // value as `loading`, so a permission error, a dropped connection
+              // or a missing index used to leave this one of the four primary
+              // tabs spinning forever with no message and no way out. The error
+              // was not even logged - `(_, __)` discarded it.
+              ? ErrorState(
+                  title: 'Could not load customers',
+                  message:
+                      'Check your connection and try again. Your data is not lost.',
+                  onRetry: () => ref
+                    ..invalidate(customersStreamProvider)
+                    ..invalidate(salesStreamProvider)
+                    ..invalidate(paymentsStreamProvider),
+                )
+              : combined == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : filtered!.isEmpty
+                      ? (combined.isEmpty
+                          ? EmptyState(
+                              icon: Icons.people_outline_rounded,
+                              title: 'No customers yet',
+                              subtitle:
+                                  'Add a customer to start tracking their khata',
+                            )
+                          : NoResults(
+                              title: 'No customers match',
+                              subtitle: 'Try a different search term',
+                            ))
+                      : ListView(
+                          padding: EdgeInsets.fromLTRB(18, 0, 18, bottom),
+                          children: [
+                            AppKpiRow(tiles: [
+                              KpiTile(
+                                label: 'Total receivable',
+                                value: _fmt(totalReceivable),
+                                sub:
+                                    'From $dueCount customer${dueCount == 1 ? '' : 's'}',
+                                icon: Icons.account_balance_wallet_rounded,
+                                tint: ac.expenseTint,
+                                iconColor: ac.expenseFg,
+                              ),
+                              KpiTile(
+                                label: 'Collected today',
+                                value: _fmt(collectedToday),
+                                sub:
+                                    '${todayPayments.length} payment${todayPayments.length == 1 ? '' : 's'}',
+                                icon: Icons.savings_rounded,
+                                tint: ac.saleTint,
+                                iconColor: ac.saleFg,
+                              ),
+                            ]),
+                            const SizedBox(height: 14),
+                            AppSearchField(
+                              controller: _searchCtrl,
+                              hintText: 'Search customers\u2026',
+                              onChanged: (v) =>
+                                  setState(() => _query = v.toLowerCase()),
+                            ),
+                            const SectionLabel(title: 'Customer ledger'),
+                            for (final item in filtered)
+                              _buildRow(item, cs, ac, csym),
+                          ],
                         ),
-                        const SectionLabel(title: 'Customer ledger'),
-                        for (final item in filtered)
-                          _buildRow(item, cs, ac, csym),
-                      ],
-                    ),
         ),
       ]),
     );
@@ -276,7 +311,7 @@ class _CustomerKhataScreenState extends ConsumerState<CustomerKhataScreen> {
           ),
           const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('$csym ${fmt.format(item.balance.toInt())}',
+            Text('$csym ${fmt.format(roundMoney(item.balance))}',
                 style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 13.5,
@@ -370,11 +405,11 @@ class _CustDetail extends ConsumerWidget {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               HeroCard(
                 eyebrow: 'Balance due',
-                amount: '$csym ${fmt.format(balance.toInt())}',
+                amount: '$csym ${fmt.format(roundMoney(balance))}',
                 pills: [
                   HeroPill(
                       label: 'Total billed',
-                      value: '$csym ${fmt.format(total.toInt())}'),
+                      value: '$csym ${fmt.format(roundMoney(total))}'),
                   HeroPill(
                       label: 'Paid',
                       value: '$csym ${fmt.format((paid + recv).toInt())}'),
@@ -463,7 +498,7 @@ class _CustDetail extends ConsumerWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${txns[i].isSale ? '+' : '\u2212'}$csym ${fmt.format(txns[i].amount.toInt())}',
+                            '${txns[i].isSale ? '+' : '\u2212'}$csym ${fmt.format(roundMoney(txns[i].amount))}',
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 13,
@@ -519,7 +554,7 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer,
                 fontWeight: FontWeight.w800,
                 color: Theme.of(context).colorScheme.onSurface)),
         const SizedBox(height: 2),
-        Text('Outstanding: $csym ${fmt.format(currentBalance.toInt())}',
+        Text('Outstanding: $csym ${fmt.format(roundMoney(currentBalance))}',
             style:
                 TextStyle(fontSize: 11, color: AppColors.of(context).inkFaint)),
         const SizedBox(height: 14),
@@ -596,7 +631,7 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer,
                       context: context,
                       title: 'Payment Collected',
                       subtitle:
-                          '${customer.name} \u00b7 $csym2 ${fmt.format(amt.toInt())}',
+                          '${customer.name} \u00b7 $csym2 ${fmt.format(roundMoney(amt))}',
                       primaryLabel: 'Done',
                     );
                   }

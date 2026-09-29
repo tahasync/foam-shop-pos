@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Accent for the notification small icon and the notification dot on API 33+
+      launchers. This is the Foam Shop brand blue (AppColors.primary in
+      lib/theme/app_theme.dart is 0xFF182346, the brand solid is 0xFF3D5387).
+      Declared as a color resource rather than hard-coded in Dart so the Android
+      side has the same value without a platform-channel round trip.
+    -->
+    <color name="notification_accent">#FF3D5387</color>
+
+    <!--
+      Colorizes the app's status-bar entry. Kept at the brand solid so a posted
+      notification reads as Foam Shop rather than as an unbranded system alert.
+      Only affects the accent line/dot, never the small icon itself, which stays
+      monochrome by Android requirement.
+    -->
+    <color name="notification_color">#FF3D5387</color>
+
+    <!--
+      Launcher icon palette. These are not new hues: they are the two existing
+      brand tokens from lib/theme/app_theme.dart (AppColors.brandFillDeep and
+      AppColors.brandFill, light mode) declared on the Android side so the
+      adaptive icon layers can reference them without hard-coding hex twice.
+      The gradient runs Deep Navy -> Slate Blue, which is the same two-step
+      ramp the in-app BrandMark reads as under its top-edge highlight.
+    -->
+    <color name="ic_launcher_brand_deep">#FF182346</color>
+    <color name="ic_launcher_brand_fill">#FF3D5387</color>
+
+    <!--
+      The inner rule in the launcher mark. BrandMark draws it as
+      Colors.white @ 0.35 alpha, i.e. #59FFFFFF; kept as a token so the
+      adaptive, monochrome and legacy-PNG renders cannot drift apart.
+    -->
+    <color name="ic_launcher_ring">#59FFFFFF</color>
+</resources>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive launcher icon for Foam Shop POS (API 26+).
+
+  This replaces the stock Flutter launcher PNGs, which still showed the generic
+  Flutter mark on the home screen and app drawer while the sign-in screen
+  already showed the new Foam Shop BrandMark. The two now read as the same
+  brand.
+
+  api 26 is the floor: adaptive icons simply do not exist below it, so the
+  density PNGs (mipmap-*/ic_launcher.png) are still generated and still ship
+  for those devices.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+</adaptive-icon>

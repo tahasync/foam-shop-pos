@@ -18,8 +18,9 @@ import 'screens/sign_in_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/shop_onboarding_screen.dart';
 import 'screens/subscription_expired_screen.dart';
-import 'utils/constants.dart';
 import 'services/notification_service.dart';
+import 'utils/safe_error_handler.dart';
+import 'widgets/design_system/design_system.dart';
 
 void main() {
   // Inter/Manrope/Fraunces are bundled in assets/fonts — never attempt a
@@ -30,7 +31,7 @@ void main() {
     WidgetsFlutterBinding.ensureInitialized();
 
     ErrorWidget.builder = (details) {
-      debugPrint('[FATAL] Widget error: ${details.exception}');
+      logDiagnostic('Widget error: ${details.exception}', tag: 'FATAL');
       final theme = AppTheme.light();
       return Material(
         color: theme.colorScheme.surface,
@@ -54,8 +55,8 @@ void main() {
 
     try {
       if (Firebase.apps.isNotEmpty) {
-        debugPrint(
-            '[Firebase] Already initialized by native auto-init — skipping.');
+        logDiagnostic('Already initialized by native auto-init — skipping.',
+            tag: 'Firebase');
       } else {
         try {
           await Firebase.initializeApp(
@@ -63,8 +64,8 @@ void main() {
           );
         } on FirebaseException catch (e) {
           if (e.code == 'duplicate-app') {
-            debugPrint(
-                '[Firebase] Duplicate init suppressed (native auto-init won).');
+            logDiagnostic('Duplicate init suppressed (native auto-init won).',
+                tag: 'Firebase');
           } else {
             rethrow;
           }
@@ -82,16 +83,55 @@ void main() {
     unawaited(_initBackgroundServices());
     unawaited(LocalNotificationService.initialize());
 
+    // GoogleSignIn.initialize() is awaited here but must NEVER be able to hold
+    // the app on the native splash. It talks to Play Services, and on a device
+    // with no Play Services, a locked/disabled GMS, or a network that never
+    // answers, the platform-channel call simply never completes. Because this
+    // await sat in front of runApp(), that produced a permanently blank splash
+    // with no error, no spinner, and no way forward - the app looked hung
+    // rather than broken.
+    //
+    // Two things change:
+    //  * the wait is bounded, so a hung call is abandoned after a short window;
+    //  * a failure no longer aborts start-up. Google sign-in is one entry
+    //    point; the app is still useful for an already-signed-in user, and
+    //    signInWithGoogle() re-runs initialize() on demand (it is idempotent),
+    //    so a later retry with working GMS can still succeed.
     final authService = AuthService();
-    await authService.initialize();
+    await _initializeAuthWithTimeout(authService);
 
     runApp(const ProviderScope(child: FoamShopApp()));
   }, (Object error, StackTrace stack) {
-    debugPrint('[FATAL] Unhandled error: $error');
-    debugPrint('[FATAL] Stack trace: $stack');
+    // The stack carries absolute build paths, so it is debug-only. The error
+    // itself still reaches Crashlytics via the handlers in _initBackgroundServices.
+    logDiagnosticWithStack('Unhandled error: $error', stack, tag: 'FATAL');
     runApp(ProviderScope(
         child: _FatalError(message: 'Unexpected error occurred')));
   });
+}
+
+/// Runs [AuthService.initialize] under a hard time limit.
+///
+/// Returns normally whether init succeeded, failed, or never finished. The
+/// underlying future is intentionally not cancelled: abandoning the `await`
+/// is enough to unblock start-up, and letting the original call settle in the
+/// background avoids tearing down a partially-initialised plugin mid-flight.
+Future<void> _initializeAuthWithTimeout(AuthService authService) async {
+  const timeout = Duration(seconds: 8);
+  try {
+    await authService.initialize().timeout(timeout);
+  } on TimeoutException {
+    logDiagnostic(
+      'GoogleSignIn.initialize() did not complete within '
+      '${timeout.inSeconds}s - continuing to the UI. Sign-in will retry on '
+      'demand.',
+      tag: 'Auth',
+    );
+  } catch (e) {
+    // Deliberately swallowed and logged only. Rethrowing here would replace
+    // the app with the fatal-error screen over a non-essential service.
+    logDiagnostic('GoogleSignIn.initialize() failed: $e', tag: 'Auth');
+  }
 }
 
 bool get _isEmulator {
@@ -183,11 +223,17 @@ class AuthGate extends ConsumerWidget {
             return shopAsync.when(
               data: (profile) {
                 if (profile != null) {
-                  final email = user.email ?? '';
-                  final isFounder = AppConstants.foundingAccountEmails
-                      .any((e) => e.toLowerCase() == email.toLowerCase());
-                  if (isFounder ||
-                      profile.founderExempt ||
+                  // Entitlement is read from the server-stored profile only.
+                  //
+                  // This used to ALSO trust `AppConstants.foundingAccountEmails`
+                  // - a list of personal email addresses compiled into the APK -
+                  // and treat a match as proof of founder status. That was never
+                  // a security control: the person holding the phone chooses
+                  // which account they sign in with. `founder_exempt` and
+                  // `subscription_status` are now server-owned (a client write
+                  // that changes them is denied by the Firestore rules), so the
+                  // server flag is the only thing consulted.
+                  if (profile.founderExempt ||
                       profile.subscriptionStatus == 'free_forever') {
                     return const HomeScreen();
                   }
@@ -199,8 +245,10 @@ class AuthGate extends ConsumerWidget {
                 }
                 return const ShopOnboardingScreen();
               },
-              loading: () => const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
+              loading: () => const LoadingScreen(
+                title: 'Setting up your shop',
+                subtitle: 'Fetching your products, sales and khata. '
+                    'This can take a moment on a slow connection.',
               ),
               error: (_, __) => const HomeScreen(),
             );
@@ -208,17 +256,9 @@ class AuthGate extends ConsumerWidget {
         }
         return const SignInScreen();
       },
-      loading: () => Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text('Loading...', style: Theme.of(context).textTheme.bodyMedium),
-            ],
-          ),
-        ),
+      loading: () => const LoadingScreen(
+        title: 'Loading',
+        subtitle: 'Checking your account.',
       ),
       error: (e, _) => Scaffold(
         appBar: AppBar(title: const Text('Digital Register')),

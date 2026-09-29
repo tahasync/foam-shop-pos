@@ -18,6 +18,7 @@ import '../utils/animations.dart';
 import '../widgets/scale_button.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
+import '../utils/money.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   final bool initialLowStockFilter;
@@ -163,7 +164,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                     color: ac.inkSoft)),
                           ),
                           Text(
-                              '$_csym ${NumberFormat('#,##0').format(totalValue.toInt())}',
+                              '$_csym ${NumberFormat('#,##0').format(roundMoney(totalValue))}',
                               style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
@@ -1270,9 +1271,9 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
                     Text(
                       qty <= 0
                           ? 'Enter a quantity to preview the new average cost'
-                          : '(${product.currentStock.toInt()} \u00d7 ${fmt.format(product.costPrice.toInt())} '
-                              '+ ${qty.toInt()} \u00d7 ${fmt.format(unitCost.toInt())}) \u00f7 '
-                              '${(product.currentStock + qty).toInt()} = ${fmt.format(newCost.toInt())}',
+                          : '(${product.currentStock.toInt()} \u00d7 ${fmt.format(roundMoney(product.costPrice))} '
+                              '+ ${qty.toInt()} \u00d7 ${fmt.format(roundMoney(unitCost))}) \u00f7 '
+                              '${(product.currentStock + qty).toInt()} = ${fmt.format(roundMoney(newCost))}',
                       style: TextStyle(
                           fontSize: 10.5, color: ac.inkSoft, height: 1.4),
                     ),
@@ -1296,7 +1297,7 @@ class _RestockDialogState extends ConsumerState<RestockDialog> {
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                     color: ac.inkSoft)),
-            Text('$csym ${fmt.format(total.toInt())}',
+            Text('$csym ${fmt.format(roundMoney(total))}',
                 style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
@@ -1387,7 +1388,7 @@ class _ProdCard extends StatelessWidget {
             Text(
                 low
                     ? 'Reorder soon'
-                    : 'Cost $csym ${fmt.format(product.costPrice.toInt())}',
+                    : 'Cost $csym ${fmt.format(roundMoney(product.costPrice))}',
                 style: TextStyle(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
@@ -1476,13 +1477,13 @@ class _TimelineRow extends StatelessWidget {
                   style: AppTheme.display(context, size: 13, color: ac.ink),
                   children: [
                     TextSpan(
-                      text: '$csym ${fmt.format(h.oldCostPrice.toInt())}',
+                      text: '$csym ${fmt.format(roundMoney(h.oldCostPrice))}',
                       style: TextStyle(
                           color: ac.inkFaint, fontWeight: FontWeight.w600),
                     ),
                     const TextSpan(text: '  \u2192  '),
                     TextSpan(
-                      text: '$csym ${fmt.format(h.newCostPrice.toInt())}',
+                      text: '$csym ${fmt.format(roundMoney(h.newCostPrice))}',
                       style: TextStyle(
                           color: ac.saleFg, fontWeight: FontWeight.w800),
                     ),

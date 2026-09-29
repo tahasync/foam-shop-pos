@@ -13,6 +13,7 @@ import '../utils/animations.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/initial_avatar.dart';
 import '../widgets/design_system/design_system.dart';
+import '../utils/money.dart';
 
 class SupplierKhataScreen extends ConsumerWidget {
   const SupplierKhataScreen({super.key});
@@ -92,7 +93,8 @@ class SupplierKhataScreen extends ConsumerWidget {
                                       fontWeight: FontWeight.w700,
                                       color: ac.inkSoft)),
                               const SizedBox(height: 4),
-                              Text('$csym ${fmt.format(totalPayable.toInt())}',
+                              Text(
+                                  '$csym ${fmt.format(roundMoney(totalPayable))}',
                                   style: AppTheme.display(context,
                                       size: 24, color: ac.purchaseFg)),
                             ]),
@@ -167,7 +169,7 @@ class SupplierKhataScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('$csym ${fmt.format(item.balance.toInt())}',
+            Text('$csym ${fmt.format(roundMoney(item.balance))}',
                 style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 13.5,
@@ -297,11 +299,11 @@ class _SupDetail extends ConsumerWidget {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               HeroCard(
                 eyebrow: 'Balance due',
-                amount: '$csym ${fmt.format(balance.toInt())}',
+                amount: '$csym ${fmt.format(roundMoney(balance))}',
                 pills: [
                   HeroPill(
                       label: 'Total purchased',
-                      value: '$csym ${fmt.format(totalP.toInt())}'),
+                      value: '$csym ${fmt.format(roundMoney(totalP))}'),
                   HeroPill(
                       label: 'Paid',
                       value:
@@ -376,7 +378,7 @@ class _SupDetail extends ConsumerWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${txns[i].isPurchase ? '+' : '\u2212'}$csym ${fmt.format(txns[i].amount.toInt())}',
+                            '${txns[i].isPurchase ? '+' : '\u2212'}$csym ${fmt.format(roundMoney(txns[i].amount))}',
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 13,
@@ -421,7 +423,7 @@ class _SupDetail extends ConsumerWidget {
                   fontWeight: FontWeight.w800,
                   color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(height: 2),
-          Text('Outstanding: $csym ${fmt.format(balance.toInt())}',
+          Text('Outstanding: $csym ${fmt.format(roundMoney(balance))}',
               style: TextStyle(
                   fontSize: 11, color: AppColors.of(context).inkFaint)),
           const SizedBox(height: 14),
@@ -443,7 +445,16 @@ class _SupDetail extends ConsumerWidget {
               child: AppButton(
                 label: 'Pay',
                 icon: Icons.check_rounded,
-                onTap: () {
+                onTap: () async {
+                  // The write is awaited and the success toast is gated on it.
+                  // This used to `Navigator.pop` immediately, then call
+                  // `addSupplierPayment(...).catchError((_) {})` fire-and-forget
+                  // and show "Payment recorded" unconditionally - so if the write
+                  // failed, the shopkeeper was told money had been handed over
+                  // when the ledger never recorded it. A supplier gets paid in
+                  // reality while the books disagree, and there was not even a
+                  // log line: the exception was discarded outright rather than
+                  // passed to logSecureError like every sibling write.
                   final amt = double.tryParse(ctrl.text) ?? 0;
                   if (amt <= 0) {
                     showAppToast(ctx, 'Enter a positive amount');
@@ -459,11 +470,28 @@ class _SupDetail extends ConsumerWidget {
                       date: DateTime.now(),
                       supplierId: supplier.id,
                       amountPaid: amt);
+                  try {
+                    await s.addSupplierPayment(payment);
+                  } catch (e, st) {
+                    logSecureError(e, st, tag: 'supplier_payment');
+                    if (ctx.mounted) {
+                      showAppToast(
+                        ctx,
+                        sanitizeErrorMessage(e,
+                            fallback: 'Could not record the payment. '
+                                'Please try again.'),
+                      );
+                    }
+                    // The sheet stays open with the amount intact so the
+                    // cashier can retry, rather than silently losing the entry.
+                    return;
+                  }
+                  if (!ctx.mounted) return;
                   Navigator.pop(ctx);
-                  s.addSupplierPayment(payment).catchError((_) {});
-                  if (context.mounted)
+                  if (context.mounted) {
                     showAppToast(
                         context, 'Payment recorded for ${supplier.name}');
+                  }
                 },
               ),
             ),

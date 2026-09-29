@@ -73,7 +73,11 @@ class AuthService {
         stackTrace: stack,
         name: 'auth',
       );
-      rethrow;
+      // Not rethrown. A Play Services problem must not propagate: callers
+      // treat initialize() as best-effort, and signInWithGoogle() retries it on
+      // demand. Rethrowing here meant a single GMS failure escalated into a
+      // fatal start-up error for the whole app.
+      _initialized = false;
     }
   }
 

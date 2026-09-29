@@ -172,16 +172,14 @@ void main() {
         shopName: 'Asif Foam Center',
       );
 
-      expect(file.existsSync(),
-          isTrue, reason: 'the CSV must exist on the device filesystem');
+      expect(file.existsSync(), isTrue,
+          reason: 'the CSV must exist on the device filesystem');
       expect(file.lengthSync(), greaterThan(0));
 
       // Reopen from disk and parse with the same library that wrote it.
       // `CsvToListConverter` is a stream transformer, so parsing is async.
       final raw = await file.readAsString();
-      final rows = await const CsvToListConverter()
-          .convert(raw)
-          .toList();
+      final rows = await const CsvToListConverter().convert(raw).toList();
 
       // The header row names the columns, so assert by column rather than by
       // substring position — a column reorder would otherwise still pass.
@@ -202,8 +200,8 @@ void main() {
       expect(labels, contains('Bilal Traders'));
       expect(labels, contains('Walk-in Customer'),
           reason: 'a sale with no name and no id must still be labelled');
-      expect(labels.any((l) => l.contains('walk')),
-          isTrue, reason: 'the legacy short id must be used, not throw');
+      expect(labels.any((l) => l.contains('walk')), isTrue,
+          reason: 'the legacy short id must be used, not throw');
 
       // The money must be the real figures, not truncated or blank.
       final amounts = dataRows.map((r) => r[colAmount]).toSet();
@@ -226,8 +224,8 @@ void main() {
         shopName: 'Asif Foam Center',
       );
 
-      expect(file.existsSync(),
-          isTrue, reason: 'the XLSX must exist on the device filesystem');
+      expect(file.existsSync(), isTrue,
+          reason: 'the XLSX must exist on the device filesystem');
       expect(file.lengthSync(), greaterThan(0));
 
       // An xlsx is a zip; a file that is not a real archive is the failure this
@@ -282,8 +280,8 @@ void main() {
         shopName: 'Asif Foam Center',
       );
 
-      expect(file.existsSync(),
-          isTrue, reason: 'the PDF must exist on the device filesystem');
+      expect(file.existsSync(), isTrue,
+          reason: 'the PDF must exist on the device filesystem');
       final bytes = await file.readAsBytes();
       expect(bytes.length, greaterThan(500));
       // "%PDF-" is the signature every PDF reader checks first.
@@ -325,7 +323,10 @@ void main() {
           items: [
             // The exact receipt from the bug report.
             ReceiptLine(
-                name: 'luxury', qty: '2', unitPrice: '60,000', total: '120,000'),
+                name: 'luxury',
+                qty: '2',
+                unitPrice: '60,000',
+                total: '120,000'),
           ],
           total: 'Rs 120,000',
           paid: 'Rs 100,000',
@@ -360,7 +361,8 @@ void main() {
           reason: 'the unit price must be whole, not clipped to "60,00"');
       expect(text, contains('120,000'),
           reason: 'the line total must be whole, not clipped to "120,00"');
-      expect(text, contains('20,000'), reason: 'the balance due must be stated');
+      expect(text, contains('20,000'),
+          reason: 'the balance due must be stated');
       expect(text, contains('Asif Foam Center'));
       // The exact truncation this guards: a clipped "120,00" must not appear
       // anywhere as a standalone figure.
@@ -382,8 +384,7 @@ void main() {
     test('a receipt is saved through the real native channel into Downloads',
         () async {
       // A unique name so a re-run cannot pass on a leftover from last time.
-      final name =
-          'e2e_receipt_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final name = 'e2e_receipt_${DateTime.now().millisecondsSinceEpoch}.pdf';
 
       final bytes = await generateReceiptPdf(
         const ReceiptData(
@@ -394,7 +395,10 @@ void main() {
           customerName: 'Walk-in Customer',
           items: [
             ReceiptLine(
-                name: 'luxury', qty: '2', unitPrice: '60,000', total: '120,000'),
+                name: 'luxury',
+                qty: '2',
+                unitPrice: '60,000',
+                total: '120,000'),
           ],
           total: 'Rs 120,000',
           paid: 'Rs 100,000',
@@ -445,7 +449,8 @@ void main() {
           metaLine: '',
           customerName: 'Walk-in Customer',
           items: [
-            ReceiptLine(name: 'luxury', qty: '1', unitPrice: '1,000', total: '1,000'),
+            ReceiptLine(
+                name: 'luxury', qty: '1', unitPrice: '1,000', total: '1,000'),
           ],
           total: 'Rs 1,000',
           paid: 'Rs 1,000',
@@ -553,8 +558,8 @@ String _extractTextViaToUnicode(List<int> bytes) {
   ).allMatches(source)) {
     final body = m.group(1)!;
     final name = RegExp(r'/Name\s*/(F\d+)').firstMatch(body)?.group(1);
-    final cmapNum =
-        int.tryParse(RegExp(r'/ToUnicode\s+(\d+)\s+0\s+R').firstMatch(body)?.group(1) ?? '');
+    final cmapNum = int.tryParse(
+        RegExp(r'/ToUnicode\s+(\d+)\s+0\s+R').firstMatch(body)?.group(1) ?? '');
     if (name != null && cmapNum != null) fontToCmapObj[name] = cmapNum;
   }
 
@@ -645,14 +650,16 @@ String _extractTextViaToUnicode(List<int> bytes) {
 /// Parses one `beginbfchar` CMap into a glyph-id -> character table.
 Map<int, String> _parseCMap(String stream) {
   final map = <int, String>{};
-  for (final m in RegExp(r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>').allMatches(stream)) {
+  for (final m
+      in RegExp(r'<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>').allMatches(stream)) {
     final gid = int.tryParse(m.group(1)!, radix: 16);
     final hex = m.group(2)!;
     if (gid == null || hex.isEmpty || gid == 0) continue;
     // The value is UTF-16BE. This receipt's glyph set uses only the BMP and
     // never a surrogate pair, so the first code unit is the whole character.
-    final code =
-        hex.length >= 4 ? int.parse(hex.substring(0, 4), radix: 16) : int.parse(hex, radix: 16);
+    final code = hex.length >= 4
+        ? int.parse(hex.substring(0, 4), radix: 16)
+        : int.parse(hex, radix: 16);
     if (code > 0) map[gid] = String.fromCharCode(code);
   }
   return map;
