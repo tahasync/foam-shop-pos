@@ -17,7 +17,7 @@ meaning that a flat list would lose.
 
 - **One bad sale record could hide your whole sales history.** Reading a sale
   choked on a record missing a field, and the app showed no sales, no revenue
-  and no profit — on the billing screen, the dashboard, reports, exports and
+  and no profit, on the billing screen, the dashboard, reports, exports and
   the khata ledger, all at once, with nothing on screen to say why. A malformed
   record now costs only itself, and it is logged so it can be found and fixed.
 
