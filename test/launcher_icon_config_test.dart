@@ -1,260 +1,191 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Guards the Android launcher icon against the state that shipped: the home
-/// screen and app drawer still showed Flutter's stock launcher mark while the
-/// sign-in screen already showed the new Foam Shop BrandMark. The two read as
-/// different products.
-///
-/// These assertions read the shipped Android resources and the Dart source,
-/// because the symptom (the wrong mark on the launcher) is a device-rendering
-/// outcome a widget test cannot observe.
 void main() {
   const res = 'android/app/src/main/res';
 
-  late String manifest;
-  late String adaptive;
-  late String adaptiveRound;
-  late String background;
-  late String foreground;
-  late String monochrome;
-  late String brandMarkSource;
-
-  setUpAll(() {
-    manifest =
-        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
-    adaptive =
-        File('$res/mipmap-anydpi-v26/ic_launcher.xml').readAsStringSync();
-    adaptiveRound =
-        File('$res/mipmap-anydpi-v26/ic_launcher_round.xml').readAsStringSync();
-    background =
-        File('$res/drawable/ic_launcher_background.xml').readAsStringSync();
-    foreground =
-        File('$res/drawable/ic_launcher_foreground.xml').readAsStringSync();
-    monochrome =
-        File('$res/drawable/ic_launcher_monochrome.xml').readAsStringSync();
-    brandMarkSource =
-        File('lib/widgets/design_system/brand_mark.dart').readAsStringSync();
-  });
-
-  /// Strips XML comments so a structural assertion cannot be satisfied - or
-  /// defeated - by prose in a comment. The rationale for these rules lives in
-  /// the resource comments and that prose names the very strings under test.
   String markupOnly(String xml) =>
       xml.replaceAll(RegExp(r'<!--.*?-->', dotAll: true), '');
 
-  group('adaptive icon layers', () {
-    test('the adaptive icon exists for API 26+', () {
-      expect(
-          File('$res/mipmap-anydpi-v26/ic_launcher.xml').existsSync(), isTrue,
-          reason: 'Without an adaptive icon the launcher falls back to the '
-              'legacy PNGs and the mark is never masked or themed.');
-      expect(adaptive, contains('<adaptive-icon'));
-    });
+  (int, int) pngDimensions(File file) {
+    final bytes = file.readAsBytesSync();
+    expect(bytes.length, greaterThanOrEqualTo(24));
+    final data = ByteData.sublistView(Uint8List.fromList(bytes));
+    expect(bytes.sublist(0, 8), [137, 80, 78, 71, 13, 10, 26, 10]);
+    return (data.getUint32(16), data.getUint32(20));
+  }
 
-    test('declares background, foreground and monochrome layers', () {
-      final xml = markupOnly(adaptive);
-      expect(xml, contains('<background'));
-      expect(xml, contains('<foreground'));
-      expect(xml, contains('<monochrome'),
-          reason: 'Without a monochrome layer the icon has no Android 13+ '
-              'themed-icon form and launchers render it unthemed.');
-    });
+  test('adaptive square and round icons reference all three shared layers', () {
+    final square = markupOnly(
+        File('$res/mipmap-anydpi-v26/ic_launcher.xml').readAsStringSync());
+    final round = markupOnly(
+        File('$res/mipmap-anydpi-v26/ic_launcher_round.xml')
+            .readAsStringSync());
+    for (final layer in [
+      'ic_launcher_background',
+      'ic_launcher_foreground',
+      'ic_launcher_monochrome',
+    ]) {
+      expect(square, contains(layer));
+      expect(round, contains(layer));
+    }
+  });
 
-    test('the round variant reuses the same layers, not a pre-shaped copy', () {
-      expect(File('$res/mipmap-anydpi-v26/ic_launcher_round.xml').existsSync(),
-          isTrue);
-      final sq = markupOnly(adaptive);
-      final rd = markupOnly(adaptiveRound);
-      for (final layer in [
-        'ic_launcher_background',
-        'ic_launcher_foreground',
-        'ic_launcher_monochrome'
-      ]) {
-        expect(rd, contains(layer),
-            reason: 'The round icon must reference $layer too, otherwise the '
-                'square and round variants can drift apart.');
-        expect(sq, contains(layer));
+  test('background fills the 1024 canvas with only the brand navy and disc',
+      () {
+    final xml = markupOnly(
+        File('$res/drawable/ic_launcher_background.xml').readAsStringSync());
+    expect(xml, contains('android:viewportWidth="1024"'));
+    expect(xml, contains('android:viewportHeight="1024"'));
+    expect(xml, contains('@color/brand_navy'));
+    expect(xml, contains('@color/brand_slate'));
+    expect(xml, contains('M0,0h1024v1024h-1024z'));
+    expect(xml, isNot(contains('<gradient')));
+    expect(xml, isNot(contains('android:alpha')));
+    expect(xml, isNot(contains('android:fillAlpha')));
+  });
+
+  test('foreground is transparent and applies the mark safe-zone scale', () {
+    final xml = markupOnly(
+        File('$res/drawable/ic_launcher_foreground.xml').readAsStringSync());
+    expect(xml, contains('android:viewportWidth="1024"'));
+    expect(xml, contains('android:viewportHeight="1024"'));
+    expect(xml, contains('android:scaleX="0.86"'));
+    expect(xml, contains('android:scaleY="0.86"'));
+    for (final color in [
+      '@color/brand_periwinkle',
+      '@color/brand_mauve',
+      '@color/brand_foam',
+    ]) {
+      expect(xml, contains(color));
+    }
+    expect(xml, isNot(contains('M0,0h1024v1024h-1024z')));
+  });
+
+  test('monochrome layer is present, opaque, white and uses a cut-out path',
+      () {
+    final adaptive = markupOnly(
+        File('$res/mipmap-anydpi-v26/ic_launcher.xml').readAsStringSync());
+    final xml = markupOnly(
+        File('$res/drawable/ic_launcher_monochrome.xml').readAsStringSync());
+    expect(adaptive, contains('<monochrome'));
+    expect(xml, contains('#FFFFFFFF'));
+    expect(xml, contains('android:fillType="evenOdd"'));
+    expect(xml, isNot(contains('android:alpha')));
+    expect(xml, isNot(contains('<background')));
+  });
+
+  test('legacy launcher PNGs have the exact density dimensions', () {
+    const expected = {
+      'mipmap-mdpi': 48,
+      'mipmap-hdpi': 72,
+      'mipmap-xhdpi': 96,
+      'mipmap-xxhdpi': 144,
+      'mipmap-xxxhdpi': 192,
+    };
+    for (final entry in expected.entries) {
+      for (final variant in ['ic_launcher', 'ic_launcher_round']) {
+        final file = File('$res/${entry.key}/$variant.png');
+        expect(file.existsSync(), isTrue, reason: file.path);
+        expect(pngDimensions(file), (entry.value, entry.value),
+            reason: file.path);
       }
-    });
-
-    test('the background is full-bleed and not pre-rounded', () {
-      final xml = markupOnly(background);
-      expect(xml, contains('android:viewportWidth="108"'));
-      expect(xml, contains('android:viewportHeight="108"'));
-      // The launcher applies its own mask. Baking our own corner radius into
-      // the background means the corners get cut twice and look visibly wrong.
-      expect(xml, isNot(contains('a12.96')),
-          reason: 'The background must not carry rounded corners; the '
-              'launcher mask owns the silhouette.');
-      expect(xml, contains('M0,0h108v108h-108z'),
-          reason: 'The background layer must fill the entire 108dp canvas.');
-    });
-
-    test('the background uses the app brand tokens, not new hues', () {
-      final xml = markupOnly(background);
-      expect(xml, contains('@color/ic_launcher_brand_deep'));
-      expect(xml, contains('@color/ic_launcher_brand_fill'));
-
-      final colors = File('$res/values/colors.xml').readAsStringSync();
-      expect(colors, contains('#FF182346'),
-          reason: 'brandFillDeep must stay the Deep Navy token from '
-              'AppColors in app_theme.dart.');
-      expect(colors, contains('#FF3D5387'),
-          reason: 'brandFill must stay the Slate Blue token from AppColors.');
-      expect(brandMarkSource, contains('static const Color navy'));
-      expect(brandMarkSource, contains('static const Color slate'));
-    });
-  });
-  group('foreground geometry survives the launcher mask', () {
-    test('the rule sits inside the 72dp visible area', () {
-      final xml = markupOnly(foreground);
-      // BrandMark draws its rule at 0.68 of the mark. Treating the central 72dp
-      // as the whole mark gives a 48.96dp rule spanning 29.52..78.48.
-      expect(xml, contains('M42.48,29.52'),
-          reason: 'The rule must start at the safe-zone geometry, not at a '
-              'naive 0.68 x 108 mapping that the launcher mask would clip.');
-      expect(xml, contains('a12.96,12.96'));
-    });
-
-    test('the glyph is centred and scaled, not hand-baked into the path', () {
-      final xml = markupOnly(foreground);
-      expect(xml, contains('android:translateX="37.125"'));
-      expect(xml, contains('android:scaleX="1.40625"'));
-      expect(xml, contains('android:scaleY="1.40625"'),
-          reason: 'The glyph must be positioned by a <group> transform so it '
-              'can be re-derived from the Dart painter, not by editing path '
-              'numbers by hand.');
-    });
-
-    test('the rule and glyph are white on a transparent foreground', () {
-      final xml = markupOnly(foreground);
-      expect(xml, contains('@color/ic_launcher_ring'));
-      expect(xml, contains('#FFFFFFFF'));
-      // The foreground layer must not paint a backdrop; the background layer
-      // owns that, and doubling it is what produces a flat icon.
-      expect(xml, isNot(contains('M0,0h108v108h-108z')));
-    });
-  });
-
-  group('the mark painter uses shared brand geometry', () {
-    /// Normalises a path into comparable tokens: command letters plus one
-    /// token per coordinate.
-    ///
-    /// Comparing raw strings is not safe here, because SVG path syntax treats
-    /// a comma and a space as interchangeable separators ("C4.8 10.08" and
-    /// "C4.8,10.08" are the same curve). Stripping all whitespace instead
-    /// glues coordinates together and corrupts the very thing being compared.
-    /// So both sides are tokenised and numbers are normalised, which leaves a
-    /// mismatch meaning one of two things: a genuinely different number, or a
-    /// different command order. Both are real drift.
-    List<String> pathTokens(String path) {
-      // Split command letters away from the numbers. In SVG a command letter
-      // may abut a coordinate with no separator at all ("17.28C4.8" is valid),
-      // so a plain whitespace split fuses the two into one meaningless token.
-      final spaced = path
-          .replaceAll(',', ' ')
-          .replaceAllMapped(RegExp(r'[A-Za-z]'), (m) => ' ${m[0]} ');
-      return spaced.split(' ').where((t) => t.isNotEmpty).map((t) {
-        final n = double.tryParse(t);
-        if (n == null) return t.toUpperCase();
-        final r = (n * 10000).round() / 10000;
-        return r == r.roundToDouble() ? r.toInt().toString() : r.toString();
-      }).toList();
-    }
-
-    String? glyphPathIn(String xml) =>
-        RegExp(r'android:pathData="(M2\.88[^"]+)"').firstMatch(xml)?.group(1);
-
-    test('the in-app painter draws all layers from MarkGeometry', () {
-      expect(brandMarkSource, contains('class MarkGeometry'));
-      expect(brandMarkSource, contains('class FoamMarkPainter'));
-      expect(brandMarkSource, contains('MarkGeometry.slabOrigins'));
-      expect(brandMarkSource, contains('MarkGeometry.pores'));
-      expect(brandMarkSource, contains('MarkGeometry.gap'));
-      expect(brandMarkSource, contains('PathOperation.difference'));
-      expect(brandMarkSource, contains('MarkGeometry.periwinkle'));
-      expect(brandMarkSource, contains('MarkGeometry.mauve'));
-      expect(brandMarkSource, contains('MarkGeometry.foam'));
-    });
-
-    test('the monochrome glyph matches the colour glyph', () {
-      final colour = glyphPathIn(markupOnly(foreground))!;
-      final mono = glyphPathIn(markupOnly(monochrome))!;
-      expect(pathTokens(mono), pathTokens(colour),
-          reason: 'The themed icon must not resize or redraw the mark when the '
-              'user switches themed icons on.');
-    });
-  });
-
-  group('monochrome layer', () {
-    test('has no painted background, so the system can tint it freely', () {
-      final xml = markupOnly(monochrome);
-      expect(xml, isNot(contains('<background')));
-      expect(xml, isNot(contains('M0,0h108v108h-108z')),
-          reason: 'A themed icon must be shape-only; any painted backdrop '
-              'defeats re-tinting.');
-    });
-
-    test('is fully opaque, because the system flattens alpha anyway', () {
-      final xml = markupOnly(monochrome);
-      expect(xml, contains('#FFFFFFFF'));
-      expect(xml, isNot(contains('@color/ic_launcher_ring')),
-          reason: 'A 35%-alpha rule flattens to a solid block under re-tint; '
-              'the themed variant must be opaque.');
-    });
-  });
-
-  group('legacy PNG fallbacks', () {
-    // Adaptive icons do not exist below API 26, so the raster icons still ship
-    // for those devices and must be regenerated rather than left as Flutter's
-    // stock mark.
-    const expected = [
-      'mipmap-mdpi',
-      'mipmap-hdpi',
-      'mipmap-xhdpi',
-      'mipmap-xxhdpi',
-      'mipmap-xxxhdpi',
-    ];
-
-    for (final dir in expected) {
-      test('$dir has ic_launcher.png and ic_launcher_round.png', () {
-        final f = File('$res/$dir/ic_launcher.png');
-        expect(f.existsSync(), isTrue,
-            reason: 'Pre-API-26 launchers have no adaptive icon and would '
-                'otherwise show the stock Flutter mark.');
-        expect(f.lengthSync(), greaterThan(0));
-        expect(File('$res/$dir/ic_launcher_round.png').existsSync(), isTrue,
-            reason: 'Round fallbacks should exist at every density too.');
-      });
     }
   });
 
-  group('manifest wiring', () {
-    test('declares both the square and round launcher icon', () {
-      expect(manifest, contains('android:icon="@mipmap/ic_launcher"'));
-      expect(
-          manifest, contains('android:roundIcon="@mipmap/ic_launcher_round"'));
-    });
-
-    test('the notification small icon is still NOT the launcher icon', () {
-      // Guards the earlier fix: Android renders a notification small icon as
-      // an alpha-only mask, so pointing it at an adaptive icon with an opaque
-      // background layer shows a solid block in the status bar.
-      final app = manifest.substring(manifest.indexOf('<application'));
-      final iconTag =
-          RegExp(r'android:icon="([^"]+)"').firstMatch(app)!.group(1);
-      final notifIcon = RegExp(
-              r'default_notification_icon"\s*\n?\s*android:resource="([^"]+)"')
-          .firstMatch(manifest)!
-          .group(1);
-      expect(notifIcon, isNot(iconTag),
-          reason: 'The notification icon and the launcher icon must stay '
-              'separate resources.');
-      expect(notifIcon, '@drawable/ic_stat_foam_shop');
-    });
+  test('Android manifest keeps app, launcher and notification icons wired', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    expect(manifest, contains('android:label="Foam Shop"'));
+    expect(manifest, contains('android:icon="@mipmap/ic_launcher"'));
+    expect(manifest, contains('android:roundIcon="@mipmap/ic_launcher_round"'));
+    expect(manifest, contains('@drawable/ic_stat_foam_shop'));
+    expect(manifest, contains('@color/notification_color'));
+    expect(File('$res/drawable/ic_stat_foam_shop.xml').existsSync(), isTrue);
+    expect(
+        File('test/notification_icon_config_test.dart').existsSync(), isTrue);
   });
 
-  // __PART2__
+  test('Flutter icon config points at the real square master without hazards',
+      () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(pubspec,
+        contains('image_path: "design/brand/icon/app-icon-square-1024.png"'));
+    expect(pubspec, contains('Do NOT run flutter_launcher_icons.'));
+    expect(File('design/brand/icon/app-icon-square-1024.png').existsSync(),
+        isTrue);
+    expect(File('assets/logo.svg').existsSync(), isFalse);
+    expect(File('assets/logo.png').existsSync(), isFalse);
+    expect(pubspec, isNot(contains('assets/logo.svg')));
+    expect(pubspec, isNot(contains('assets/logo.png')));
+  });
+
+  test('splash uses the brand page colour and Android 12 icon on both themes',
+      () {
+    final colors = File('$res/values/brand_colors.xml').readAsStringSync();
+    final darkColors =
+        File('$res/values-night/brand_colors.xml').readAsStringSync();
+    expect(colors, contains('<color name="brand_ink">#FF0E0D15</color>'));
+    expect(colors, contains('<color name="brand_navy">#FF182346</color>'));
+    expect(colors, contains('<color name="brand_slate">#FF3D5387</color>'));
+    expect(
+        colors, contains('<color name="brand_periwinkle">#FF7C83AD</color>'));
+    expect(colors, contains('<color name="brand_mauve">#FFBFA9BA</color>'));
+    expect(colors, contains('<color name="brand_foam">#FFF7F4F2</color>'));
+    expect(
+        colors, contains('<color name="splash_background">#FFF7F4F2</color>'));
+    expect(darkColors,
+        contains('<color name="splash_background">#FF14141A</color>'));
+    for (final path in [
+      '$res/drawable/launch_background.xml',
+      '$res/drawable-v21/launch_background.xml',
+    ]) {
+      expect(File(path).readAsStringSync(), contains('@drawable/splash_icon'));
+    }
+    for (final path in [
+      '$res/values-v31/styles.xml',
+      '$res/values-night-v31/styles.xml',
+    ]) {
+      final xml = File(path).readAsStringSync();
+      expect(xml, contains('@color/splash_background'));
+      expect(xml, contains('@drawable/splash_icon'));
+    }
+  });
+
+  test('web manifest points to the supplied Foam Shop icons', () {
+    final manifest = File('web/manifest.json').readAsStringSync();
+    expect(manifest, contains('"name": "Foam Shop"'));
+    expect(manifest, contains('"src": "icons/Icon-192.png"'));
+    expect(manifest, contains('"src": "icons/Icon-512.png"'));
+    for (final name in [
+      'Icon-192.png',
+      'Icon-512.png',
+      'Icon-maskable-192.png',
+      'Icon-maskable-512.png',
+    ]) {
+      expect(File('web/icons/$name').existsSync(), isTrue, reason: name);
+    }
+    expect(File('web/favicon.png').existsSync(), isTrue);
+  });
+
+  test('iOS icon PNGs replace the kit slots without changing its manifest', () {
+    final appIcons = Directory('ios/Runner/Assets.xcassets/AppIcon.appiconset');
+    final manifest = File('${appIcons.path}/Contents.json');
+    expect(manifest.existsSync(), isTrue);
+    for (final name in [
+      'Icon-App-20x20@1x.png',
+      'Icon-App-20x20@2x.png',
+      'Icon-App-20x20@3x.png',
+      'Icon-App-29x29@1x.png',
+      'Icon-App-40x40@3x.png',
+      'Icon-App-60x60@3x.png',
+      'Icon-App-76x76@2x.png',
+      'Icon-App-83.5x83.5@2x.png',
+      'Icon-App-1024x1024@1x.png',
+    ]) {
+      expect(File('${appIcons.path}/$name').existsSync(), isTrue, reason: name);
+    }
+  });
 }
