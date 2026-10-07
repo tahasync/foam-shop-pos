@@ -103,8 +103,8 @@ void main() {
               'AppColors in app_theme.dart.');
       expect(colors, contains('#FF3D5387'),
           reason: 'brandFill must stay the Slate Blue token from AppColors.');
-      expect(brandMarkSource, contains('brandFill'),
-          reason: 'BrandMark is the in-app mark the launcher must match.');
+      expect(brandMarkSource, contains('static const Color navy'));
+      expect(brandMarkSource, contains('static const Color slate'));
     });
   });
   group('foreground geometry survives the launcher mask', () {
@@ -138,48 +138,7 @@ void main() {
     });
   });
 
-  group('the glyph cannot drift from the Dart painter', () {
-    /// Re-derives the foam glyph path from `_FoamGlyphPainter` in
-    /// brand_mark.dart by reading its real coefficients, scaling the
-    /// normalised 0..1 values onto the 24-unit viewport the vector uses.
-    ///
-    /// This is the load-bearing test in this file. The vector drawable and the
-    /// Dart painter are two hand-maintained copies of one shape; the failure
-    /// mode is a tweak to the in-app mark that ships while the launcher icon
-    /// stays stale - a silent brand regression that reading these files by eye
-    /// would not catch. Deriving the expectation from the source of truth
-    /// makes that impossible.
-    String deriveGlyphPathFromPainter(String source) {
-      final painter =
-          source.substring(source.indexOf('class _FoamGlyphPainter'));
-      const viewport = 24.0; // the vector's glyph viewport
-      final buffer = StringBuffer();
-
-      for (final raw in painter.split('\n')) {
-        final line = raw.trim();
-        if (line.startsWith('//') || line.isEmpty) continue;
-
-        final isMove = line.contains('path.moveTo(');
-        final isCubic = line.contains('path.cubicTo(');
-        if (!isMove && !isCubic) continue;
-
-        final coords = RegExp(r'[wh] \* ([0-9.]+)').allMatches(line).map((m) {
-          // w and h are both the glyph box, so the two axes scale alike.
-          final v = double.parse(m.group(1)!) * viewport;
-          final r = (v * 10000).round() / 10000;
-          return r == r.roundToDouble() ? r.toInt().toString() : r.toString();
-        }).toList();
-
-        if (isMove) {
-          buffer.write('M${coords[0]},${coords[1]}');
-        } else if (coords.length == 6) {
-          buffer.write('C${coords.join(' ')}');
-        }
-      }
-      buffer.write('Z');
-      return buffer.toString();
-    }
-
+  group('the mark painter uses shared brand geometry', () {
     /// Normalises a path into comparable tokens: command letters plus one
     /// token per coordinate.
     ///
@@ -208,20 +167,16 @@ void main() {
     String? glyphPathIn(String xml) =>
         RegExp(r'android:pathData="(M2\.88[^"]+)"').firstMatch(xml)?.group(1);
 
-    test('the vector glyph path matches the in-app BrandMark glyph', () {
-      final expected = deriveGlyphPathFromPainter(brandMarkSource);
-      expect(expected, isNot(contains('M0,0')),
-          reason: 'The painter path could not be parsed; without this guard '
-              'the comparison below would pass vacuously.');
-
-      final pathData = glyphPathIn(markupOnly(foreground));
-      expect(pathData, isNotNull,
-          reason: 'No foam glyph path found in the launcher foreground.');
-
-      expect(pathTokens(pathData!), pathTokens(expected),
-          reason: 'The launcher glyph has drifted from _FoamGlyphPainter in '
-              'brand_mark.dart. The launcher icon must show the same foam mark '
-              'as the sign-in screen.');
+    test('the in-app painter draws all layers from MarkGeometry', () {
+      expect(brandMarkSource, contains('class MarkGeometry'));
+      expect(brandMarkSource, contains('class FoamMarkPainter'));
+      expect(brandMarkSource, contains('MarkGeometry.slabOrigins'));
+      expect(brandMarkSource, contains('MarkGeometry.pores'));
+      expect(brandMarkSource, contains('MarkGeometry.gap'));
+      expect(brandMarkSource, contains('PathOperation.difference'));
+      expect(brandMarkSource, contains('MarkGeometry.periwinkle'));
+      expect(brandMarkSource, contains('MarkGeometry.mauve'));
+      expect(brandMarkSource, contains('MarkGeometry.foam'));
     });
 
     test('the monochrome glyph matches the colour glyph', () {

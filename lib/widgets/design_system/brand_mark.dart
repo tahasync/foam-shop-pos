@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/brand.dart';
 import 'app_button.dart';
 import 'elevation.dart';
 
@@ -176,8 +177,129 @@ class _BackButton extends StatelessWidget {
   }
 }
 
-/// The foam brand mark (`.brand-mark`): fixed `brandSolid` fill with white
-/// logo glyph, used in app bars and auth screens.
+/// Geometry shared by the in-app painter and the checked-in brand kit.
+class MarkGeometry {
+  const MarkGeometry._();
+
+  static const double space = 1024;
+  static const double slabW = 600;
+  static const double slabH = 224;
+  static const double slabR = 80;
+  static const double gap = 24;
+
+  /// bottom, middle, top
+  static const List<Offset> slabOrigins = [
+    Offset(178, 528),
+    Offset(212, 404),
+    Offset(246, 280),
+  ];
+
+  /// (dx, dy, r) from the top slab's origin
+  static const List<(double, double, double)> pores = [
+    (470, 120, 26),
+    (520, 82, 15),
+    (428, 88, 10),
+  ];
+  static const double tileRadius = 232;
+  static const (double, double, double) accent = (968, 996, 262);
+  static const double adaptiveScale = 0.86;
+
+  static const Color ink = Color(0xFF0E0D15);
+  static const Color navy = Color(0xFF182346);
+  static const Color slate = Color(0xFF3D5387);
+  static const Color periwinkle = Color(0xFF7C83AD);
+  static const Color mauve = Color(0xFFBFA9BA);
+  static const Color foam = Color(0xFFF7F4F2);
+}
+
+/// Paints the foam layers synchronously, using the mark.json design space.
+class FoamMarkPainter extends CustomPainter {
+  const FoamMarkPainter({this.showField = false});
+
+  final bool showField;
+
+  Path _slab(Offset origin, {double inflate = 0}) {
+    final rect = Rect.fromLTWH(
+      origin.dx - inflate,
+      origin.dy - inflate,
+      MarkGeometry.slabW + inflate * 2,
+      MarkGeometry.slabH + inflate * 2,
+    );
+    return Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        rect,
+        Radius.circular(MarkGeometry.slabR + inflate),
+      ));
+  }
+
+  void _drawLayers(Canvas canvas) {
+    final bottom = _slab(MarkGeometry.slabOrigins[0]);
+    final middle = _slab(MarkGeometry.slabOrigins[1]);
+    final top = _slab(MarkGeometry.slabOrigins[2]);
+    final middleGap =
+        _slab(MarkGeometry.slabOrigins[1], inflate: MarkGeometry.gap);
+    final topGap =
+        _slab(MarkGeometry.slabOrigins[2], inflate: MarkGeometry.gap);
+    final lowerCutouts = Path.combine(PathOperation.union, middleGap, topGap);
+    final visibleBottom =
+        Path.combine(PathOperation.difference, bottom, lowerCutouts);
+    final visibleMiddle =
+        Path.combine(PathOperation.difference, middle, topGap);
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    paint.color = MarkGeometry.periwinkle;
+    canvas.drawPath(visibleBottom, paint);
+    paint.color = MarkGeometry.mauve;
+    canvas.drawPath(visibleMiddle, paint);
+    paint.color = MarkGeometry.foam;
+    canvas.drawPath(top, paint);
+
+    final topOrigin = MarkGeometry.slabOrigins[2];
+    paint.color = MarkGeometry.mauve;
+    for (final (dx, dy, radius) in MarkGeometry.pores) {
+      canvas.drawCircle(
+        Offset(topOrigin.dx + dx, topOrigin.dy + dy),
+        radius,
+        paint,
+      );
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / MarkGeometry.space;
+    canvas.save();
+    canvas.scale(scale);
+
+    if (showField) {
+      final tile = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(0, 0, MarkGeometry.space, MarkGeometry.space),
+        const Radius.circular(MarkGeometry.tileRadius),
+      );
+      canvas.save();
+      canvas.clipRRect(tile, doAntiAlias: true);
+      canvas.drawRRect(tile, Paint()..color = MarkGeometry.navy);
+      final (cx, cy, radius) = MarkGeometry.accent;
+      canvas.drawCircle(
+        Offset(cx, cy),
+        radius,
+        Paint()..color = MarkGeometry.slate,
+      );
+      _drawLayers(canvas);
+      canvas.restore();
+    } else {
+      _drawLayers(canvas);
+    }
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(FoamMarkPainter oldDelegate) =>
+      oldDelegate.showField != showField;
+}
+
+/// The foam brand mark (`.brand-mark`): flat Foam Layers on a Deep Navy tile.
 class BrandMark extends StatelessWidget {
   final double size;
   final double iconSize;
@@ -185,60 +307,26 @@ class BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ac = AppColors.of(context);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: ac.brandFill,
-        borderRadius: BorderRadius.circular(size * 0.32),
-        boxShadow: appElevationShadows(context),
-      ),
-      foregroundDecoration: darkTopEdgeHighlight(context),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            margin: EdgeInsets.all(size * 0.16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(size * 0.18),
-              border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.35), width: 1.5),
-            ),
+    // Retained for source compatibility; the complete mark uses its 1024-space.
+    final _ = iconSize;
+    return Semantics(
+      label: AppBrand.name,
+      image: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(
+              size * MarkGeometry.tileRadius / MarkGeometry.space),
+          boxShadow: appElevationShadows(context),
+        ),
+        child: SizedBox.square(
+          dimension: size,
+          child: const CustomPaint(
+            painter: FoamMarkPainter(showField: true),
           ),
-          CustomPaint(
-            size: Size(iconSize, iconSize),
-            painter: _FoamGlyphPainter(color: Colors.white),
-          ),
-        ],
+        ),
       ),
     );
   }
-}
-
-class _FoamGlyphPainter extends CustomPainter {
-  final Color color;
-  _FoamGlyphPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-    final w = size.width;
-    final h = size.height;
-    final path = Path();
-    path.moveTo(w * 0.12, h * 0.72);
-    path.cubicTo(w * 0.2, h * 0.42, w * 0.38, h * 0.18, w * 0.5, h * 0.18);
-    path.cubicTo(w * 0.62, h * 0.18, w * 0.8, h * 0.42, w * 0.88, h * 0.72);
-    path.cubicTo(w * 0.78, h * 0.9, w * 0.62, h * 0.9, w * 0.5, h * 0.74);
-    path.cubicTo(w * 0.38, h * 0.9, w * 0.22, h * 0.9, w * 0.12, h * 0.72);
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(_FoamGlyphPainter old) => old.color != color;
 }
 
 /// App bar used across the main tabs.
