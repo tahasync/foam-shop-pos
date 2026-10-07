@@ -19,6 +19,7 @@ import 'screens/home_screen.dart';
 import 'screens/shop_onboarding_screen.dart';
 import 'screens/subscription_expired_screen.dart';
 import 'services/notification_service.dart';
+import 'utils/brand.dart';
 import 'utils/safe_error_handler.dart';
 import 'widgets/design_system/design_system.dart';
 
@@ -177,7 +178,7 @@ class _FatalError extends StatelessWidget {
                 Icon(Icons.error_outline_rounded,
                     size: 64, color: theme.colorScheme.error),
                 const SizedBox(height: 16),
-                Text('Digital Register', style: theme.textTheme.headlineSmall),
+                Text(AppBrand.name, style: theme.textTheme.headlineSmall),
                 const SizedBox(height: 8),
                 Text(message,
                     style: theme.textTheme.bodyMedium,
@@ -198,7 +199,7 @@ class FoamShopApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     return MaterialApp(
-      title: 'Foam Shop — Digital Register',
+      title: AppBrand.name,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
@@ -261,7 +262,7 @@ class AuthGate extends ConsumerWidget {
         subtitle: 'Checking your account.',
       ),
       error: (e, _) => Scaffold(
-        appBar: AppBar(title: const Text('Digital Register')),
+        appBar: AppBar(title: const Text(AppBrand.name)),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

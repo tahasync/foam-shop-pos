@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/brand.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
 
@@ -38,12 +39,13 @@ class SignInScreen extends ConsumerWidget {
                   const BrandMark(size: 64, iconSize: 30),
                   const SizedBox(height: 22),
                   Text(
-                    'Digital Register',
+                    AppBrand.name,
                     style: AppTheme.display(context, size: 26),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Smart POS for your shop',
+                    AppBrand.tagline,
+                    textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12.5, color: ac.inkSoft),
                   ),
                   const SizedBox(height: 28),

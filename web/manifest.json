@@ -1,11 +1,11 @@
 {
-    "name": "foam_shop_register",
-    "short_name": "foam_shop_register",
+    "name": "Foam Shop",
+    "short_name": "Foam Shop",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F7F4F2",
+    "theme_color": "#182346",
+    "description": "Foam Shop \u2014 Digital Register. Every sale. Every stock. Every khata.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

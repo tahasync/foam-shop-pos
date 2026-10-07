@@ -1,4 +1,4 @@
-# Foam Shop POS — Digital Register
+# Foam Shop — Digital Register
 
 A Flutter POS and ledger app for foam/mattress shops with real-time Firestore sync, inventory costing, customer/supplier ledger (Khata), expense tracking, and PDF/XLSX/CSV exports. Now a commercial multi-tenant product with subscription management, local notifications, and a full profit/loss reporting suite.
 
