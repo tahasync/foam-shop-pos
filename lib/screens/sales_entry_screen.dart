@@ -826,6 +826,19 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
   bool _showsProductList(SalesState salesState) =>
       _searchCtrl.text.trim().isNotEmpty || salesState.recentProductIds.isEmpty;
 
+  void _addProductToCart(Product product) {
+    final sales = ref.read(salesProvider);
+    final isNewLine = !sales.cart.any((item) => item.product.id == product.id);
+    if (isNewLine && sales.cart.length >= maxSaleLineItems) {
+      showAppToast(
+        context,
+        'A sale can include up to $maxSaleLineItems different products.',
+      );
+      return;
+    }
+    ref.read(salesProvider.notifier).addToCart(product);
+  }
+
   Widget _buildSearchResult(Product p, BuildContext context, ColorScheme cs,
       AppColors ac, String csym) {
     final q = _searchCtrl.text.trim().toLowerCase();
@@ -836,7 +849,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
         if (outOfStock) return;
         _searchCtrl.clear();
         setState(() {});
-        ref.read(salesProvider.notifier).addToCart(p);
+        _addProductToCart(p);
       },
       child: Container(
         // minHeight, not a fixed height: this is the row a user taps most often
@@ -930,7 +943,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                   : () {
                       _searchCtrl.clear();
                       setState(() {});
-                      ref.read(salesProvider.notifier).addToCart(p);
+                      _addProductToCart(p);
                       // Light tap: adding a line changes the bill, which is the
                       // thing the cashier is watching while they type. Paired
                       // with the line appearing in the cart.
@@ -1454,7 +1467,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                               return GestureDetector(
                                 onTap: () {
                                   if (p.currentStock <= 0) return;
-                                  ref.read(salesProvider.notifier).addToCart(p);
+                                  _addProductToCart(p);
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(

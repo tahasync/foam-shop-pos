@@ -283,10 +283,13 @@ screenshot walkthrough of every screen. That part remains unverified.
   isolation. A `test.beforeEach` now calls `env.clearFirestore()`. Separately,
   `scripts/rules_test_package.json` was never a conventional `package.json`, so
   `npm install` had nothing to read; a real `scripts/package.json` now exists.
-- **Line items are not validated server-side.** No iteration construct exists in
-  the rules language. `SaleLineItem.fromMap` throws on a bad line, so the guard
-  is client-side only. Pinned by a test asserting the current behaviour, so it
-  cannot drift unnoticed.
+- **Firestore Rules validate sale lines explicitly.** Rules cannot loop through
+  an unbounded list, and the emulator showed 20 line checks exceed the
+  1,000-expression request budget. The rules validate up to 7 line items and
+  the cart blocks an 8th distinct product. This stays on the Spark plan: sales
+  and quotes continue to use the existing Firestore client transaction. The
+  rules also freeze `is_quote` after creation so a quote cannot become a sale
+  or a sale disappear from accounting as a quote.
 - **Subscription paywall is client-side** (`foundingAccountEmails` in
   `lib/utils/constants.dart`) and self-editable. Needs a server-side entitlement
   decision.

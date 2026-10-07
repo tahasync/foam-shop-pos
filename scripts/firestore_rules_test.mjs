@@ -117,7 +117,7 @@ const saleDoc = (over = {}) => ({
   delivery_charge: 0,
   cutting_charge: 0,
   is_voided: false,
-  transaction_uuid: 'tx-abc-123',
+  transaction_uuid: over.id ?? 's1',
   ...over,
 });
 
@@ -166,6 +166,30 @@ test('restock (current_stock + weighted cost_price) is allowed', async () => {
 test('sale create is allowed', async () => {
   const db = await asUser(OWNER);
   await assertSucceeds(db.collection(`users/${OWNER}/sales`).doc('s1').set(saleDoc()));
+});
+
+test('sale lines are checked by rules and capped at 7', async () => {
+  const db = await asUser(OWNER);
+  const col = db.collection(`users/${OWNER}/sales`);
+  const valid = { product_id: 'p1', qty_or_area: 2, sale_price: 450 };
+
+  await assertFails(col.doc('bad-line-qty').set(saleDoc({
+    id: 'bad-line-qty',
+    line_items: [{ ...valid, qty_or_area: 0 }],
+  })));
+  await assertFails(col.doc('bad-line-product').set(saleDoc({
+    id: 'bad-line-product',
+    line_items: [{ qty_or_area: 2, sale_price: 450 }],
+  })));
+  const sevenLines = Array.from({ length: 7 }, () => valid);
+  await assertSucceeds(col.doc('seven-lines').set(saleDoc({
+    id: 'seven-lines',
+    line_items: sevenLines,
+  })));
+  await assertFails(col.doc('eight-lines').set(saleDoc({
+    id: 'eight-lines',
+    line_items: [...sevenLines, valid],
+  })));
 });
 
 test('sale void (partial is_voided + void_reason) is allowed', async () => {
@@ -496,6 +520,7 @@ test('a recorded sale cannot be rewritten after the fact', async () => {
   await assertFails(ref.update({ paid: 1 }));
   await assertFails(ref.update({ date: '2020-01-01T00:00:00' }));
   await assertFails(ref.update({ transaction_uuid: 'different' }));
+  await assertFails(ref.update({ is_quote: true }));
   await assertFails(ref.update({
     line_items: [{ product_id: 'p1', qty_or_area: 999, sale_price: 1 }],
   }));
@@ -510,23 +535,11 @@ test('a malformed sale is rejected on create', async () => {
   await assertFails(col.doc('bad4').set(saleDoc({ date: 'not-a-date' })));
 });
 
-test('KNOWN LIMITATION: a bad line item is not caught server-side', async () => {
-  // This asserts the CURRENT, imperfect behaviour on purpose. It is written as
-  // a positive assertion so that it fails loudly if the situation ever
-  // changes in either direction, rather than leaving the gap undocumented.
-  //
-  // A line item with qty_or_area: 0 is nonsense - `SaleLineItem.fromMap`
-  // throws FormatException on exactly this input - but the ruleset cannot
-  // reject it. Firestore Security Rules have no iteration construct (List
-  // offers only hasAll/hasAny/size/toSet), so there is no way to express
-  // "every element of line_items must ...". The original file tried, with
-  // `line_items.all(li => ...)`, which does not compile.
-  //
-  // Closing this properly needs a Cloud Function that validates the document,
-  // not a rule. Until then the guard is client-side only.
+test('malformed line item writes are rejected server-side', async () => {
   const db = await asUser(OWNER);
-  await assertSucceeds(
+  await assertFails(
     db.collection(`users/${OWNER}/sales`).doc('known-gap-1').set(saleDoc({
+      id: 'known-gap-1',
       line_items: [{ product_id: 'p1', qty_or_area: 0, sale_price: 450 }],
     })),
   );

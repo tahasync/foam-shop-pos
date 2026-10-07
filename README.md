@@ -102,7 +102,7 @@ This project underwent a comprehensive security audit covering:
 - **Input validation** — model-level assertions + `FormatException` rejection on all 9 models (Product, Sale, Customer, Supplier, Purchase, Expense, Payment, SupplierPayment, OpeningBalance)
 - **Secrets management** — all Firebase keys and OAuth client IDs externalized to `env/firebase_config.json` (gitignored). Git history BFG-purged. No secrets in any commit or tag.
 - **Error handling** — safe sanitizer masks Firebase and `PlatformException` stack traces. Structured logging via `logSecureError`.
-- **Firestore rules** — field-level type guards, date validation, line-item schema enforcement, `transaction_uuid` idempotency, unknown collection denial
+- **Firestore rules** — field-level type guards, date validation, per-line sale schema validation (up to 7 lines, within the rules expression budget), immutable sale/quote classification, `transaction_uuid` idempotency, unknown collection denial; sale writes stay on Firestore transactions and need no Cloud Functions plan
 - **Dependency audit** — all key dependencies updated to latest compatible versions
 - **CSV injection** — formula prefix sanitization (`=`, `+`, `-`, `@` cells prefixed with apostrophe)
 

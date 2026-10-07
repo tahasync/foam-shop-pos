@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/product.dart';
 
+const int maxSaleLineItems = 7;
+
 class CartItem {
   final Product product;
   int quantity;
@@ -60,6 +62,7 @@ class SalesNotifier extends Notifier<SalesState> {
       existing.quantity++;
       state = state.copyWith(cart: [...state.cart], recentProductIds: recent);
     } else {
+      if (state.cart.length >= maxSaleLineItems) return;
       state = state.copyWith(
         cart: [...state.cart, CartItem(product: product, quantity: 1)],
         recentProductIds: recent,

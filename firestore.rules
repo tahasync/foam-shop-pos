@@ -27,6 +27,56 @@ service cloud.firestore {
       return val is string;
     }
 
+    function validOptionalNumber(data, key, min, max) {
+      return !(key in data) || data[key] == null
+        || (data[key] is number && data[key] >= min && data[key] <= max);
+    }
+
+    function validSaleLineItem(line) {
+      return line is map
+        && line.get('product_id', null) is string
+        && line.product_id.size() > 0
+        && line.product_id.size() <= 128
+        && line.get('qty_or_area', null) is number
+        && line.qty_or_area > 0
+        && line.qty_or_area <= 1000000000
+        && line.get('sale_price', null) is number
+        && line.sale_price >= 0
+        && line.sale_price <= 1000000000
+        && (line.get('line_discount_amount', null) == null
+            || (line.line_discount_amount is number
+                && line.line_discount_amount >= 0
+                && line.line_discount_amount
+                   <= line.qty_or_area * line.sale_price))
+        && (line.get('cost_price_at_sale', null) == null
+            || (line.cost_price_at_sale is number
+                && line.cost_price_at_sale >= 0
+                && line.cost_price_at_sale <= 1000000000))
+        && (line.get('custom_length', null) == null
+            || (line.custom_length is number && line.custom_length >= 0))
+        && (line.get('custom_width', null) == null
+            || (line.custom_width is number && line.custom_width >= 0))
+        && (line.get('name', null) == null
+            || (line.name is string && line.name.size() <= 200));
+    }
+
+    function validSaleLineItemAt(items, index) {
+      return items.size() <= index || validSaleLineItem(items[index]);
+    }
+
+    // Rules have no loop or lambda, and a sale request must stay below the
+    // 1,000-expression evaluation budget. Keep this bound in sync with the UI.
+    function validSaleLineItems(items) {
+      return items is list && items.size() > 0 && items.size() <= 7
+        && validSaleLineItemAt(items, 0)
+        && validSaleLineItemAt(items, 1)
+        && validSaleLineItemAt(items, 2)
+        && validSaleLineItemAt(items, 3)
+        && validSaleLineItemAt(items, 4)
+        && validSaleLineItemAt(items, 5)
+        && validSaleLineItemAt(items, 6);
+    }
+
     // Firestore rules have no lambda or iteration construct, so an unreferenced
     // helper cannot be left in "just in case" - the compiler rejects the whole
     // file with "Unused function". Every helper below is referenced.
@@ -147,21 +197,12 @@ service cloud.firestore {
       match /sales/{saleId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
-          && request.resource.data.line_items is list
-          && request.resource.data.line_items.size() > 0
+          && request.resource.data.id == saleId
+          && request.resource.data.transaction_uuid == saleId
+          && validSaleLineItems(request.resource.data.line_items)
           && isPositiveNumber(request.resource.data.paid)
           && isDateString(request.resource.data.date)
-          && isNonEmpty(request.resource.data.transaction_uuid)
-          // NOTE: this block used to carry a per-line-item check written as
-          // `line_items.all(li => li.qty_or_area > 0 ...)`. Firestore Security
-          // Rules have no lambda or iteration construct at all - List offers
-          // only hasAll/hasAny/size/toSet - so that expression never compiled.
-          // Combined with firebase.json never naming a `rules` key, the file was
-          // never actually deployable: it was aspirational text, not a
-          // ruleset. Line-item shapes are validated in the client model
-          // (SaleLineItem.fromMap throws on a missing product_id or a
-          // non-positive qty_or_area) instead. Enforcing that server-side would
-          // need a Cloud Function, not a rule.
+          && request.resource.data.get('is_quote', false) is bool
         // A sale may be voided, never un-voided, and its financial content may
         // never be edited after the fact. The `resource.data` comparison is what
         // actually enforces that; the old `keys().hasAny(...)` form was always
@@ -191,6 +232,8 @@ service cloud.firestore {
           && request.resource.data.get('paid', null) == resource.data.get('paid', null)
           && request.resource.data.get('transaction_uuid', null)
              == resource.data.get('transaction_uuid', null)
+          && request.resource.data.get('is_quote', false)
+             == resource.data.get('is_quote', false)
           && request.resource.data.get('date', null) == resource.data.get('date', null)
           && request.resource.data.get('customer_id', '')
              == resource.data.get('customer_id', '')
