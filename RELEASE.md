@@ -108,6 +108,7 @@ The GitHub Actions workflow (`.github/workflows/build.yml`) runs on every push t
 Firestore security rules have a separate, manual workflow at
 `.github/workflows/deploy-firestore.yml`. Add a `FIREBASE_TOKEN` repository
 secret, then run **Deploy Firestore Rules** from the Actions tab when a rules
-change is ready. It deploys only `firestore.rules` to the project selected in
+change is ready. The workflow first runs the rules suite against the Firestore
+emulator, then deploys only `firestore.rules` to the project selected in
 `.firebaserc`; it does not deploy Cloud Functions or app data. Firestore rules
 deployment is compatible with the Spark plan.

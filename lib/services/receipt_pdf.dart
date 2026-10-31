@@ -522,28 +522,69 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
-            // The monogram chip. The mockup renders a "F" tile; here it is
-            // derived from the store name so a multi-word shop name still gets
-            // a correct initial rather than a hardcoded letter.
-            if (d.storeName.trim().isNotEmpty)
-              pw.Container(
-                width: 26,
-                height: 26,
-                alignment: pw.Alignment.center,
-                decoration: pw.BoxDecoration(
-                  color: p.onBrandSoft,
-                  borderRadius: pw.BorderRadius.circular(6),
-                ),
-                child: pw.Text(
-                  d.storeName.trim()[0].toUpperCase(),
-                  style: pw.TextStyle(
-                    fontSize: 14,
-                    fontWeight: pw.FontWeight.bold,
-                    color: p.brandDeep,
+            // Use the Foam Shop layer mark from the app icon, drawn directly
+            // on the solid navy header so the printed receipt carries the
+            // same identity as its on-screen preview.
+            pw.SizedBox(
+              width: 31,
+              height: 31,
+              child: pw.Stack(children: [
+                pw.Positioned(
+                  left: 5.4,
+                  top: 16.0,
+                  child: pw.Container(
+                    width: 18.2,
+                    height: 6.8,
+                    decoration: pw.BoxDecoration(
+                      color: PdfColor.fromInt(BrandPalette.periwinkle),
+                      borderRadius: pw.BorderRadius.circular(2.4),
+                    ),
                   ),
                 ),
-              ),
-            if (d.storeName.trim().isNotEmpty) pw.SizedBox(height: 6),
+                pw.Positioned(
+                  left: 4.7,
+                  top: 12.2,
+                  child: pw.Container(
+                    width: 18.2,
+                    height: 6.8,
+                    decoration: pw.BoxDecoration(
+                      color: PdfColor.fromInt(BrandPalette.dustyMauve),
+                      borderRadius: pw.BorderRadius.circular(2.4),
+                    ),
+                  ),
+                ),
+                pw.Positioned(
+                  left: 4.0,
+                  top: 8.5,
+                  child: pw.Container(
+                    width: 18.2,
+                    height: 6.8,
+                    decoration: pw.BoxDecoration(
+                      color: p.onBrandSoft,
+                      borderRadius: pw.BorderRadius.circular(2.4),
+                    ),
+                  ),
+                ),
+                for (final pore in const [
+                  (21.7, 12.1, 0.8),
+                  (23.2, 11.0, 0.47),
+                  (20.4, 11.2, 0.31),
+                ])
+                  pw.Positioned(
+                    left: pore.$1 - pore.$3,
+                    top: pore.$2 - pore.$3,
+                    child: pw.Container(
+                      width: pore.$3 * 2,
+                      height: pore.$3 * 2,
+                      decoration: pw.BoxDecoration(
+                        color: PdfColor.fromInt(BrandPalette.dustyMauve),
+                        shape: pw.BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ]),
+            ),
+            pw.SizedBox(height: 5),
             pw.Text(
               d.storeName,
               textAlign: pw.TextAlign.center,

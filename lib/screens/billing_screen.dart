@@ -675,25 +675,7 @@ class _ReceiptHeader extends StatelessWidget {
       color: Color(BrandPalette.deepNavy),
       child: Column(
         children: [
-          Container(
-            width: 28,
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Color(BrandPalette.foamWhite),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              storeName.trim().isEmpty
-                  ? 'F'
-                  : storeName.trim()[0].toUpperCase(),
-              style: const TextStyle(
-                color: Color(BrandPalette.deepNavy),
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
+          const BrandMark(size: 38),
           const SizedBox(height: 7),
           Text(
             storeName,

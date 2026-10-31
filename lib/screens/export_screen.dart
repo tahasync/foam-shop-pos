@@ -157,11 +157,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         );
         if (!mounted) return;
         setState(() => _loading = false);
-        await SharePlus.instance.share(ShareParams(files: [
-          XFile(xlsxFile.path,
-              mimeType:
-                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        ], text: 'Sales Report - $shopName'));
+        await SharePlus.instance.share(ShareParams(
+          files: [
+            XFile(xlsxFile.path,
+                mimeType:
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+          ],
+          title: 'Sales Report - $shopName',
+        ));
       } else if (type == 'pdf') {
         final pdfFile = await service.generatePdfReport(
           sales: sales,
@@ -175,8 +178,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         if (!mounted) return;
         setState(() => _loading = false);
         await SharePlus.instance.share(ShareParams(
-            files: [XFile(pdfFile.path, mimeType: 'application/pdf')],
-            text: 'Sales Report - $shopName'));
+          files: [XFile(pdfFile.path, mimeType: 'application/pdf')],
+          title: 'Sales Report - $shopName',
+        ));
       } else {
         final csvFile = await service.generateCsvReport(
           sales: sales,
@@ -190,8 +194,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         if (!mounted) return;
         setState(() => _loading = false);
         await SharePlus.instance.share(ShareParams(
-            files: [XFile(csvFile.path, mimeType: 'text/csv')],
-            text: 'Sales Report - $shopName'));
+          files: [XFile(csvFile.path, mimeType: 'text/csv')],
+          title: 'Sales Report - $shopName',
+        ));
       }
     } catch (e, st) {
       if (!mounted) return;

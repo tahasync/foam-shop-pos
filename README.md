@@ -93,7 +93,7 @@ Theme mode (System / Light / Dark) is user-selectable in Settings and persisted 
 
 ![Foam Shop app mark](design/brand/icon/app-icon-512.png)
 
-The v1.5.6 identity uses the flat Foam Layers mark and the existing six-color palette. Receipt preview, printed receipts, shared report PDFs, and XLSX exports use the same navy, slate, foam, and mauve tokens. CSV reports use matching section names and stable numeric columns. The complete, verbatim source kit—including SVGs, app and store icons, platform assets, and the brand guide—is in [`design/brand/`](design/brand/BRAND.md).
+The v1.5.7 identity uses the flat Foam Layers mark and the existing six-color palette. Receipt preview, printed receipts, shared report PDFs, and XLSX exports use the same navy, slate, foam, and mauve tokens. CSV reports use matching section names and stable numeric columns. The complete, verbatim source kit—including SVGs, app and store icons, platform assets, and the brand guide—is in [`design/brand/`](design/brand/BRAND.md).
 
 ## Profit calculations (important)
 
@@ -136,7 +136,7 @@ flutter run --dart-define-from-file=env/firebase_config.json
 
 ## Release process
 
-**Current version: `1.5.6` (`pubspec.yaml` → `version: 1.5.6+9`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+**Current version: `1.5.7` (`pubspec.yaml` → `version: 1.5.7+10`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 **See [RELEASE.md](RELEASE.md) for the full release workflow.** The supported way to produce a release APK locally is:
 
@@ -153,7 +153,7 @@ The script runs clean → deps → analyze → test → build in sequence. Any f
 
 ## CI/CD
 
-Every push to `main` runs analysis, tests, formatting and a signed release APK build using the repository secrets. A `dart format` check runs after `flutter pub get` because it reads the project language version from `.dart_tool/package_config.json`. Every `v*` tag runs the same gates, builds a versioned signed release APK, extracts the matching user-facing section from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam-Shop-Pos-v<version>.apk`. Firestore rules have a separate manual deployment workflow, documented in [RELEASE.md](RELEASE.md); it does not deploy Cloud Functions.
+Every push to `main` runs analysis, tests, formatting and a signed release APK build using the repository secrets. A `dart format` check runs after `flutter pub get` because it reads the project language version from `.dart_tool/package_config.json`. Every `v*` tag runs the same gates, checks that the tag matches `pubspec.yaml` and `CHANGELOG.md`, builds a versioned signed release APK, extracts the matching user-facing section from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam-Shop-Pos-v<version>.apk`. Firestore rules have a separate manual deployment workflow; it runs the rules suite in the Firestore emulator before deploying only rules. It does not deploy Cloud Functions and works on Firebase Spark.
 
 ```bash
 git tag v1.5.0
@@ -173,7 +173,13 @@ The pipeline uses:
 flutter test
 ```
 
-The suite is 27 files / 329 tests. It covers:
+Android device checks use the emulator or a connected device:
+
+```bash
+flutter test integration_test -d <device-id>
+```
+
+The suite is 28 files / 334 tests. It covers:
 - Accounting calculations: Cash in Hand, Revenue, COGS, Gross/Net Profit, Baqaya aggregation
 - Regression: costPriceAtSale isolation (not affected by later cost price edits)
 - Regression: inventory changes never affect Cash in Hand, Revenue, or Expenses
@@ -186,7 +192,7 @@ The suite is 27 files / 329 tests. It covers:
 - **UI regression (`test/ui_regression_test.dart`, 86 tests)** — palette-drift guards, WCAG contrast in both themes, 48dp touch targets, the shared bottom inset that keeps content clear of the floating nav, the blur budget, and receipt PDF generation
 - **Change-due regression (`test/change_due_regression_test.dart`, 25 tests)** — overpayment across the dashboard, receipt, billing and status-badge paths, locking in that change is excluded from Cash in Hand and Revenue
 - **Void-reversal regression (`test/void_reversal_regression_test.dart`, 6 tests)** — voiding reverses revenue and restores stock, including a cart with the same product on two lines
-- **Update-dialog formatting (27 tests across `test/update_dialog_format_test.dart` and the v1.5.5/v1.5.6 release-note guards)** — release notes reach the "What's New" dialog as plain text, with no Markdown delimiters or broken sentences
+- **Update-dialog formatting (32 tests across `test/update_dialog_format_test.dart` and the v1.5.5/v1.5.6/v1.5.7 release-note guards)** — release notes reach the "What's New" dialog as plain text, with no Markdown delimiters or broken sentences
 - **Brand and export formatting** — painter pixels and geometry stay aligned with the kit; Android vectors and colors cannot drift; CSV/XLSX/PDF output preserves fractional financial values and shared brand styling
 
 The UI regression file exists because `flutter analyze` will happily pass a layout that *looks* wrong. Those tests assert on behaviour — no overflow, correct inset, real touch target, valid PDF bytes — rather than on pixel values.

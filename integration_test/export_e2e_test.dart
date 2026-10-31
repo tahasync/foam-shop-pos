@@ -246,14 +246,20 @@ void main() {
       final detail = reopened['Sales Detail'];
       final customerValues = <String>[];
       final amountValues = <int>[];
-      for (var r = 2; r <= 4; r++) {
+      // The sheet has three branded heading rows and one table-header row,
+      // so the first transaction is Excel row 6 (row index 5).
+      for (var r = 6; r <= 8; r++) {
         customerValues.add(detail
             .cell(CellIndex.indexByString('C$r'))
             .value
             .toString()
             .trim());
         final amount = detail.cell(CellIndex.indexByString('E$r')).value;
-        if (amount is IntCellValue) amountValues.add(amount.value);
+        if (amount is IntCellValue) {
+          amountValues.add(amount.value);
+        } else if (amount is DoubleCellValue) {
+          amountValues.add(amount.value.round());
+        }
       }
 
       expect(customerValues.length, 3);
@@ -263,8 +269,9 @@ void main() {
       expect(amountValues, equals([60000, 120000, 180000]));
 
       // The summary sheet must carry the real totals as numbers.
+      // Summary row 5 is the METRIC / VALUE / CURRENCY heading; Revenue is row 6.
       final revenue =
-          reopened['Summary'].cell(CellIndex.indexByString('B5')).value;
+          reopened['Summary'].cell(CellIndex.indexByString('B6')).value;
       expect(revenue, isA<IntCellValue>());
       // 2 + 3 + 1 units at 60,000 each.
       expect((revenue as IntCellValue).value, 360000);
@@ -290,11 +297,10 @@ void main() {
       expect(utf8.decode(bytes.skip(bytes.length - 6).toList()),
           contains('%%EOF'));
 
-      // The report PDF is drawn with the built-in Helvetica, whose glyphs are
-      // written as plain ASCII in the content stream — so the money figures can
-      // be read back out of the real file. A column that was too narrow would
-      // clip the figure and this would not find it.
-      final text = _readAsciiContentStreamText(bytes);
+      // The report embeds Inter, so its content stream stores glyph IDs rather
+      // than ASCII. Resolve the embedded font's ToUnicode map before checking
+      // that report labels and figures survived PDF generation.
+      final text = _extractTextViaToUnicode(bytes);
       expect(text, contains('Asif Foam Center'));
       expect(text, contains('180,000'),
           reason: 'every money figure must survive to the page intact');
@@ -496,27 +502,6 @@ double _firstPageWidthMm(List<int> bytes) {
 /// replace every byte above 0x7F with U+FFFD, destroying the very strings the
 /// scan is looking for.
 String _latin1(List<int> bytes) => String.fromCharCodes(bytes);
-
-/// Extracts text from a PDF drawn with the built-in Type1 fonts (Helvetica).
-///
-/// Those fonts store their glyphs as literal ASCII in the content stream, so
-/// each `[(...)] TJ` operand is readable as-is. Text runs are emitted one
-/// operand per word — "Asif", "Foam", "Center" arrive separately because the
-/// layout engine breaks a string at every space — so the operands are joined
-/// with a space, which is what makes a multi-word phrase searchable.
-///
-/// Test-only: not a general PDF text extractor. The *receipt* uses an embedded
-/// subset and needs [_extractTextViaToUnicode] instead.
-String _readAsciiContentStreamText(List<int> bytes) {
-  final out = StringBuffer();
-  for (final stream in _inflateAllStreams(bytes)) {
-    for (final t in RegExp(r'\[\((.*?)\)\]\s*TJ').allMatches(stream)) {
-      out.write(t.group(1));
-      out.write(' ');
-    }
-  }
-  return out.toString();
-}
 
 /// Extracts the text of a PDF that embeds subsetted fonts, via `/ToUnicode`.
 ///

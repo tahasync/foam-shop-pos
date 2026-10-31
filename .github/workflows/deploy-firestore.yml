@@ -12,6 +12,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Setup Java for the Firestore emulator
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install Firestore rules test dependencies
+        run: npm ci --prefix scripts
+
       - name: Require Firebase CI token
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
@@ -23,6 +37,12 @@ jobs:
 
       - name: Install Firebase CLI
         run: npm install --global firebase-tools@15.34.2
+
+      - name: Test Firestore security rules in the emulator
+        run: >-
+          firebase emulators:exec --config firebase.json --only firestore
+          --project foam-shop-rules-verify
+          "node scripts/firestore_rules_test.mjs"
 
       - name: Deploy Firestore security rules
         env:

@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.5.7 — 31 October 2026
+
+More dependable report sharing and a branded receipt experience that matches
+the Foam Shop identity.
+
+### Improved
+- **Receipt preview and print now carry the Foam Layers mark.** The preview and
+  printed receipt use the same Foam Shop logo and navy, slate, mauve and
+  periwinkle palette.
+
+### Fixed
+- **CSV sharing now sends the report file.** The share sheet now labels the
+  export without placing a text message ahead of the attachment, so receiving
+  apps get the complete CSV with its summary and sales detail.
+
 ## v1.5.6 — 31 October 2026
 
 Foam Shop branding and a more consistent reporting experience, with Firestore
