@@ -1,6 +1,19 @@
 # PROGRESS
 
-Last updated: 2026-09-28
+Last updated: 2026-10-31
+
+## Latest verification — 2026-10-31
+
+- App version: **1.5.9+12**.
+- Receipt preview and print share one receipt-data builder, including product
+  dimensions, thickness, sales unit, line discounts and sale-level charges.
+- Long receipt PDFs paginate through A4 without losing item rows.
+- Full Flutter test suite: **336 tests passed**. Pixel 4 GPU emulator visual
+  verification confirmed the dark-mode preview and Android print output. The
+  printed receipt includes item dimensions, sale totals, payment and change.
+
+The readiness audit below is a historical snapshot from 2026-09-28; its version
+and build details describe that audit, not the current release candidate.
 
 ## Production Readiness Audit — 2026-09-28
 

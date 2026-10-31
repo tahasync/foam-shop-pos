@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../models/sale.dart';
+import '../models/product.dart';
 import '../providers/sale_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/customer_provider.dart';
@@ -19,6 +20,7 @@ import '../utils/animations.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
 import '../utils/money.dart';
+import '../utils/currency.dart';
 import '../utils/haptics.dart';
 
 const _filters = ['All', 'Paid', 'Due', 'Void'];
@@ -205,7 +207,6 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     final salesAsync = ref.watch(salesStreamProvider);
     final csym = ref.watch(currencySymbolProvider);
     final fmt = NumberFormat('#,##0');
-
     return FullScreenOverlay(
       title: 'Billing / Receipts',
       child: salesAsync.when(
@@ -523,34 +524,15 @@ Future<Uint8List?> _buildPdfBytes(
     final storeName = profile?.shopName ?? 'Digital Register';
     final location = profile?.location ?? '';
     final phone = profile?.phone ?? '';
-    final fmt = NumberFormat('#,##0');
-    final lines = sale.lineItems.map((li) {
-      final prod = products.where((p) => p.id == li.productId).firstOrNull;
-      return ReceiptLine(
-        name: prod?.name ?? li.name ?? li.productId,
-        // Whole numbers lose the trailing ".0" — "1" reads better on a receipt
-        // than "1.0" for a single unit, but a cut area of 12.5 must keep it.
-        qty: li.qtyOrArea == li.qtyOrArea.roundToDouble()
-            ? li.qtyOrArea.toInt().toString()
-            : li.qtyOrArea.toStringAsFixed(1),
-        unitPrice: fmt.format(roundMoney(li.salePrice)),
-        total: fmt.format(roundMoney(li.lineTotal)),
-        // Carried so the receipt can prove its lines add up to its total.
-        totalValue: li.lineTotal,
-      );
-    }).toList();
-    final data = buildReceiptData(
+    final data = _receiptDataForSale(
+      sale: sale,
+      products: products,
       storeName: storeName,
       location: location,
       phone: phone,
       currencyCode: profile?.currency ?? 'PKR',
-      receiptId: _receiptNumber(sale),
-      date: '${sale.date.day}/${sale.date.month}/${sale.date.year}',
       customerName: customer?.name ?? sale.customerName ?? sale.customerId,
-      items: lines,
-      totalAmount: sale.amount,
-      paidAmount: sale.paid,
-      remainingBalance: sale.balance,
+      date: '${sale.date.day}/${sale.date.month}/${sale.date.year}',
     );
     return await generateReceiptPdf(data);
   } catch (e, st) {
@@ -563,6 +545,88 @@ Future<Uint8List?> _buildPdfBytes(
     }
     return null;
   }
+}
+
+ReceiptData _receiptDataForSale({
+  required Sale sale,
+  required List<Product> products,
+  required String storeName,
+  required String location,
+  required String phone,
+  required String currencyCode,
+  required String customerName,
+  required String date,
+}) {
+  final fmt = NumberFormat('#,##0');
+  final currency = currencySymbolFromCode(currencyCode);
+  String money(double value) => '$currency ${fmt.format(roundMoney(value))}';
+
+  return buildReceiptData(
+    storeName: storeName,
+    location: location,
+    phone: phone,
+    currencyCode: currencyCode,
+    receiptId: _receiptNumber(sale),
+    date: date,
+    customerName: customerName,
+    items: [
+      for (final line in sale.lineItems)
+        ReceiptLine(
+          name: products
+                  .where((product) => product.id == line.productId)
+                  .firstOrNull
+                  ?.name ??
+              line.name ??
+              line.productId,
+          detail: _receiptLineDetail(
+            line,
+            products,
+            currencyCode: currencyCode,
+          ),
+          qty: line.qtyOrArea == line.qtyOrArea.roundToDouble()
+              ? line.qtyOrArea.toInt().toString()
+              : line.qtyOrArea.toStringAsFixed(1),
+          unitPrice: fmt.format(roundMoney(line.salePrice)),
+          total: fmt.format(roundMoney(line.lineTotal)),
+          totalValue: line.lineTotal,
+        ),
+    ],
+    breakdown: [
+      ReceiptTotalLine(
+        label: 'Items subtotal',
+        value: money(sale.lineItems.fold<double>(
+          0,
+          (sum, line) => sum + line.qtyOrArea * line.salePrice,
+        )),
+      ),
+      if (sale.lineItems.any((line) => line.lineDiscountAmount > 0))
+        ReceiptTotalLine(
+          label: 'Item discounts',
+          value: '- ${money(sale.lineItems.fold<double>(
+            0,
+            (sum, line) => sum + line.lineDiscountAmount,
+          ))}',
+        ),
+      if (sale.totalDiscount > 0)
+        ReceiptTotalLine(
+          label: 'Sale discount',
+          value: '- ${money(sale.totalDiscount)}',
+        ),
+      if ((sale.deliveryCharge ?? 0) > 0)
+        ReceiptTotalLine(
+          label: 'Delivery',
+          value: money(sale.deliveryCharge!),
+        ),
+      if ((sale.cuttingCharge ?? 0) > 0)
+        ReceiptTotalLine(
+          label: 'Cutting',
+          value: money(sale.cuttingCharge!),
+        ),
+    ],
+    totalAmount: sale.amount,
+    paidAmount: sale.paid,
+    remainingBalance: sale.balance,
+  );
 }
 
 enum _ReceiptAction { print, save, share, preview, voidSale }
@@ -611,47 +675,24 @@ class ReceiptPreviewScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final fmt = NumberFormat('#,##0');
     final products = ref.watch(productsStreamProvider).asData?.value ?? [];
+    final customers = ref.watch(customersStreamProvider).asData?.value ?? [];
     final profile = ref.watch(shopProfileProvider).asData?.value;
     final storeName = profile?.shopName ?? 'Digital Register';
     final location = profile?.location ?? '';
     final phone = profile?.phone ?? '';
+    final customer =
+        customers.where((c) => c.id == sale.customerId).firstOrNull;
 
-    // The preview renders the same [ReceiptData] the PDF is built from, so the
-    // two cannot drift. Only the date format differs: the screen has room for
-    // "22 Jul 2026 · 6:53 pm", the 80mm roll needs the compact "22/7/2026".
-    final data = buildReceiptData(
+    final data = _receiptDataForSale(
+      sale: sale,
+      products: products,
       storeName: storeName,
-      receiptId: _receiptNumber(sale),
+      customerName: customer?.name ?? sale.customerName ?? sale.customerId,
       date: DateFormat('d MMM y \u00b7 h:mm a').format(sale.date),
-      customerName: sale.customerName ?? sale.customerId,
-      items: [
-        for (final li in sale.lineItems)
-          ReceiptLine(
-            name:
-                products.where((p) => p.id == li.productId).firstOrNull?.name ??
-                    li.name ??
-                    li.productId,
-            // Whole numbers lose the trailing ".0" — "1" reads better on a
-            // receipt than "1.0" for a single unit, but a cut area of 12.5 must
-            // keep it.
-            qty: li.qtyOrArea == li.qtyOrArea.roundToDouble()
-                ? li.qtyOrArea.toInt().toString()
-                : li.qtyOrArea.toStringAsFixed(1),
-            unitPrice: fmt.format(roundMoney(li.salePrice)),
-            total: fmt.format(roundMoney(li.lineTotal)),
-            // Carried so the preview proves its lines add up to its total, the
-            // same way the printed and shared receipt does.
-            totalValue: li.lineTotal,
-          ),
-      ],
-      totalAmount: sale.amount,
-      paidAmount: sale.paid,
-      remainingBalance: sale.balance,
+      currencyCode: profile?.currency ?? 'PKR',
       location: location,
       phone: phone,
-      currencyCode: profile?.currency ?? 'PKR',
     );
 
     return FullScreenOverlay(
@@ -730,14 +771,15 @@ class _ReceiptPaper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final ac = AppColors.of(context);
     final tnum = const [FontFeature.tabularFigures()];
     final d = data;
 
     return Container(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
+        // A receipt is printed on light paper in both app themes. Keep its
+        // preview palette independent from the dark page behind it; otherwise
+        // theme text tokens become white while this paper stays pale.
+        color: _ReceiptPreviewColors.paper,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
@@ -774,8 +816,13 @@ class _ReceiptPaper extends StatelessWidget {
                 ),
                 if (d.metaLine.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  Text(d.metaLine,
-                      style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
+                  Text(
+                    d.metaLine,
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: _ReceiptPreviewColors.inkFaint,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 14),
                 _ReceiptCustomerCard(name: d.customerName),
@@ -783,6 +830,7 @@ class _ReceiptPaper extends StatelessWidget {
                 _ItemTable(items: d.items, tnum: tnum),
                 const SizedBox(height: 14),
                 _TotalsCard(
+                  breakdown: d.breakdown,
                   total: d.total,
                   paid: d.paid,
                   isDue: d.isDue,
@@ -794,7 +842,7 @@ class _ReceiptPaper extends StatelessWidget {
                 const SizedBox(height: 12),
                 _StatusBadge(isDue: d.isDue),
                 const SizedBox(height: 16),
-                Container(height: 1, color: ac.outline),
+                Container(height: 1, color: _ReceiptPreviewColors.line),
                 const SizedBox(height: 14),
                 Text(
                   'Thank you for your business!',
@@ -802,7 +850,7 @@ class _ReceiptPaper extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: ac.saleFg,
+                    color: _ReceiptPreviewColors.brand,
                   ),
                 ),
                 if (d.footer.isNotEmpty) ...[
@@ -810,14 +858,20 @@ class _ReceiptPaper extends StatelessWidget {
                   Text(
                     d.footer,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 10, color: ac.inkFaint),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: _ReceiptPreviewColors.inkFaint,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 5),
                 Text(
                   'Computer generated receipt · No signature required',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 9, color: ac.inkFaint),
+                  style: const TextStyle(
+                    fontSize: 9,
+                    color: _ReceiptPreviewColors.inkFaint,
+                  ),
                 ),
               ],
             ),
@@ -826,6 +880,46 @@ class _ReceiptPaper extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Fixed ink-on-paper colours for the on-screen receipt, matching the PDF
+/// palette regardless of the app theme around it.
+class _ReceiptPreviewColors {
+  static const paper = Color(BrandPalette.foamWhite);
+  static const ink = Color(BrandPalette.deepInk);
+  static const inkSoft = Color(BrandPalette.documentInkSoft);
+  static const inkFaint = Color(BrandPalette.documentInkFaint);
+  static const brand = Color(BrandPalette.slateBlue);
+  static const line = Color(BrandPalette.documentLine);
+  static const outline = Color(BrandPalette.documentOutline);
+  static const rowTint = Color(BrandPalette.paidTint);
+}
+
+String _receiptLineDetail(
+  SaleLineItem line,
+  List<Product> products, {
+  required String currencyCode,
+}) {
+  final product = products.where((p) => p.id == line.productId).firstOrNull;
+  final details = <String>[];
+  final length = line.customLength ?? product?.sizeLength;
+  final width = line.customWidth ?? product?.sizeWidth;
+  String dimension(double value) => value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toStringAsFixed(1);
+  if (length != null && width != null && length > 0 && width > 0) {
+    details.add('${dimension(length)} × ${dimension(width)} in');
+  }
+  if ((product?.thickness ?? 0) > 0) {
+    details.add('${dimension(product!.thickness)} in thick');
+  }
+  if (product != null) details.add(product.unitLabel);
+  if (line.lineDiscountAmount > 0) {
+    details.add(
+      'Discount ${currencySymbolFromCode(currencyCode)} ${NumberFormat('#,##0').format(roundMoney(line.lineDiscountAmount))}',
+    );
+  }
+  return details.join(' · ');
 }
 
 /// Solid Deep Navy brand header shared with the printable receipt.
@@ -877,14 +971,13 @@ class _ReceiptCustomerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ac = AppColors.of(context);
     final initial = name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Color(BrandPalette.foamWhite),
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: ac.outline),
+        border: Border.all(color: _ReceiptPreviewColors.outline),
       ),
       child: Row(
         children: [
@@ -897,7 +990,7 @@ class _ReceiptCustomerCard extends StatelessWidget {
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.7,
-                        color: ac.inkFaint)),
+                        color: _ReceiptPreviewColors.inkFaint)),
                 const SizedBox(height: 3),
                 Text(name,
                     maxLines: 1,
@@ -905,7 +998,7 @@ class _ReceiptCustomerCard extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: ac.ink)),
+                        color: _ReceiptPreviewColors.ink)),
               ],
             ),
           ),
@@ -938,8 +1031,6 @@ class _MetaCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final ac = AppColors.of(context);
     return Column(
       crossAxisAlignment:
           alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -950,7 +1041,7 @@ class _MetaCell extends StatelessWidget {
             fontSize: 9,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.06,
-            color: ac.inkFaint,
+            color: _ReceiptPreviewColors.inkFaint,
           ),
         ),
         const SizedBox(height: 2),
@@ -962,7 +1053,7 @@ class _MetaCell extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: cs.onSurface,
+            color: _ReceiptPreviewColors.ink,
           ),
         ),
       ],
@@ -980,8 +1071,8 @@ class _ItemTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final ac = AppColors.of(context);
+    final ink = _ReceiptPreviewColors.ink;
+    final inkSoft = _ReceiptPreviewColors.inkSoft;
 
     Widget th(String label, {bool left = false}) => Expanded(
           flex: 0,
@@ -992,7 +1083,7 @@ class _ItemTable extends StatelessWidget {
               fontSize: 9,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.05,
-              color: ac.inkFaint,
+              color: _ReceiptPreviewColors.inkFaint,
             ),
           ),
         );
@@ -1009,25 +1100,44 @@ class _ItemTable extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        Container(height: 1.4, color: cs.onSurface),
+        Container(height: 1.4, color: _ReceiptPreviewColors.outline),
         for (final (index, item) in items.indexed) ...[
           Container(
-            color: index.isOdd ? const Color(BrandPalette.paidTint) : null,
+            color: index.isOdd ? _ReceiptPreviewColors.rowTint : null,
             padding: const EdgeInsets.symmetric(vertical: 7),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   flex: 32,
-                  child: Text(
-                    item.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.name,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: ink,
+                        ),
+                      ),
+                      if (item.detail.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          item.detail,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 9,
+                            height: 1.2,
+                            color: _ReceiptPreviewColors.inkFaint,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 Expanded(
@@ -1036,7 +1146,7 @@ class _ItemTable extends StatelessWidget {
                     item.qty,
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                        fontSize: 11.5, color: ac.inkSoft, fontFeatures: tnum),
+                        fontSize: 11.5, color: inkSoft, fontFeatures: tnum),
                   ),
                 ),
                 Expanded(
@@ -1045,7 +1155,7 @@ class _ItemTable extends StatelessWidget {
                     item.unitPrice,
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                        fontSize: 11.5, color: ac.inkSoft, fontFeatures: tnum),
+                        fontSize: 11.5, color: inkSoft, fontFeatures: tnum),
                   ),
                 ),
                 Expanded(
@@ -1056,7 +1166,7 @@ class _ItemTable extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
+                      color: ink,
                       fontFeatures: tnum,
                     ),
                   ),
@@ -1064,7 +1174,7 @@ class _ItemTable extends StatelessWidget {
               ],
             ),
           ),
-          Container(height: 1, color: ac.outline),
+          Container(height: 1, color: _ReceiptPreviewColors.line),
         ],
       ],
     );
@@ -1074,6 +1184,7 @@ class _ItemTable extends StatelessWidget {
 /// The tinted totals card. Separated from the item table so the figures the
 /// customer actually cares about read as one block.
 class _TotalsCard extends StatelessWidget {
+  final List<ReceiptTotalLine> breakdown;
   final String total;
   final String paid;
   final bool isDue;
@@ -1085,6 +1196,7 @@ class _TotalsCard extends StatelessWidget {
   final List<FontFeature> tnum;
 
   const _TotalsCard({
+    this.breakdown = const [],
     required this.total,
     required this.paid,
     required this.isDue,
@@ -1100,19 +1212,23 @@ class _TotalsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final ac = AppColors.of(context);
+    final ink = _ReceiptPreviewColors.ink;
+    final inkSoft = _ReceiptPreviewColors.inkSoft;
+    final brand = _ReceiptPreviewColors.brand;
 
     Widget row(String label, String value) => Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: TextStyle(fontSize: 12, color: ac.inkSoft)),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: inkSoft),
+            ),
             Text(
               value,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: cs.onSurface,
+                color: ink,
                 fontFeatures: tnum,
               ),
             ),
@@ -1122,13 +1238,17 @@ class _TotalsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Color(BrandPalette.foamWhite),
+        color: _ReceiptPreviewColors.paper,
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: ac.outline),
+        border: Border.all(color: _ReceiptPreviewColors.outline),
       ),
       child: Column(
         children: [
-          row('Amount', total),
+          for (final line in breakdown) ...[
+            row(line.label, line.value),
+            const SizedBox(height: 4),
+          ],
+          row('Total', total),
           if (roundingLabel.isNotEmpty) ...[
             const SizedBox(height: 4),
             row('Rounding adjustment', roundingLabel),
@@ -1138,7 +1258,7 @@ class _TotalsCard extends StatelessWidget {
           const SizedBox(height: 8),
           Container(
             height: 1,
-            color: ac.saleFg.withValues(alpha: 0.18),
+            color: brand.withValues(alpha: 0.18),
           ),
           const SizedBox(height: 8),
           Row(
@@ -1154,7 +1274,7 @@ class _TotalsCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: ac.saleFg,
+                  color: brand,
                 ),
               ),
               Text(
@@ -1162,7 +1282,7 @@ class _TotalsCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: ac.saleFg,
+                  color: brand,
                   fontFeatures: tnum,
                 ),
               ),

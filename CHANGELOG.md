@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.5.9 — 31 October 2026
+
+Receipts now show the complete sale clearly in the preview and on paper.
+
+### Improved
+- **Every receipt item carries its useful details.** Product size, thickness,
+  sold unit and item discounts appear beneath the item name, alongside quantity,
+  price and line total.
+- **The totals explain how the amount was reached.** Item subtotal, discounts,
+  delivery and cutting charges are listed before the final total, payment and
+  balance or change.
+- **Long receipts paginate cleanly.** Large orders flow onto A4 pages without
+  clipping or dropping item rows.
+
+### Fixed
+- **Preview and print now use the same receipt data.** Item details and charge
+  breakdowns stay consistent across the on-screen preview, saved PDF, shared PDF
+  and print preview, including in dark app mode.
+
 ## v1.5.8 — 31 October 2026
 
 A more polished dark theme across the register, plus clearer billing and

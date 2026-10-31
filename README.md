@@ -93,7 +93,7 @@ Theme mode (System / Light / Dark) is user-selectable in Settings and persisted 
 
 ![Foam Shop app mark](design/brand/icon/app-icon-512.png)
 
-The v1.5.7 identity uses the flat Foam Layers mark and the existing six-color palette. Receipt preview, printed receipts, shared report PDFs, and XLSX exports use the same navy, slate, foam, and mauve tokens. CSV reports use matching section names and stable numeric columns. The complete, verbatim source kit—including SVGs, app and store icons, platform assets, and the brand guide—is in [`design/brand/`](design/brand/BRAND.md). Version 1.5.8 refines the dark palette and billing screens; the app UI continues to use the existing brand colours.
+The v1.5.7 identity uses the flat Foam Layers mark and the existing six-color palette. Receipt preview, printed receipts, shared report PDFs, and XLSX exports use the same navy, slate, foam, and mauve tokens. CSV reports use matching section names and stable numeric columns. The complete, verbatim source kit—including SVGs, app and store icons, platform assets, and the brand guide—is in [`design/brand/`](design/brand/BRAND.md). Version 1.5.8 refined the dark palette and billing screens. Version 1.5.9 adds a complete item and charge breakdown to receipt previews and printed receipts, with long orders paginated across A4 pages.
 
 ## Profit calculations (important)
 
@@ -136,7 +136,7 @@ flutter run --dart-define-from-file=env/firebase_config.json
 
 ## Release process
 
-**Current version: `1.5.8` (`pubspec.yaml` → `version: 1.5.8+11`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+**Current version: `1.5.9` (`pubspec.yaml` → `version: 1.5.9+12`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 **See [RELEASE.md](RELEASE.md) for the full release workflow.** The supported way to produce a release APK locally is:
 
@@ -242,5 +242,5 @@ because it builds and installs a debug APK.
 
 **Production-ready Android app — actively maintained.** Used by foam/mattress shops with subscription-based commercial model. The founding account is free forever; new sign-ups get a 14-day free trial.
 
-The automated test suite (28 test files, 335 tests) covers accounting, model and provider resilience, Firestore integrity, inventory and sale regressions, notifications, release-note formatting, brand asset drift, report exports, theme interpolation, and UI accessibility/layout behavior. The two device integration files contain 8 tests and run on Android emulators or connected devices.
+The automated test suite (28 test files, 336 tests) covers accounting, model and provider resilience, Firestore integrity, inventory and sale regressions, notifications, release-note formatting, brand asset drift, report exports, theme interpolation, and UI accessibility/layout behavior. The two device integration files contain 8 tests and run on Android emulators or connected devices.
 

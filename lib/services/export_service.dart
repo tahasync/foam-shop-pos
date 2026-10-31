@@ -226,8 +226,8 @@ class ExportService {
     final slate = PdfColor.fromInt(BrandPalette.slateBlue);
     final ink = PdfColor.fromInt(BrandPalette.deepInk);
     final foam = PdfColor.fromInt(BrandPalette.foamWhite);
-    final muted = PdfColor.fromHex('#6E6A74');
-    final rule = PdfColor.fromHex('#D9D7DC');
+    final muted = PdfColor.fromInt(BrandPalette.documentInkFaint);
+    final rule = PdfColor.fromInt(BrandPalette.documentOutline);
     final cardTints = [
       PdfColor.fromInt(BrandPalette.paidTint),
       foam,
@@ -283,9 +283,19 @@ class ExportService {
     ];
 
     doc.addPage(pw.MultiPage(
-      theme: theme,
-      pageFormat: PdfPageFormat.a4,
-      margin: const pw.EdgeInsets.fromLTRB(38, 36, 38, 42),
+      // Explicit paper prevents dark PDF viewers from compositing the page's
+      // transparent background behind the report's dark ink.
+      pageTheme: pw.PageTheme(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.fromLTRB(38, 36, 38, 42),
+        theme: theme,
+        buildBackground: (_) => pw.FullPage(
+          ignoreMargins: true,
+          child: pw.Container(
+            color: PdfColor.fromInt(BrandPalette.documentWhite),
+          ),
+        ),
+      ),
       header: (ctx) {
         if (ctx.pageNumber == 1) {
           return pw.Column(
@@ -569,6 +579,7 @@ class ExportService {
     final slateHex = excelHex(BrandPalette.slateBlue);
     final inkHex = excelHex(BrandPalette.deepInk);
     final foamHex = excelHex(BrandPalette.foamWhite);
+    final paperHex = excelHex(BrandPalette.documentWhite);
     final paidTintHex = excelHex(BrandPalette.paidTint);
     final dueTintHex = excelHex(BrandPalette.dueTint);
     final amountFormat =
@@ -812,7 +823,7 @@ class ExportService {
         DoubleCellValue(cogs),
         DoubleCellValue(sale.amount - cogs),
       ];
-      final fillHex = row.isOdd ? foamHex : 'FFFFFFFF';
+      final fillHex = row.isOdd ? foamHex : paperHex;
       for (var col = 0; col < values.length; col++) {
         final cell = detailSheet
             .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row));

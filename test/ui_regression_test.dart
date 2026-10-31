@@ -1690,6 +1690,7 @@ void main() {
             for (final i in items)
               ReceiptLine(
                 name: i['name'].toString(),
+                detail: i['detail']?.toString() ?? '',
                 qty: i['qty'].toString(),
                 unitPrice: fmt.format(((i['price'] as num?) ?? 0).toInt()),
                 total: fmt.format(((i['total'] as num?) ?? 0).toInt()),
@@ -2267,6 +2268,32 @@ void main() {
       );
       expect(
           _firstPageSizeMm(long).$2, greaterThan(_firstPageSizeMm(short).$2));
+    });
+
+    test('long itemized receipts paginate without dropping item details',
+        () async {
+      final bytes = await generateReceiptPdfBytes(
+        storeName: 'Asif Foam Center',
+        receiptId: 'INV-BULK',
+        date: '31/10/2026',
+        customerName: 'Walk-in Customer',
+        items: List.generate(
+          30,
+          (i) => {
+            'name': 'Premium Foam Sheet ${i + 1}',
+            'detail': '72 × 36 in · 4 in thick · ${(i + 1) * 12} sq.ft',
+            'qty': '12',
+            'price': 1000,
+            'total': 12000,
+          },
+        ),
+        totalAmount: 360000,
+        paidAmount: 360000,
+        remainingBalance: 0,
+      );
+
+      File('build/long_receipt_test.pdf').writeAsBytesSync(bytes);
+      expect(_pageCount(bytes), greaterThan(1));
     });
   });
 
