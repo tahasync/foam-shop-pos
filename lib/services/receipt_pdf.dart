@@ -17,6 +17,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../utils/currency.dart';
 import '../utils/money.dart';
+import '../utils/brand.dart';
 
 /// One line of the itemised table.
 class ReceiptLine {
@@ -127,71 +128,23 @@ const double kReceiptTallMm = 297.0;
 const _kRegular = 'assets/fonts/Inter-Regular.ttf';
 const _kBold = 'assets/fonts/Inter-Bold.ttf';
 
-/// Receipt palette, drawn from the app's own brand colours.
-///
-/// The mockup this receipt is built against
-/// (`design/foam-shop-receipt-report-mockup.html`) specifies an indigo/violet
-/// ramp (`#5B5FEF` -> `#8B5CF6`). That ramp is deliberately NOT used here. A
-/// saved PDF is a physical artefact that outlives the app, and a customer
-/// holding it should be looking at the same brand they see on the till. So every
-/// value below is lifted from `AppColors` in `app_theme.dart` — the README's
-/// documented palette — and the mockup's *layout* is followed while its hues
-/// are substituted.
-///
-/// Mapping, so the two stay reconcilable by eye:
-///   mockup `--primary`   `#5B5FEF` -> brandFill    `#3D5387` Slate Blue
-///   mockup `--secondary` `#8B5CF6` -> brandFillDeep `#182346` Deep Navy
-///   mockup `--ink`       `#171927` -> ink           `#0E0D15` Deep Ink
-///   mockup `--muted`     `#777B8A` -> inkFaint      `#6E6A74`
-///   mockup `--line`      `#E7E8EF` -> outline       `#D9D7DC`
-///   mockup `--soft`      `#F7F7FC` -> surface2      `#FBF9F8`
-///   mockup `--success`   `#159A70` -> saleFg        `#3D5387`
-///   mockup `--warning`   `#D97706` -> expenseFg     `#7E4A63`
-///
-/// The brand gradient is the one place the two dark blues are combined, and it
-/// runs Slate Blue -> Deep Navy, mirroring the app's own primary-button ramp.
+/// Receipt palette, shared with the Foam Shop 2027 brand tokens.
 class ReceiptPalette {
-  /// Deep Navy `#182346` — `AppColors.brandFillDeep`, the gradient's dark end.
-  final PdfColor brandDeep = PdfColor.fromHex('#182346');
-
-  /// Slate Blue `#3D5387` — `AppColors.brandFill`, the gradient's light end and
-  /// the replacement for the mockup's `--primary`.
-  final PdfColor brand = PdfColor.fromHex('#3D5387');
-
-  final PdfColor ink = PdfColor.fromHex('#0E0D15');
+  final PdfColor brandDeep = PdfColor.fromInt(BrandPalette.deepNavy);
+  final PdfColor brand = PdfColor.fromInt(BrandPalette.slateBlue);
+  final PdfColor ink = PdfColor.fromInt(BrandPalette.deepInk);
   final PdfColor inkSoft = PdfColor.fromHex('#3D3B45');
   final PdfColor inkFaint = PdfColor.fromHex('#6E6A74');
-
-  /// A lighter rule than [outline] for dividers and the faint footer note. The
-  /// app's `outline` is too dark to read as a hairline once printed, so this
-  /// sits between the two.
   final PdfColor line = PdfColor.fromHex('#E4E1E6');
   final PdfColor outline = PdfColor.fromHex('#D9D7DC');
-
-  /// Muted Periwinkle `#7C83AD` — the app's dark-mode primary, used for
-  /// white-on-brand secondary text where full white would be too harsh.
-  final PdfColor onBrandSoft = PdfColor.fromHex('#C7CCE4');
-
-  /// The mockup's `--soft`: the tinted fill behind the customer card and the
-  /// totals block. Matches `AppColors.surface2`.
-  final PdfColor soft = PdfColor.fromHex('#FBF9F8');
+  final PdfColor onBrandSoft = PdfColor.fromInt(BrandPalette.foamWhite);
+  final PdfColor soft = PdfColor.fromInt(BrandPalette.foamWhite);
   final PdfColor surface = PdfColor.fromHex('#FFFFFF');
-
-  /// Zebra stripe for the itemised table, derived from the brand so the banding
-  /// reads as part of the palette rather than as a generic grey.
-  final PdfColor tintRowBg = PdfColor.fromHex('#F4F5F9');
-
-  /// The mockup's `--success`, recoloured to the app's `saleFg`. A "paid" pill
-  /// in the app's brand blue rather than a green that appears nowhere else in
-  /// the product.
-  final PdfColor success = PdfColor.fromHex('#3D5387');
-  final PdfColor successBg = PdfColor.fromHex('#EAEEF6');
-
-  /// The mockup's `--warning` / `--warning-bg`, recoloured to `expenseFg`
-  /// (Dusty Mauve) so "balance due" matches how the app signals a problem
-  /// everywhere else.
-  final PdfColor warning = PdfColor.fromHex('#7E4A63');
-  final PdfColor warningBg = PdfColor.fromHex('#F6EEF2');
+  final PdfColor tintRowBg = PdfColor.fromInt(BrandPalette.paidTint);
+  final PdfColor success = PdfColor.fromInt(BrandPalette.slateBlue);
+  final PdfColor successBg = PdfColor.fromInt(BrandPalette.paidTint);
+  final PdfColor warning = PdfColor.fromInt(BrandPalette.deepInk);
+  final PdfColor warningBg = PdfColor.fromInt(BrandPalette.dueTint);
 
   final PdfColor white = PdfColors.white;
 }
@@ -329,12 +282,12 @@ Map<int, pw.TableColumnWidth> receiptColumnWidths({
   double fontSize = 8.6,
 }) {
   const cellPadX = 4.0;
-  const minQtyWidth = 16.0;
+  const minQtyWidth = 20.0;
   const safety = 1.5;
 
-  var widestQty = 0.0;
-  var widestPrice = 0.0;
-  var widestTotal = 0.0;
+  var widestQty = _measureMoneyWidth('QTY', bold, 6.6, context);
+  var widestPrice = _measureMoneyWidth('PRICE', bold, 6.6, context);
+  var widestTotal = _measureMoneyWidth('TOTAL', bold, 6.6, context);
 
   for (final line in data.items) {
     widestQty = math.max(
@@ -526,7 +479,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
               child: pw.Text(
                 label,
                 style: pw.TextStyle(
-                  fontSize: grand ? 11 : 9.5,
+                  fontSize: grand ? 9.2 : 9.5,
                   fontWeight: grand ? pw.FontWeight.bold : pw.FontWeight.normal,
                   color: grand ? p.brand : p.inkSoft,
                 ),
@@ -540,7 +493,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
                 textAlign: pw.TextAlign.right,
                 overflow: pw.TextOverflow.clip,
                 style: pw.TextStyle(
-                  fontSize: grand ? 11 : 9.5,
+                  fontSize: grand ? 10 : 9.5,
                   fontWeight: pw.FontWeight.bold,
                   color: grand ? p.brand : p.ink,
                 ),
@@ -563,11 +516,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
       pw.Container(
         padding: const pw.EdgeInsets.fromLTRB(12, 11, 12, 10),
         decoration: pw.BoxDecoration(
-          gradient: pw.LinearGradient(
-            begin: pw.Alignment.topLeft,
-            end: pw.Alignment.bottomRight,
-            colors: [p.brand, p.brandDeep],
-          ),
+          color: p.brandDeep,
           borderRadius: pw.BorderRadius.circular(7),
         ),
         child: pw.Column(
@@ -608,7 +557,7 @@ pw.Widget _buildReceipt(ReceiptData d, ReceiptPalette p,
             ),
             pw.SizedBox(height: 4),
             pw.Text(
-              'DIGITAL REGISTER',
+              'FOAM SHOP  ·  DIGITAL REGISTER',
               textAlign: pw.TextAlign.center,
               style: pw.TextStyle(
                 fontSize: 6.4,

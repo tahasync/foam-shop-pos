@@ -185,6 +185,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           startDate: range.start,
           endDate: range.end,
           shopName: shopName,
+          currencyCode: currencyCode,
         );
         if (!mounted) return;
         setState(() => _loading = false);

@@ -13,6 +13,7 @@ import '../providers/firebase_providers.dart';
 import '../services/receipt_pdf.dart';
 import '../services/receipt_saver.dart';
 import '../theme/app_theme.dart';
+import '../utils/brand.dart';
 import '../utils/animations.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
@@ -611,22 +612,7 @@ class _ReceiptPaper extends StatelessWidget {
                       style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
                 ],
                 const SizedBox(height: 14),
-                RichText(
-                  text: TextSpan(children: [
-                    TextSpan(
-                      text: 'Customer: ',
-                      style: TextStyle(fontSize: 12, color: ac.inkSoft),
-                    ),
-                    TextSpan(
-                      text: d.customerName,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                  ]),
-                ),
+                _ReceiptCustomerCard(name: d.customerName),
                 const SizedBox(height: 14),
                 _ItemTable(items: d.items, tnum: tnum),
                 const SizedBox(height: 14),
@@ -636,6 +622,7 @@ class _ReceiptPaper extends StatelessWidget {
                   isDue: d.isDue,
                   dueValue: d.dueValue,
                   change: d.change,
+                  roundingLabel: d.roundingLabel,
                   tnum: tnum,
                 ),
                 const SizedBox(height: 12),
@@ -660,6 +647,12 @@ class _ReceiptPaper extends StatelessWidget {
                     style: TextStyle(fontSize: 10, color: ac.inkFaint),
                   ),
                 ],
+                const SizedBox(height: 5),
+                Text(
+                  'Computer generated receipt · No signature required',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 9, color: ac.inkFaint),
+                ),
               ],
             ),
           ),
@@ -669,42 +662,113 @@ class _ReceiptPaper extends StatelessWidget {
   }
 }
 
-/// Branded teal banner at the top of the receipt.
+/// Solid Deep Navy brand header shared with the printable receipt.
 class _ReceiptHeader extends StatelessWidget {
   final String storeName;
   const _ReceiptHeader({required this.storeName});
 
   @override
   Widget build(BuildContext context) {
-    final ac = AppColors.of(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [ac.brandFill, ac.brandFillDeep],
-        ),
-      ),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      color: Color(BrandPalette.deepNavy),
       child: Column(
         children: [
+          Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Color(BrandPalette.foamWhite),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              storeName.trim().isEmpty
+                  ? 'F'
+                  : storeName.trim()[0].toUpperCase(),
+              style: const TextStyle(
+                color: Color(BrandPalette.deepNavy),
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 7),
           Text(
             storeName,
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
+              color: Color(BrandPalette.foamWhite),
+              fontSize: 16,
               fontWeight: FontWeight.w800,
-              letterSpacing: -0.01,
+              letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(height: 3),
-          const Text(
-            'Digital Register',
-            style: TextStyle(color: Colors.white70, fontSize: 11),
+          const SizedBox(height: 4),
+          Text(
+            'FOAM SHOP  ·  DIGITAL REGISTER',
+            style: TextStyle(
+              color: Color(BrandPalette.foamWhite).withValues(alpha: 0.82),
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReceiptCustomerCard extends StatelessWidget {
+  final String name;
+  const _ReceiptCustomerCard({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    final initial = name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Color(BrandPalette.foamWhite),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: ac.outline),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('CUSTOMER',
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.7,
+                        color: ac.inkFaint)),
+                const SizedBox(height: 3),
+                Text(name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: ac.ink)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          CircleAvatar(
+            radius: 12,
+            backgroundColor: Colors.white,
+            foregroundColor: Color(BrandPalette.slateBlue),
+            child: Text(initial,
+                style:
+                    const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -798,8 +862,9 @@ class _ItemTable extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Container(height: 1.4, color: cs.onSurface),
-        for (final item in items) ...[
-          Padding(
+        for (final (index, item) in items.indexed) ...[
+          Container(
+            color: index.isOdd ? const Color(BrandPalette.paidTint) : null,
             padding: const EdgeInsets.symmetric(vertical: 7),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -865,6 +930,7 @@ class _TotalsCard extends StatelessWidget {
   final String paid;
   final bool isDue;
   final String dueValue;
+  final String roundingLabel;
 
   /// The change to hand back, already formatted. Empty when there is none.
   final String change;
@@ -875,6 +941,7 @@ class _TotalsCard extends StatelessWidget {
     required this.paid,
     required this.isDue,
     required this.dueValue,
+    this.roundingLabel = '',
     this.change = '',
     required this.tnum,
   });
@@ -907,12 +974,17 @@ class _TotalsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: ac.saleTint,
-        borderRadius: BorderRadius.circular(10),
+        color: Color(BrandPalette.foamWhite),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: ac.outline),
       ),
       child: Column(
         children: [
           row('Amount', total),
+          if (roundingLabel.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            row('Rounding adjustment', roundingLabel),
+          ],
           const SizedBox(height: 4),
           row('Paid', paid),
           const SizedBox(height: 8),
@@ -961,22 +1033,39 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ac = AppColors.of(context);
     return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
         decoration: BoxDecoration(
-          color: isDue ? ac.expenseTint : ac.saleTint,
+          color: isDue
+              ? Color(BrandPalette.dueTint)
+              : Color(BrandPalette.paidTint),
           borderRadius: BorderRadius.circular(999),
         ),
-        child: Text(
-          isDue ? 'BALANCE DUE' : '\u2713 FULLY PAID',
-          style: TextStyle(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.03,
-            color: isDue ? ac.expenseFg : ac.saleFg,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 5,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Color(
+                    isDue ? BrandPalette.deepInk : BrandPalette.slateBlue),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              isDue ? 'BALANCE DUE' : 'PAID IN FULL',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.9,
+                color: Color(
+                    isDue ? BrandPalette.deepInk : BrandPalette.slateBlue),
+              ),
+            ),
+          ],
         ),
       ),
     );
