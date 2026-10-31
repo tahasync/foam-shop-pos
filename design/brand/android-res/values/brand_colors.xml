@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Foam Shop brand palette. These are the app's existing AppColors values (lib/theme/app_theme.dart),
+         declared once on the Android side so the icon and splash vectors cannot disagree. -->
+    <color name="brand_ink">#FF0E0D15</color>
+    <color name="brand_navy">#FF182346</color>
+    <color name="brand_slate">#FF3D5387</color>
+    <color name="brand_periwinkle">#FF7C83AD</color>
+    <color name="brand_mauve">#FFBFA9BA</color>
+    <color name="brand_foam">#FFF7F4F2</color>
+    <!-- Launch-screen page colour = the Flutter light theme surface (AppColors.surface). -->
+    <color name="splash_background">#FFF7F4F2</color>
+</resources>

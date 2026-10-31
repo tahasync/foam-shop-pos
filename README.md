@@ -15,7 +15,7 @@ Data is live-synced to Firestore — each user sees only their own data (partiti
 - **Exports:** `pdf` + `printing`, `excel`, `csv`
 - **Notifications:** `flutter_local_notifications` (local-only, zero-cost, no server)
 - **UI:** `flutter_animate`, `fl_chart`, `flutter_svg`, `google_fonts`
-- **Design system:** hand-rolled glass layer — `app_tokens.dart` (radii, spacing, motion, 48dp hit targets) and `GlassContainer` on an explicit `AppGlassLevel`
+- **Design system:** shared theme tokens and reusable surfaces, controls, status badges, and responsive layouts
 - **CI/CD:** GitHub Actions — deterministic APK builds on `v*` tags
 
 ## Features
@@ -71,7 +71,7 @@ long as a newer release exists. Suppressing it for a period is a small change
 
 ## Color palette
 
-All UI color is defined in one place — the `AppColors` `ThemeExtension` in `lib/theme/app_theme.dart` — which supplies both the `ColorScheme` for standard Material widgets and semantic tokens for the design system. Structural concerns (radii, spacing, motion durations, minimum hit targets, icon and numeric type scales) live separately in `lib/theme/app_tokens.dart` and deliberately introduce **no new colours**. Five core colors drive both themes:
+All UI color is defined in one place — the `AppColors` `ThemeExtension` in `lib/theme/app_theme.dart` — which supplies both the `ColorScheme` for standard Material widgets and semantic tokens for the design system. Structural concerns (radii, spacing, motion durations, minimum hit targets, icon and numeric type scales) live separately in `lib/theme/app_tokens.dart` and deliberately introduce **no new colours**. The six brand colors drive both themes:
 
 | Token | Hex | Role |
 |---|---|---|
@@ -80,13 +80,20 @@ All UI color is defined in one place — the `AppColors` `ThemeExtension` in `li
 | Slate Blue | `#3D5387` | Secondary interactive elements, selected states |
 | Muted Periwinkle | `#7C83AD` | Dark-mode primary, supporting surfaces |
 | Dusty Mauve | `#BFA9BA` | Soft accent, highlights, expense/error tones |
+| Foam White | `#F7F4F2` | Light page surface and brand mark |
 
-**Light theme** — background `#F7F4F2`, surface `#FFFFFF`, primary `#182346`, secondary `#3D5387`, accent `#BFA9BA`.
-**Dark theme** — background `#0E0D15`, with elevated surfaces stepping through `#141A2A` → `#202D4E` → `#2D3B61` for depth, and primary `#7C83AD` for contrast.
+**Light theme** — page `#F7F4F2`, cards `#FFFFFF`, primary `#182346`, secondary `#3D5387`, accent `#BFA9BA`.
+**Dark theme** — page `#14141A`, elevated surfaces `#1E1E26` → `#2A2A34` → `#373743`, and primary `#7C83AD` for contrast.
 
 Semantic roles (sale, purchase, expense, profit, inventory, khata, cash) keep their meaning but are drawn from this blue/mauve family. `AppTheme` also keeps legacy aliases such as `teal`, `amber`, and `sage` for backward compatibility — the names remain, but the values now come from the current palette.
 
 Theme mode (System / Light / Dark) is user-selectable in Settings and persisted via `SharedPreferences`. Changing a color should be done by editing a token in `app_theme.dart`, not by hardcoding a color in a widget.
+
+## Foam Shop brand
+
+![Foam Shop app mark](design/brand/icon/app-icon-512.png)
+
+The v1.5.6 identity uses the flat Foam Layers mark and the existing six-color palette. Receipt preview, printed receipts, shared report PDFs, and XLSX exports use the same navy, slate, foam, and mauve tokens. CSV reports use matching section names and stable numeric columns. The complete, verbatim source kit—including SVGs, app and store icons, platform assets, and the brand guide—is in [`design/brand/`](design/brand/BRAND.md).
 
 ## Profit calculations (important)
 
@@ -129,7 +136,7 @@ flutter run --dart-define-from-file=env/firebase_config.json
 
 ## Release process
 
-**Current version: `1.5.4` (`pubspec.yaml` → `version: 1.5.4+7`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+**Current version: `1.5.6` (`pubspec.yaml` → `version: 1.5.6+9`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 **See [RELEASE.md](RELEASE.md) for the full release workflow.** The supported way to produce a release APK locally is:
 
@@ -146,7 +153,7 @@ The script runs clean → deps → analyze → test → build in sequence. Any f
 
 ## CI/CD
 
-Every push to `main` runs analyze + tests + builds a debug APK. A `dart format` check runs alongside them, so an unformatted file fails CI rather than landing silently. It runs **after** `flutter pub get` on purpose: `dart format` picks the code style from the language version recorded in `.dart_tool/package_config.json`, so running it before dependencies are resolved makes it reformat the whole tree in a different style and fail spuriously. Every `v*` tag builds a signed release APK, generates a changelog from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam-Shop-Pos-v<version>.apk`, where the version comes from the tag (falls back to the `version:` in `pubspec.yaml` for non-tag builds).
+Every push to `main` runs analysis, tests, formatting and a signed release APK build using the repository secrets. A `dart format` check runs after `flutter pub get` because it reads the project language version from `.dart_tool/package_config.json`. Every `v*` tag runs the same gates, builds a versioned signed release APK, extracts the matching user-facing section from `CHANGELOG.md`, and creates a GitHub Release with the APK attached. The attached asset is named `Foam-Shop-Pos-v<version>.apk`. Firestore rules have a separate manual deployment workflow, documented in [RELEASE.md](RELEASE.md); it does not deploy Cloud Functions.
 
 ```bash
 git tag v1.5.0
@@ -166,7 +173,7 @@ The pipeline uses:
 flutter test
 ```
 
-The suite is 9 files / 169 tests. It covers:
+The suite is 27 files / 329 tests. It covers:
 - Accounting calculations: Cash in Hand, Revenue, COGS, Gross/Net Profit, Baqaya aggregation
 - Regression: costPriceAtSale isolation (not affected by later cost price edits)
 - Regression: inventory changes never affect Cash in Hand, Revenue, or Expenses
@@ -176,10 +183,11 @@ The suite is 9 files / 169 tests. It covers:
 - Core model instantiation and COGS formula with per-sale negotiated pricing
 - Stock-unit correctness: Pieces vs Per sq.ft, the `2.5 sq.ft` fractional regression, and the Firestore round trip
 - Source-integrity guards (`test/source_integrity_test.dart`) that fail the build if mojibake separators reappear in `lib/`
-- **UI regression (`test/ui_regression_test.dart`, 43 tests)** — palette-drift guards, WCAG contrast in both themes, 48dp touch targets, the shared bottom inset that keeps content clear of the floating nav, the blur budget, and receipt PDF generation
+- **UI regression (`test/ui_regression_test.dart`, 86 tests)** — palette-drift guards, WCAG contrast in both themes, 48dp touch targets, the shared bottom inset that keeps content clear of the floating nav, the blur budget, and receipt PDF generation
 - **Change-due regression (`test/change_due_regression_test.dart`, 25 tests)** — overpayment across the dashboard, receipt, billing and status-badge paths, locking in that change is excluded from Cash in Hand and Revenue
 - **Void-reversal regression (`test/void_reversal_regression_test.dart`, 6 tests)** — voiding reverses revenue and restores stock, including a cart with the same product on two lines
-- **Update-dialog formatting (`test/update_dialog_format_test.dart`, 18 tests)** — release notes reach the "What's New" dialog as plain text: no Markdown delimiters, no hard-wrap line breaks mid-sentence, bullets and section headings preserved
+- **Update-dialog formatting (27 tests across `test/update_dialog_format_test.dart` and the v1.5.5/v1.5.6 release-note guards)** — release notes reach the "What's New" dialog as plain text, with no Markdown delimiters or broken sentences
+- **Brand and export formatting** — painter pixels and geometry stay aligned with the kit; Android vectors and colors cannot drift; CSV/XLSX/PDF output preserves fractional financial values and shared brand styling
 
 The UI regression file exists because `flutter analyze` will happily pass a layout that *looks* wrong. Those tests assert on behaviour — no overflow, correct inset, real touch target, valid PDF bytes — rather than on pixel values.
 
@@ -228,5 +236,5 @@ because it builds and installs a debug APK.
 
 **Production-ready Android app — actively maintained.** Used by foam/mattress shops with subscription-based commercial model. The founding account is free forever; new sign-ups get a 14-day free trial.
 
-The automated test suite (9 test files, 169 tests) covers accounting calculations (Revenue, COGS, Gross/Net Profit, Baqaya, Cash in Hand), core model instantiation, COGS fallback chain, costPriceAtSale isolation, subscription trial label logic, notification detection, stock-unit handling, change-due/overpayment accounting, sale-void reversal, update-dialog changelog formatting, and a UI regression suite that pins the committed colour palette, touch-target minimums, glass/blur budgets and receipt PDF output.
+The automated test suite (27 test files, 329 tests) covers accounting, model and provider resilience, Firestore integrity, inventory and sale regressions, notifications, release-note formatting, brand asset drift, report exports, and UI accessibility/layout behavior.
 

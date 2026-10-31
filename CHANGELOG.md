@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.5.6 — 31 October 2026
+
+Foam Shop branding and a more consistent reporting experience, with Firestore
+sale protections that keep the app on the Firebase Spark plan.
+
+### Improved
+- **One premium identity across the shop.** The Foam Layers mark, app icons,
+  launch screen and web assets now share the six-color Foam Shop palette. The
+  complete design kit is versioned under `design/brand/`.
+- **Receipts and reports are easier to read and share.** The receipt preview,
+  printed PDF and report PDF now share navy headers, tidy customer details,
+  aligned figures and consistent payment states. XLSX reports have styled
+  Summary and Sales Detail sheets with numeric values; CSV reports have clear
+  section headings, a spreadsheet-friendly UTF-8 BOM and preserved decimals.
+
+### Fixed
+- **A saved sale cannot be reclassified as a quote.** Firestore freezes sale
+  classification and validates every sale line item's required fields at the
+  server boundary. The client transaction flow stays in place, so no Cloud
+  Functions or paid Firebase plan is required.
+
 ## v1.5.5 — 29 September 2026
 
 One fix that could cost a shop its whole sales history, and one that made the
