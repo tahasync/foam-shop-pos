@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.5.8 — 31 October 2026
+
+A more polished dark theme across the register, plus clearer billing and
+subscription screens with smoother, more accessible interactions.
+
+### Improved
+- **Dark mode now has its own balanced palette.** Midnight navy page surfaces,
+  blue-slate cards, brighter text, and restrained Foam Shop accents give the
+  dark interface clearer hierarchy and more readable controls.
+- **Billing and subscription details are easier to scan.** Plan status, account
+  details, support, and receipt history use the same updated visual language.
+- **Interactions feel more consistent.** Shared tap feedback and reduced-motion
+  handling now apply across common navigation, buttons, filters, and sheets.
+
+### Fixed
+- **Dark theme surfaces stay in sync.** Shared page backgrounds and hero cards
+  now follow the active theme tokens, preventing mismatched page and card
+  colours during dark mode and theme changes.
+
 ## v1.5.7 — 31 October 2026
 
 More dependable report sharing and a branded receipt experience that matches

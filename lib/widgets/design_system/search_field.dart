@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/haptics.dart';
 import 'glass_container.dart';
 
 /// Search field — a true glass pill.
@@ -98,7 +99,7 @@ class AppSearchField extends StatelessWidget {
                   const SizedBox(width: AppSpacing.sm),
                   _ClearButton(
                     onTap: () {
-                      HapticFeedback.selectionClick();
+                      unawaited(AppHaptics.selection());
                       controller?.clear();
                       onChanged?.call('');
                       onClear?.call();

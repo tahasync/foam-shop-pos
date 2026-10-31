@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/haptics.dart';
 import 'glass_container.dart';
 
 /// A horizontally scrollable row of filter chips.
@@ -74,7 +75,7 @@ class _Chip extends StatelessWidget {
       selected: active,
       child: GestureDetector(
         onTap: () {
-          HapticFeedback.selectionClick();
+          unawaited(AppHaptics.selection());
           onTap();
         },
         child: ActiveGlassPill(label: label, fill: fill, fg: fg),
@@ -102,7 +103,7 @@ class ActiveGlassPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     return AnimatedContainer(
-      duration: AppMotion.fast,
+      duration: AppMotion.accessible(context, AppMotion.fast),
       curve: AppMotion.ease,
       // 40px tall: enough to clear the 48dp target once the row padding around
       // it is counted, without making the filter row look heavy.
@@ -171,7 +172,7 @@ class SegmentedControl extends StatelessWidget {
               children: [
                 // The sliding indicator sits behind the labels.
                 AnimatedPositioned(
-                  duration: AppMotion.base,
+                  duration: AppMotion.accessible(context, AppMotion.base),
                   curve: AppMotion.ease,
                   left: segmentWidth * selectedIndex,
                   top: 0,
@@ -198,12 +199,13 @@ class SegmentedControl extends StatelessWidget {
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () {
-                              HapticFeedback.selectionClick();
+                              unawaited(AppHaptics.selection());
                               onChanged(i);
                             },
                             child: Center(
                               child: AnimatedDefaultTextStyle(
-                                duration: AppMotion.fast,
+                                duration: AppMotion.accessible(
+                                    context, AppMotion.fast),
                                 curve: AppMotion.ease,
                                 style: TextStyle(
                                   fontSize: 12,

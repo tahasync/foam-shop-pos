@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ import '../utils/animations.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
 import '../utils/money.dart';
+import '../utils/haptics.dart';
 
 const _filters = ['All', 'Paid', 'Due', 'Void'];
 
@@ -38,6 +40,154 @@ String _receiptFileName(Sale sale) =>
 /// Short human-facing receipt number, e.g. `INV-0142`.
 String _receiptNumber(Sale sale) =>
     'INV-${_safeIdPrefix(sale.id, 4).toUpperCase()}';
+
+class _BillingOverview extends StatelessWidget {
+  const _BillingOverview({
+    required this.documentCount,
+    required this.dueCount,
+    required this.dueAmount,
+  });
+
+  final int documentCount;
+  final int dueCount;
+  final String dueAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    final ac = AppColors.of(context);
+    return FoamCard(
+      foam: true,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: ac.saleTint,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Icon(Icons.receipt_long_rounded,
+                    size: 20, color: ac.saleFg),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Receipt ledger',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: ac.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Sales, quotes and payment status',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, color: ac.inkFaint),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _LedgerValue(
+                  label: 'Documents',
+                  value: documentCount.toString(),
+                  detail: 'in your history',
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 40,
+                margin: const EdgeInsets.symmetric(horizontal: 14),
+                color: ac.outline,
+              ),
+              Expanded(
+                child: _LedgerValue(
+                  label: 'Outstanding',
+                  value: dueAmount,
+                  detail:
+                      '$dueCount ${dueCount == 1 ? 'invoice' : 'invoices'} due',
+                  valueColor: dueCount == 0 ? ac.profitFg : ac.expenseFg,
+                  alignEnd: true,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LedgerValue extends StatelessWidget {
+  const _LedgerValue({
+    required this.label,
+    required this.value,
+    required this.detail,
+    this.valueColor,
+    this.alignEnd = false,
+  });
+
+  final String label;
+  final String value;
+  final String detail;
+  final Color? valueColor;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final align = alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    return Column(
+      crossAxisAlignment: align,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.07,
+            color: AppColors.of(context).inkFaint,
+          ),
+        ),
+        const SizedBox(height: 3),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: valueColor ?? AppColors.of(context).ink,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          detail,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 10, color: AppColors.of(context).inkFaint),
+        ),
+      ],
+    );
+  }
+}
 
 class BillingScreen extends ConsumerStatefulWidget {
   const BillingScreen({super.key});
@@ -72,9 +222,23 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             );
           }
           final filtered = _applyFilter(sales);
+          final dueSales = sales
+              .where(
+                  (sale) => !sale.isVoided && !sale.isQuote && sale.balance > 0)
+              .toList(growable: false);
+          final totalDue = dueSales.fold<double>(
+            0,
+            (total, sale) => total + sale.balance,
+          );
           return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                _BillingOverview(
+                  documentCount: sales.length,
+                  dueCount: dueSales.length,
+                  dueAmount: '$csym ${fmt.format(roundMoney(totalDue))}',
+                ),
+                const SizedBox(height: 14),
                 SegmentedControl(
                   options: _filters,
                   selectedIndex: _filterIndex,
@@ -160,7 +324,11 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
       child: InkWell(
-        onTap: () => _openReceiptOptions(context, ref, sale),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: () {
+          unawaited(AppHaptics.tap());
+          _openReceiptOptions(context, ref, sale);
+        },
         child: Opacity(
           opacity: voided ? 0.55 : 1,
           child: Row(children: [
@@ -168,10 +336,8 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                  color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(12)),
-              child: Icon(Icons.receipt_rounded,
-                  size: 17, color: cs.onPrimaryContainer),
+                  color: ac.saleTint, borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.receipt_rounded, size: 17, color: ac.saleFg),
             ),
             const SizedBox(width: 12),
             Expanded(

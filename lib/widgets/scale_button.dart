@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../utils/haptics.dart';
+import '../theme/app_tokens.dart';
+import 'dart:async';
 
 class ScaleButton extends StatefulWidget {
   final Widget child;
@@ -21,8 +23,7 @@ class _ScaleButtonState extends State<ScaleButton>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        duration: const Duration(milliseconds: 100), vsync: this);
+    _ctrl = AnimationController(duration: AppMotion.fast, vsync: this);
     _anim =
         Tween<double>(begin: 1.0, end: widget.scale).animate(CurvedAnimation(
       parent: _ctrl,
@@ -38,22 +39,33 @@ class _ScaleButtonState extends State<ScaleButton>
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    _ctrl.duration = reduceMotion ? Duration.zero : AppMotion.fast;
     return GestureDetector(
       onTapDown: (_) {
-        HapticFeedback.lightImpact();
-        _ctrl.forward();
+        if (widget.onTap != null && !reduceMotion) _ctrl.forward();
       },
       onTapUp: (_) {
         _ctrl.reverse();
-        widget.onTap?.call();
       },
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              final onTap = widget.onTap;
+              if (onTap != null) {
+                unawaited(AppHaptics.tap());
+                onTap();
+              }
+            },
       onTapCancel: () => _ctrl.reverse(),
-      child: AnimatedBuilder(
-        animation: _anim,
-        builder: (_, child) =>
-            Transform.scale(scale: _anim.value, child: child),
-        child: widget.child,
-      ),
+      child: reduceMotion
+          ? widget.child
+          : AnimatedBuilder(
+              animation: _anim,
+              builder: (_, child) =>
+                  Transform.scale(scale: _anim.value, child: child),
+              child: widget.child,
+            ),
     );
   }
 }

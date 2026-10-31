@@ -81,6 +81,10 @@ class AppMotion {
 
   /// Default for most transitions.
   static const Duration base = Duration(milliseconds: 320);
+
+  /// Motion that honors the platform's reduced-animation accessibility setting.
+  static Duration accessible(BuildContext context, Duration duration) =>
+      MediaQuery.disableAnimationsOf(context) ? Duration.zero : duration;
 }
 
 /// Minimum touch targets. The pro-rules require 44pt on iOS and 48dp on

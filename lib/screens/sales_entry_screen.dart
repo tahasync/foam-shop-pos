@@ -12,13 +12,13 @@ import '../theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import '../providers/shop_provider.dart';
 import '../utils/debounce.dart';
+import 'package:flutter/services.dart';
 import '../widgets/initial_avatar.dart';
 import '../utils/safe_error_handler.dart';
 import '../widgets/design_system/design_system.dart';
 import '../widgets/add_customer_sheet.dart';
 import '../utils/animations.dart';
 import 'billing_screen.dart';
-import 'package:flutter/services.dart';
 import 'dart:async';
 
 import '../utils/haptics.dart';
@@ -1836,7 +1836,7 @@ class _QuickPaidChip extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
-          HapticFeedback.selectionClick();
+          unawaited(AppHaptics.selection());
           onTap();
         },
         child: Container(

@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_tokens.dart';
+import '../utils/haptics.dart';
 
 /// Floating frosted-glass bottom nav: a sliding active pill, four icon+label
 /// destinations, and notification dots.
@@ -75,7 +77,7 @@ class CustomNavBar extends StatelessWidget {
             // which is what makes the shorter bar read as one continuous strip
             // rather than a pill with a floating chip inside it.
             AnimatedPositioned(
-              duration: AppMotion.base,
+              duration: AppMotion.accessible(context, AppMotion.base),
               curve: AppMotion.spring,
               left: currentIndex * itemWidth + AppSpacing.xs,
               top: AppSpacing.xs,
@@ -100,7 +102,10 @@ class CustomNavBar extends StatelessWidget {
                     isActive: i == currentIndex,
                     activeColor: activeColor,
                     inactiveColor: inactiveColor,
-                    onTap: () => onTap(i),
+                    onTap: () {
+                      unawaited(AppHaptics.selection());
+                      onTap(i);
+                    },
                   ),
               ],
             ),

@@ -92,6 +92,19 @@ void main() {
       }
     });
 
+    test('theme surface colors interpolate during a mode change', () {
+      final light = AppTheme.light().extension<AppColors>()!;
+      final dark = AppTheme.dark().extension<AppColors>()!;
+      final halfway = light.lerp(dark, 0.5) as AppColors;
+
+      expect(halfway.surface, Color.lerp(light.surface, dark.surface, 0.5));
+      expect(
+          halfway.glassFill, Color.lerp(light.glassFill, dark.glassFill, 0.5));
+      expect(halfway.primary, Color.lerp(light.primary, dark.primary, 0.5));
+      expect(halfway.surface, isNot(light.surface));
+      expect(halfway.surface, isNot(dark.surface));
+    });
+
     test('light and dark hairlines are opposites (visible in both themes)', () {
       // A dark hairline is invisible on dark glass — this is the trap that made
       // cards lose their edges in dark mode.
@@ -180,19 +193,18 @@ void main() {
       );
     });
 
-    test('the neutral ramp is not tinted blue', () {
+    test('dark surfaces carry a restrained midnight-blue brand undertone', () {
       final dark = AppTheme.dark().extension<AppColors>()!;
-      // The dark neutrals were a saturated navy ramp while light is a warm
-      // neutral. Max channel spread must stay small, or the page picks up an
-      // indigo cast that light mode does not have.
       for (final c in [
         dark.surface,
         dark.surface2,
         dark.surfaceHigh,
         dark.surfaceHighest,
       ]) {
-        final spread = c.computeLuminance().abs() + (c.r - c.b).abs() / 255;
-        expect(spread, lessThan(0.25), reason: 'neutral $c is too blue');
+        expect(c.b, greaterThan(c.g), reason: '$c should retain a cool tone');
+        expect(c.g, greaterThan(c.r), reason: '$c should stay softly tinted');
+        expect((c.b - c.r) * 255, lessThan(45),
+            reason: '$c should not become oversaturated blue');
       }
     });
 
@@ -227,9 +239,9 @@ void main() {
       final dark = AppTheme.dark().extension<AppColors>()!;
       // `GlassBackground` used to hardcode its own dark colour while the theme
       // moved on, so the page and the scaffold disagreed.
-      expect(dark.surface, const Color(0xFF14141A));
-      expect(dark.glassFill, const Color(0xFF1E1E26));
-      expect(dark.glassElevated, const Color(0xFF2A2A34));
+      expect(dark.surface, const Color(0xFF101521));
+      expect(dark.glassFill, const Color(0xFF1C2232));
+      expect(dark.glassElevated, const Color(0xFF293149));
     });
 
     test('the dark page is dark but not pure black', () {
@@ -243,7 +255,7 @@ void main() {
       final dark = AppTheme.dark().extension<AppColors>()!;
       // `Color.r/g` are normalised 0..1, so scale to 8-bit for readability.
       int ch8(double c) => (c * 255).round();
-      expect(ch8(dark.surface.r), greaterThanOrEqualTo(18),
+      expect(ch8(dark.surface.r), greaterThanOrEqualTo(16),
           reason: 'page too black');
       expect(ch8(dark.surface.g), greaterThanOrEqualTo(18));
       // Still unmistakably a dark theme.
@@ -1032,8 +1044,8 @@ void main() {
 
         final borderColour = (border! as Border).top.color;
         final ac = AppColors.of(tester.element(find.byType(AppButton)));
-        // `outline` (#32323E on #1E1E26) measured ~1.2:1 in dark mode and was
-        // effectively invisible, leaving the label looking like loose text.
+        // Dark outlines need a visible blue-slate edge against the midnight
+        // surfaces, while light outlines remain dark against pale surfaces.
         for (final surface in [ac.surface, ac.glassFill, ac.glassElevated]) {
           // Contrast is symmetric: the border may be lighter *or* darker than
           // the surface depending on the theme, so normalise the pair. Using

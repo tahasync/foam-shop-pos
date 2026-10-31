@@ -93,7 +93,7 @@ Theme mode (System / Light / Dark) is user-selectable in Settings and persisted 
 
 ![Foam Shop app mark](design/brand/icon/app-icon-512.png)
 
-The v1.5.7 identity uses the flat Foam Layers mark and the existing six-color palette. Receipt preview, printed receipts, shared report PDFs, and XLSX exports use the same navy, slate, foam, and mauve tokens. CSV reports use matching section names and stable numeric columns. The complete, verbatim source kit—including SVGs, app and store icons, platform assets, and the brand guide—is in [`design/brand/`](design/brand/BRAND.md).
+The v1.5.7 identity uses the flat Foam Layers mark and the existing six-color palette. Receipt preview, printed receipts, shared report PDFs, and XLSX exports use the same navy, slate, foam, and mauve tokens. CSV reports use matching section names and stable numeric columns. The complete, verbatim source kit—including SVGs, app and store icons, platform assets, and the brand guide—is in [`design/brand/`](design/brand/BRAND.md). Version 1.5.8 refines the dark palette and billing screens; the app UI continues to use the existing brand colours.
 
 ## Profit calculations (important)
 
@@ -136,7 +136,7 @@ flutter run --dart-define-from-file=env/firebase_config.json
 
 ## Release process
 
-**Current version: `1.5.7` (`pubspec.yaml` → `version: 1.5.7+10`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+**Current version: `1.5.8` (`pubspec.yaml` → `version: 1.5.8+11`).** See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 **See [RELEASE.md](RELEASE.md) for the full release workflow.** The supported way to produce a release APK locally is:
 
@@ -179,7 +179,7 @@ Android device checks use the emulator or a connected device:
 flutter test integration_test -d <device-id>
 ```
 
-The suite is 28 files / 334 tests. It covers:
+The suite is 28 files / 335 tests. It covers:
 - Accounting calculations: Cash in Hand, Revenue, COGS, Gross/Net Profit, Baqaya aggregation
 - Regression: costPriceAtSale isolation (not affected by later cost price edits)
 - Regression: inventory changes never affect Cash in Hand, Revenue, or Expenses
@@ -189,7 +189,7 @@ The suite is 28 files / 334 tests. It covers:
 - Core model instantiation and COGS formula with per-sale negotiated pricing
 - Stock-unit correctness: Pieces vs Per sq.ft, the `2.5 sq.ft` fractional regression, and the Firestore round trip
 - Source-integrity guards (`test/source_integrity_test.dart`) that fail the build if mojibake separators reappear in `lib/`
-- **UI regression (`test/ui_regression_test.dart`, 86 tests)** — palette-drift guards, WCAG contrast in both themes, 48dp touch targets, the shared bottom inset that keeps content clear of the floating nav, the blur budget, and receipt PDF generation
+- **UI regression (`test/ui_regression_test.dart`, 87 tests)** — palette-drift guards, WCAG contrast in both themes, animated theme interpolation, 48dp touch targets, the shared bottom inset that keeps content clear of the floating nav, the blur budget, and receipt PDF generation
 - **Change-due regression (`test/change_due_regression_test.dart`, 25 tests)** — overpayment across the dashboard, receipt, billing and status-badge paths, locking in that change is excluded from Cash in Hand and Revenue
 - **Void-reversal regression (`test/void_reversal_regression_test.dart`, 6 tests)** — voiding reverses revenue and restores stock, including a cart with the same product on two lines
 - **Update-dialog formatting (32 tests across `test/update_dialog_format_test.dart` and the v1.5.5/v1.5.6/v1.5.7 release-note guards)** — release notes reach the "What's New" dialog as plain text, with no Markdown delimiters or broken sentences
@@ -242,5 +242,5 @@ because it builds and installs a debug APK.
 
 **Production-ready Android app — actively maintained.** Used by foam/mattress shops with subscription-based commercial model. The founding account is free forever; new sign-ups get a 14-day free trial.
 
-The automated test suite (27 test files, 329 tests) covers accounting, model and provider resilience, Firestore integrity, inventory and sale regressions, notifications, release-note formatting, brand asset drift, report exports, and UI accessibility/layout behavior.
+The automated test suite (28 test files, 335 tests) covers accounting, model and provider resilience, Firestore integrity, inventory and sale regressions, notifications, release-note formatting, brand asset drift, report exports, theme interpolation, and UI accessibility/layout behavior. The two device integration files contain 8 tests and run on Android emulators or connected devices.
 

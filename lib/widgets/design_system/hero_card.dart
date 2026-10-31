@@ -38,7 +38,7 @@ class HeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final amountColor = isDark ? Colors.white : ac.brandSolidStrong;
+    final amountColor = isDark ? ac.ink : ac.brandSolidStrong;
 
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.xs),
@@ -47,7 +47,7 @@ class HeroCard extends StatelessWidget {
         level: AppGlassLevel.base,
         // A lightly tinted panel, so the headline reads as the hero while still
         // being unmistakably glass rather than a painted card.
-        tint: ac.primary.withValues(alpha: isDark ? 0.16 : 0.08),
+        tint: ac.primary.withValues(alpha: isDark ? 0.2 : 0.08),
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.xl,
           AppSpacing.xxl,
@@ -56,10 +56,11 @@ class HeroCard extends StatelessWidget {
         ),
         shadow: [
           BoxShadow(
-            color: ac.brandFill.withValues(alpha: isDark ? 0.34 : 0.16),
-            blurRadius: 34,
+            color:
+                isDark ? ac.brandFill.withValues(alpha: 0.18) : ac.glassShadow,
+            blurRadius: isDark ? 24 : 22,
             spreadRadius: -10,
-            offset: const Offset(0, 16),
+            offset: const Offset(0, 10),
           ),
         ],
         child: Column(

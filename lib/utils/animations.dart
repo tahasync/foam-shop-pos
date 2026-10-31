@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'haptics.dart';
 
 // ── Durations & Curves ──
 class AppAnim {
@@ -58,17 +60,28 @@ class _TapScaleState extends State<TapScale>
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    _ctrl.duration = reduceMotion ? Duration.zero : AppAnim.fast;
     return GestureDetector(
-      onTapDown: (_) => _ctrl.forward(),
+      onTapDown: (_) {
+        if (widget.onTap != null && !reduceMotion) _ctrl.forward();
+      },
       onTapUp: (_) => _ctrl.reverse(),
       onTapCancel: () => _ctrl.reverse(),
-      onTap: widget.onTap,
-      child: AnimatedBuilder(
-        animation: _anim,
-        builder: (_, child) =>
-            Transform.scale(scale: _anim.value, child: child),
-        child: widget.child,
-      ),
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              unawaited(AppHaptics.tap());
+              widget.onTap!();
+            },
+      child: reduceMotion
+          ? widget.child
+          : AnimatedBuilder(
+              animation: _anim,
+              builder: (_, child) =>
+                  Transform.scale(scale: _anim.value, child: child),
+              child: widget.child,
+            ),
     );
   }
 }
@@ -102,6 +115,14 @@ class _AnimatedCheckState extends State<AnimatedCheck>
           parent: _ctrl, curve: const Interval(0.4, 1, curve: Curves.easeOut)),
     );
     _ctrl.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _ctrl.value = 1;
+    }
   }
 
   @override

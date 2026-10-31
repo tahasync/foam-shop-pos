@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'dart:async';
 import '../../theme/app_theme.dart';
+import '../../utils/haptics.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/brand.dart';
 import 'app_button.dart';
@@ -170,7 +171,7 @@ class _BackButton extends StatelessWidget {
       icon: Icons.arrow_back_ios_new_rounded,
       semanticLabel: 'Back',
       onTap: () {
-        HapticFeedback.selectionClick();
+        unawaited(AppHaptics.selection());
         onTap();
       },
     );

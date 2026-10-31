@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/haptics.dart';
 
 /// A settings row: icon chip, title, optional subtitle, optional trailing.
 ///
@@ -39,7 +41,12 @@ class MenuRow extends StatelessWidget {
       button: onTap != null,
       label: subtitle == null ? title : '$title. $subtitle',
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap == null
+            ? null
+            : () {
+                unawaited(AppHaptics.tap());
+                onTap!();
+              },
         borderRadius: BorderRadius.circular(AppRadii.md),
         splashColor: ac.glassPress,
         child: Container(

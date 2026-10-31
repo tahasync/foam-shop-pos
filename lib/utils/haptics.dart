@@ -33,6 +33,13 @@ class AppHaptics {
     }
   }
 
+  /// Gentle feedback when the user changes a selection or filter.
+  static Future<void> selection() async {
+    try {
+      await HapticFeedback.selectionClick();
+    } catch (_) {}
+  }
+
   /// Heavier confirmation for committing something important.
   static Future<void> success() async {
     try {

@@ -32,6 +32,8 @@ class AccountSettingsScreen extends ConsumerWidget {
     final profile = shopAsync.asData?.value;
     final shopName = profile?.shopName ?? 'Digital Register';
     final subLabel = profile?.subscriptionLabel;
+    final hasLifetimeAccess = profile?.founderExempt == true ||
+        profile?.subscriptionStatus == 'free_forever';
     final initials = (user?.displayName ?? shopName).isNotEmpty
         ? (user?.displayName ?? shopName)[0].toUpperCase()
         : '?';
@@ -213,7 +215,9 @@ class AccountSettingsScreen extends ConsumerWidget {
                   title: 'Billing & subscription',
                   subtitle: subLabel != null
                       ? trialChipLabel(subLabel)
-                      : 'Subscription',
+                      : hasLifetimeAccess
+                          ? 'Lifetime access'
+                          : 'Plan details and receipt history',
                   onTap: () => Navigator.push(
                       context, slideUpRoute(const SubscriptionScreen())),
                 ),

@@ -3,16 +3,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_tokens.dart';
 
-/// The liquid-glass design tokens, mirroring the canonical mockup
-/// (`liquid_glass_mockup.html`): domain tint/fg pairs, ink scale, glass
-/// surface tokens, blur radii, orb colors, plus the FIXED "solid" tokens.
-///
-/// Glass rule (mockup v1): glass surfaces are translucent fills
-/// (`glassFill`) sampled over whatever sits behind them. Semantic tints are
-/// translucent color overlays on the glass. Ink and -fg tokens are *lightened*
-/// in dark mode for use as on-glass TEXT. Any card that pairs a solid colored
-/// fill with fixed white content must source that fill from `brandSolid` /
-/// `brandSolidStrong` / `dangerSolid`.
+/// App palette and material tokens: semantic tints, foregrounds, surfaces,
+/// outlines, brand fills and motion-safe glass levels. Most content surfaces
+/// are opaque for clean reading; only floating navigation uses translucency.
+/// In dark mode, foreground tokens brighten while fill tokens remain deep
+/// enough for legible white labels.
 class AppColors extends ThemeExtension<AppColors> {
   // ── Domain tint + fg pairs ──
   final Color saleTint;
@@ -285,94 +280,79 @@ class AppColors extends ThemeExtension<AppColors> {
     // grey-blue — every KPI tile looked identical. Raised to ~30% and given
     // genuinely distinct hues so "revenue" and "expenses" are told apart at a
     // glance, which is the entire point of a tinted dashboard.
-    saleTint: Color(0x4D3D5387),
-    purchaseTint: Color(0x4D1B2A5E),
-    expenseTint: Color(0x4DBFA9BA),
-    profitTint: Color(0x4D2E6B4E),
-    inventoryTint: Color(0x4D7C83AD),
-    khataTint: Color(0x4D8A7D9A),
-    cashTint: Color(0x4D5E8A7C),
-    saleFg: Color(0xFF9AA2D0),
-    purchaseFg: Color(0xFF8E9AD6),
-    expenseFg: Color(0xFFD3AFC0),
-    profitFg: Color(0xFFAEB5E0),
-    inventoryFg: Color(0xFF9AA2D0),
-    khataFg: Color(0xFF8B97D4),
-    cashFg: Color(0xFFAEB5E0),
-    ink: Color(0xFFF5F2F4),
-    inkSoft: Color(0xFFC7C5CF),
-    inkFaint: Color(0xFF9A98A5),
-    // Neutral ramp, warm-neutral like light mode, but lifted well off pure
-    // black.
-    //
-    // These were a saturated blue-navy ramp (#0E0D15 / #141A2A / #202D4E) while
-    // light is a desaturated warm grey (#F7F4F2), which is most of why dark
-    // looked muddy. They were then retuned too far the other way: #0D0D11 is
-    // effectively black on an OLED panel, so the page had no depth, the cards
-    // merged into it, and the heavy black shadows crushed what separation was
-    // left. This ramp is a soft near-black that still reads as "dark" while
-    // giving every layer somewhere to sit.
-    surface: Color(0xFF14141A),
-    surface2: Color(0xFF1E1E26),
-    surfaceHigh: Color(0xFF2A2A34),
-    surfaceHighest: Color(0xFF373743),
-    outline: Color(0xFF32323E),
-    outlineStrong: Color(0xFF474753),
+    saleTint: Color(0x4D566BB5),
+    purchaseTint: Color(0x4D455D83),
+    expenseTint: Color(0x4D895C78),
+    profitTint: Color(0x4D2F7255),
+    inventoryTint: Color(0x4D717BC4),
+    khataTint: Color(0x4D795C92),
+    cashTint: Color(0x4D3F8278),
+    saleFg: Color(0xFFB0B8ED),
+    purchaseFg: Color(0xFFA9C0E0),
+    expenseFg: Color(0xFFE4BDD0),
+    profitFg: Color(0xFFA9DCC0),
+    inventoryFg: Color(0xFFB5B9EF),
+    khataFg: Color(0xFFD0BAE2),
+    cashFg: Color(0xFFA6DAD0),
+    ink: Color(0xFFF5F3F7),
+    inkSoft: Color(0xFFD4D7E2),
+    inkFaint: Color(0xFFB8C1D7),
+    // Midnight navy anchors the page; blue-slate cards, raised controls and
+    // mauve/green semantic tints create clearer depth while preserving the
+    // light theme's soft, restrained character.
+    surface: Color(0xFF101521),
+    surface2: Color(0xFF1C2232),
+    surfaceHigh: Color(0xFF273148),
+    surfaceHighest: Color(0xFF333F5A),
+    outline: Color(0xFF3A4865),
+    outlineStrong: Color(0xFF526382),
     // Much lighter than `outline`/`outlineStrong`. A dark border on a dark card
     // is invisible, and an outlined control with no visible edge is not a
     // control at all - it is loose text on a surface.
-    controlBorder: Color(0xFF56566A),
-    primary: Color(0xFF7C83AD),
-    primaryStrong: Color(0xFFBFA9BA),
-    primaryContainer: Color(0xFF182346),
-    onPrimaryContainer: Color(0xFFF5F2F4),
-    accent: Color(0xFFBFA9BA),
-    onAccent: Color(0xFF0E0D15),
-    accentContainer: Color(0xFF3A3040),
-    brandSolid: Color(0xFF7C83AD),
-    brandSolidStrong: Color(0xFFBFA9BA),
-    dangerSolid: Color(0xFFC8A2B6),
+    controlBorder: Color(0xFF7183AA),
+    primary: Color(0xFFA0AADF),
+    primaryStrong: Color(0xFFD5B7CF),
+    primaryContainer: Color(0xFF273A69),
+    onPrimaryContainer: Color(0xFFEEF1FF),
+    accent: Color(0xFFD5B7CF),
+    onAccent: Color(0xFF17131D),
+    accentContainer: Color(0xFF463654),
+    brandSolid: Color(0xFFA0AADF),
+    brandSolidStrong: Color(0xFFD5B7CF),
+    dangerSolid: Color(0xFFE4A9BC),
     // The *fills* stay dark and saturated in dark mode so white glyphs keep a
     // real contrast ratio (>= 6:1). Previously these reused the lightened
     // foreground values, which is why every primary button in dark mode was a
     // pale periwinkle ramp with barely-legible white text.
-    brandFill: Color(0xFF44548A),
-    brandFillDeep: Color(0xFF1F2A4C),
+    brandFill: Color(0xFF465A96),
+    brandFillDeep: Color(0xFF26355F),
     dangerFill: Color(0xFF7E4A63),
     dangerFillDeep: Color(0xFF4E2B3D),
     // Cards are opaque here too. The old 7%-alpha fill made every card a hole
     // in the page — text behind it bled through and the palette washed out.
-    glassFill: Color(0xFF1E1E26),
-    glassFillStrong: Color(0xFF2A2A34),
-    glassBorder: Color(0x1AFFFFFF),
+    glassFill: Color(0xFF1C2232),
+    glassFillStrong: Color(0xFF232B3F),
+    glassBorder: Color(0x664A5875),
     // The nav pill is the only blurrable surface, and it sits over dark content
     // where a heavy sigma costs more — 14 reads as frosted and stays cheap.
     glassBlur: 14.0,
     // ── glass engine ──
-    // In dark mode the edge has to *lighten* — a dark hairline on a dark glass
-    // panel is invisible, which is exactly the bug the light theme does not
-    // have. So the hairline flips to a faint white.
-    // The hairline was 12% white, which vanished against the near-black card.
-    // Dark surfaces need a *stronger* edge than light ones, not a weaker one.
-    glassHairline: Color(0x24FFFFFF),
-    glassSpecular: Color(0x33FFFFFF),
+    // A blue-slate edge separates dark cards from the page and supports the
+    // branded midnight palette without a bright white outline.
+    glassHairline: Color(0x664A5875),
+    glassSpecular: Color(0x22C6D0F2),
     // Raised/inset slots in dark: one step *lighter* than the card, matching
     // the convention that a filled control sits above the surface.
-    glassElevated: Color(0xFF2A2A34),
-    glassPress: Color(0x1AFFFFFF),
-    glassScrim: Color(0x99000000),
-    // Dark mode needs a deeper shadow than light: on a near-black page a
-    // low-alpha shadow is invisible, so separation has to come from the
-    // hairline and the tone step instead.
-    // A 35% black shadow on an already near-black page crushes the card
-    // edges and makes the surface look flat and "fully black". Depth in dark
-    // comes from the tone step and the hairline, so this is only a light
-    // grounding shadow.
-    glassShadow: Color(0x2E000000),
-    glassInnerGlow: Color(0x1AFFFFFF),
-    // Text fields and nested slots: 12% white was invisible on a near-black
-    // card, so an input looked identical to the surface behind it.
-    glassNested: Color(0x1AFFFFFF),
+    glassElevated: Color(0xFF293149),
+    glassPress: Color(0x297F96CF),
+    glassScrim: Color(0xB8101521),
+    // A short, blue-black contact shadow grounds floating surfaces; card depth
+    // comes primarily from the stepped slate fills and visible edges.
+    glassShadow: Color(0x38070C16),
+    glassInnerGlow: Color(0x16C6D0F2),
+    // A restrained translucent slate wash gives inputs and nested controls a
+    // visible inset against cards without painting a flat grey rectangle.
+    glassNested: Color(0x4D526A99),
   );
 
   static AppColors of(BuildContext context) =>
@@ -486,8 +466,62 @@ class AppColors extends ThemeExtension<AppColors> {
 
   @override
   ThemeExtension<AppColors> lerp(
-          covariant ThemeExtension<AppColors>? other, double t) =>
-      this;
+      covariant ThemeExtension<AppColors>? other, double t) {
+    if (other is! AppColors) return this;
+    Color mix(Color a, Color b) => Color.lerp(a, b, t)!;
+    return AppColors(
+      saleTint: mix(saleTint, other.saleTint),
+      purchaseTint: mix(purchaseTint, other.purchaseTint),
+      expenseTint: mix(expenseTint, other.expenseTint),
+      profitTint: mix(profitTint, other.profitTint),
+      inventoryTint: mix(inventoryTint, other.inventoryTint),
+      khataTint: mix(khataTint, other.khataTint),
+      cashTint: mix(cashTint, other.cashTint),
+      saleFg: mix(saleFg, other.saleFg),
+      purchaseFg: mix(purchaseFg, other.purchaseFg),
+      expenseFg: mix(expenseFg, other.expenseFg),
+      profitFg: mix(profitFg, other.profitFg),
+      inventoryFg: mix(inventoryFg, other.inventoryFg),
+      khataFg: mix(khataFg, other.khataFg),
+      cashFg: mix(cashFg, other.cashFg),
+      ink: mix(ink, other.ink),
+      inkSoft: mix(inkSoft, other.inkSoft),
+      inkFaint: mix(inkFaint, other.inkFaint),
+      surface: mix(surface, other.surface),
+      surface2: mix(surface2, other.surface2),
+      surfaceHigh: mix(surfaceHigh, other.surfaceHigh),
+      surfaceHighest: mix(surfaceHighest, other.surfaceHighest),
+      outline: mix(outline, other.outline),
+      outlineStrong: mix(outlineStrong, other.outlineStrong),
+      controlBorder: mix(controlBorder, other.controlBorder),
+      primary: mix(primary, other.primary),
+      primaryStrong: mix(primaryStrong, other.primaryStrong),
+      primaryContainer: mix(primaryContainer, other.primaryContainer),
+      onPrimaryContainer: mix(onPrimaryContainer, other.onPrimaryContainer),
+      accent: mix(accent, other.accent),
+      onAccent: mix(onAccent, other.onAccent),
+      accentContainer: mix(accentContainer, other.accentContainer),
+      brandSolid: mix(brandSolid, other.brandSolid),
+      brandSolidStrong: mix(brandSolidStrong, other.brandSolidStrong),
+      dangerSolid: mix(dangerSolid, other.dangerSolid),
+      brandFill: mix(brandFill, other.brandFill),
+      brandFillDeep: mix(brandFillDeep, other.brandFillDeep),
+      dangerFill: mix(dangerFill, other.dangerFill),
+      dangerFillDeep: mix(dangerFillDeep, other.dangerFillDeep),
+      glassFill: mix(glassFill, other.glassFill),
+      glassFillStrong: mix(glassFillStrong, other.glassFillStrong),
+      glassBorder: mix(glassBorder, other.glassBorder),
+      glassBlur: glassBlur + (other.glassBlur - glassBlur) * t,
+      glassHairline: mix(glassHairline, other.glassHairline),
+      glassSpecular: mix(glassSpecular, other.glassSpecular),
+      glassElevated: mix(glassElevated, other.glassElevated),
+      glassPress: mix(glassPress, other.glassPress),
+      glassScrim: mix(glassScrim, other.glassScrim),
+      glassShadow: mix(glassShadow, other.glassShadow),
+      glassInnerGlow: mix(glassInnerGlow, other.glassInnerGlow),
+      glassNested: mix(glassNested, other.glassNested),
+    );
+  }
 }
 
 class AppTheme {
@@ -521,6 +555,8 @@ class AppTheme {
       onError: const Color(0xFFFFFFFF),
       tertiary: const Color(0xFF7C83AD),
       onTertiary: const Color(0xFFFFFFFF),
+      tertiaryContainer: ac.accentContainer,
+      onTertiaryContainer: ac.onAccent,
       surface: ac.surface,
       onSurface: ac.ink,
       surfaceContainerLowest: ac.glassFillStrong,
@@ -543,29 +579,26 @@ class AppTheme {
       onPrimary: ac.surface,
       primaryContainer: ac.primaryContainer,
       onPrimaryContainer: ac.onPrimaryContainer,
-      secondary: const Color(0xFF3D5387),
-      onSecondary: const Color(0xFFF5F2F4),
-      secondaryContainer: const Color(0xFF26365F),
-      // Was the mauve `#BFA9BA`, which leaked into any container that used it
-      // and read as a pink smudge against the blue palette.
-      onSecondaryContainer: const Color(0xFFBFC4DE),
-      error: ac.dangerFill,
-      onError: Colors.white,
-      // Also was the mauve. `tertiary` is picked up by Material components
-      // (chips, progress, some button states), so a pink value here showed up
-      // in places nobody explicitly themed.
-      tertiary: const Color(0xFF6E7BA8),
-      onTertiary: Colors.white,
+      secondary: const Color(0xFFA9C0E0),
+      onSecondary: ac.surface,
+      secondaryContainer: const Color(0xFF2E3C57),
+      onSecondaryContainer: const Color(0xFFE2E9F8),
+      error: ac.dangerSolid,
+      onError: ac.onAccent,
+      tertiary: ac.accent,
+      onTertiary: ac.onAccent,
+      tertiaryContainer: ac.accentContainer,
+      onTertiaryContainer: ac.accent,
       surface: ac.surface,
       onSurface: ac.ink,
-      surfaceContainerLowest: ac.surface2,
-      surfaceContainerLow: ac.surface2,
+      surfaceContainerLowest: ac.glassFill,
+      surfaceContainerLow: ac.glassFillStrong,
       surfaceContainerHigh: ac.surfaceHigh,
       surfaceContainerHighest: ac.surfaceHighest,
       onSurfaceVariant: ac.inkSoft,
       outline: ac.outlineStrong,
       outlineVariant: ac.outline,
-      shadow: Colors.black.withValues(alpha: 0.5),
+      shadow: ac.glassShadow,
     );
     return _base(cs, ac);
   }
@@ -584,6 +617,8 @@ class AppTheme {
     required Color onError,
     Color? tertiary,
     Color? onTertiary,
+    Color? tertiaryContainer,
+    Color? onTertiaryContainer,
     required Color surface,
     required Color onSurface,
     required Color surfaceContainerLowest,
@@ -607,6 +642,8 @@ class AppTheme {
       onSecondaryContainer: onSecondaryContainer,
       tertiary: tertiary ?? primary,
       onTertiary: onTertiary ?? onPrimary,
+      tertiaryContainer: tertiaryContainer ?? secondaryContainer,
+      onTertiaryContainer: onTertiaryContainer ?? onSecondaryContainer,
       error: error,
       onError: onError,
       surface: surface,
@@ -688,7 +725,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        clipBehavior: Clip.antiAliasWithSaveLayer,
+        clipBehavior: Clip.antiAlias,
         color: cs.surfaceContainerLowest,
         surfaceTintColor: Colors.transparent,
         shadowColor: cs.shadow,
@@ -705,6 +742,37 @@ class AppTheme {
           fontSize: 19,
           letterSpacing: -0.01,
           color: cs.onSurface,
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: cs.surfaceContainerHigh,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.xl),
+          side: BorderSide(color: appColors.glassHairline),
+        ),
+        titleTextStyle: manrope.titleLarge?.copyWith(
+          color: cs.onSurface,
+          fontWeight: FontWeight.w800,
+        ),
+        contentTextStyle: inter.bodyMedium?.copyWith(
+          color: cs.onSurfaceVariant,
+          height: 1.45,
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: appColors.glassElevated,
+        modalBackgroundColor: appColors.glassElevated,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        showDragHandle: true,
+        dragHandleColor: appColors.inkFaint.withValues(alpha: 0.55),
+        shape: RoundedRectangleBorder(
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadii.xxl),
+          ),
+          side: BorderSide(color: appColors.glassHairline),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -783,6 +851,24 @@ class AppTheme {
       ),
       dividerTheme:
           DividerThemeData(color: cs.outlineVariant, thickness: 1, space: 0),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? cs.onPrimary : cs.outline),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? cs.primary
+                : appColors.glassNested),
+        trackOutlineColor: WidgetStatePropertyAll(appColors.controlBorder),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? cs.primary : null),
+        checkColor: WidgetStatePropertyAll(cs.onPrimary),
+        side: BorderSide(color: appColors.controlBorder, width: 1.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.xs),
+        ),
+      ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: Colors.transparent,
         elevation: 0,

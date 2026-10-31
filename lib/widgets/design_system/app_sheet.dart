@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/haptics.dart';
 
 /// A bottom-sheet option row: icon chip + title, with optional danger styling.
 class SheetOption extends StatelessWidget {
@@ -30,7 +32,12 @@ class SheetOption extends StatelessWidget {
       button: true,
       label: title,
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap == null
+            ? null
+            : () {
+                unawaited(AppHaptics.tap());
+                onTap!();
+              },
         borderRadius: BorderRadius.circular(AppRadii.md),
         splashColor: ac.glassPress,
         child: Container(
@@ -179,6 +186,8 @@ Future<T?> showAppSheet<T>({
     // muddy grey and shifted the perceived hue of the palette.
     barrierColor: ac.glassScrim,
     elevation: 0,
+    // AppSheetContent paints its own themed grab handle.
+    showDragHandle: false,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.only(
         topLeft: Radius.circular(AppRadii.xxl),

@@ -32,11 +32,10 @@ class GlassBackground extends StatelessWidget {
     // how you end up with a page that is a different colour from the theme's
     // own `scaffoldBackgroundColor`.
     final ac = AppColors.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Painted directly, with no Stack: the old `Stack(fit: StackFit.expand)`
     // forced a full-screen layer purely to hold decorative orbs.
     return ColoredBox(
-      color: isDark ? ac.surface : const Color(0xFFF7F4F2),
+      color: ac.surface,
       child: child,
     );
   }
