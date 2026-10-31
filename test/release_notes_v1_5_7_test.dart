@@ -46,7 +46,19 @@ void main() {
 
   test('the release tag, app version, and changelog heading agree', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
-    expect(pubspec, contains('version: 1.5.7+10'));
-    expect(readChangelogSection(), isNotEmpty);
+    final versionMatch = RegExp(
+      r'^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\+[0-9]+\s*$',
+      multiLine: true,
+    ).firstMatch(pubspec);
+    expect(versionMatch, isNotNull);
+
+    final version = versionMatch!.group(1)!;
+    final changelog = File('CHANGELOG.md').readAsStringSync();
+    final heading = '## v$version ';
+    final start = changelog.indexOf(heading);
+    expect(start, greaterThanOrEqualTo(0));
+    final next = changelog.indexOf('\n## ', start + heading.length);
+    final end = next < 0 ? changelog.length : next;
+    expect(changelog.substring(start, end).trim(), isNotEmpty);
   });
 }
